@@ -9,6 +9,8 @@ if (!defined('ABSPATH')) {
 require_once( ABSPATH . "wp-includes/pluggable.php" );
 require_once("classes.php");
 
+$GLOBALS["MG"] = new Megaventory();
+
 function order_placed($order_id){
     $order = wc_get_order($order_id);
     var_dump($order);
@@ -62,7 +64,9 @@ function synchronize_categories() {
 	
 	$jsonurl = $megaventory_url . "ProductGet" . "?APIKEY=" . $API_KEY;
 	$jsonprod = file_get_contents($jsonurl);
-	$jsonprod = json_decode($jsonprod, true);
+	
+	
+	$jsonprod = $GLOBALS["MG"]->get_products();
 	
 	foreach ($jsonprod['mvProducts'] as $product) {
 		echo "<div>";
