@@ -1,12 +1,17 @@
 <?php
 
 class Product {
+	public $ID;
 	public $name;
-	public $sku;
+	public $SKU;
+	public $EAN;
 	public $description;
 	public $long_description;
 	public $quantity;
 	public $category;
+	public $type;
+	
+	public $regular_price;
 	
 	public $length;
 	public $breadth;
@@ -34,9 +39,28 @@ class Megaventory {
 		$jsonprod = file_get_contents($jsonurl);
 		$jsonprod = json_decode($jsonprod, true);
 		
-		return $jsonprod;
+		$products = array();
+		foreach ($jsonprod['mvProducts'] as $prod) {
+			$product = new Product();
+			
+			$product->ID = $prod['ProductID'];
+			$product->type = $prod['ProductType'];
+			$product->SKU = $prod['ProductSKU'];
+			$product->EAN = $prod['ProductEAN'];
+			$product->description = $prod['ProductDescription'];
+			$product->regular_price = $prod['ProductSellingPrice'];
+			//$product->ID = $prod['ProductVersion'];
+			//$product->ID = $prod['ProductLongDescription'];
+			//$product->ID = $prod['ProductCategoryID'];
+			
+			
+			array_push($products, $product);
+		}
+		
+		return $products;
 	}
-	
 }
+
+
 
 ?>
