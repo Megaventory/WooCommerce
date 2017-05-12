@@ -7,9 +7,11 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 require_once( ABSPATH . "wp-includes/pluggable.php" );
-require_once("classes.php");
+require_once("megaventory.php");
+require_once("woocommerce.php");
 
 $GLOBALS["MG"] = new Megaventory();
+$GLOBALS["WC"] = new Woocommerce_sync();
 
 function order_placed($order_id){
     $order = wc_get_order($order_id);
@@ -53,15 +55,12 @@ function synchronize_categories() {
 	
 	$prods = $GLOBALS["MG"]->get_products();
 	$categories = $GLOBALS["MG"]->get_categories();
-	wc_synchronize_categories($categories);
+	$GLOBALS["WC"]->synchronize_categories($categories);
 	
 	foreach ($prods as $product) {		
-		//var_dump($product);
-		echo "Now doing: " . $product->SKU;
-		wc_save_product($product); 
-		echo "<br>";
+		$GLOBALS["WC"]->add_simple_product($product); 
 		
-		break; //debug
+		//break; //debug
 	}
 	
 }
