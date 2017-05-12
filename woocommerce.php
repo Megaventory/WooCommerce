@@ -53,8 +53,8 @@ class Woocommerce_sync {
 		}
 	}
 	
-	function synchronize_procucts($products, $with_delete = false) {
-		$wc_products = $this->get_products();
+	function synchronize_products($products, $with_delete = false) {
+		$wc_products = $this->get_products_posts();
 		$skus = array();
 		//get SKUs of existing products
 		foreach ($wc_products as $wc_product) {
@@ -66,7 +66,7 @@ class Woocommerce_sync {
 		//create if it does not exist
 		foreach ($products as $product) {
 			if (in_array($product->SKU, $skus)) {
-				$post = $this->get_product_by_SKU($product->SKU);
+				$post = $this->get_product_post_by_SKU($product->SKU);
 				
 				$this->update_simple_product($post->ID, $product);
 			} else {
@@ -87,7 +87,7 @@ class Woocommerce_sync {
 			}
 			
 			foreach ($to_delete as $sku) {
-				$product_to_delete = $this->get_product_by_SKU($sku);
+				$product_to_delete = $this->get_product_post_by_SKU($sku);
 				wp_delete_post($product_to_delete->ID);
 			}
 			
@@ -95,14 +95,14 @@ class Woocommerce_sync {
 			
 	}
 	
-	function get_products() {
+	function get_products_posts() {
 		$args = array('post_type' => 'product', numberposts => -1);
 		$products = get_posts($args);
 		return $products;
 	}
 	
-	function get_product_by_SKU($SKU) {
-		$products = $this->get_products();
+	function get_product_post_by_SKU($SKU) {
+		$products = $this->get_products_posts();
 		$to_return = null;
 		foreach($products as $product) {
 			$sku = get_post_meta($product->ID, '_sku', true);

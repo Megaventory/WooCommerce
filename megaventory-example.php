@@ -61,9 +61,10 @@ function synchronize_categories() {
 	
 	$prods = $GLOBALS["MG"]->get_products();
 	$categories = $GLOBALS["MG"]->get_categories();
+	
 	$GLOBALS["WC"]->synchronize_categories($categories, $with_delete);
 	
-	$GLOBALS["WC"]->synchronize_procucts($prods, $with_delete); 
+	$GLOBALS["WC"]->synchronize_products($prods, $with_delete); 
 
 	
 }
