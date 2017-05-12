@@ -52,6 +52,8 @@ if (isset($_POST['sync-categories'])) {
 function synchronize_categories() {
 	
 	$prods = $GLOBALS["MG"]->get_products();
+	$categories = $GLOBALS["MG"]->get_categories();
+	wc_synchronize_categories($categories);
 	
 	foreach ($prods as $product) {		
 		//var_dump($product);

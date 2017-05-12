@@ -76,6 +76,54 @@ class Megaventory {
 	}
 }
 
+function wc_synchronize_categories($mg_categories) {
+	$args = array(
+		'number'     => $number,
+		'orderby'    => $orderby,
+		'order'      => $order,
+		'hide_empty' => $hide_empty,
+		'include'    => $ids
+	);
+	$wc_categories = get_terms('product_cat', $args);
+	
+	$categories_to_delete = $wc_categories;
+	$categories_to_create = $mg_categories;
+	
+	foreach ($wc_categories as $wc_category) {
+		foreach ($mg_categories as $mg_category) {
+			echo "<ul>";
+			echo "<li>" . $wc_category->name . "</li>";
+			echo "<li>" . $mg_category . "</li>";
+			echo "</ul>";
+			if ($mg_category == $wc_category->name) { // untested
+				$key = array_search($wc_category, $categories_to_delete);
+				unset($categories_to_delete[$key]);
+				
+				$key = array_search($mg_category, $categories_to_add);
+				unser($categories_to_add[$key]);
+			} 
+		}
+	}
+	
+	foreach ($categories_to_create as $name) {
+		$cid = wp_insert_term(
+			$name, // the term 
+			'product_cat', // the taxonomy
+			array(
+				'description'=> $data['description'],
+				'slug' => $data['slug'],
+				'parent' => $data['parent']
+			)
+		);
+	}
+	
+	echo "<br> to delete : ";
+	foreach ($categories_to_delete as $cat) {
+		var_dump($cat);
+		wp_delete_term($cat->term_id, 'product_cat');
+	}
+}
+
 
 function wc_save_product($product) {
 	$post_id = wp_insert_post( array(
@@ -101,10 +149,10 @@ function wc_save_product($product) {
 			array_push($terms_ids, $item->term_id);
 		}
 	}
-	echo "<br> var dump1: ";
-	var_dump($product_categories);
-	echo "<br> var dump2: ";
-	var_dump($terms_ids);
+	//echo "<br> var dump1: ";
+	//var_dump($product_categories);
+	//echo "<br> var dump2: ";
+	//var_dump($terms_ids);
 	
 	wp_set_object_terms($post_id, $terms_ids, 'product_cat');
 	//wp_set_object_terms($post_id, 'simple', 'product_type');
