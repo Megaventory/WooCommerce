@@ -58,7 +58,8 @@ class Woocommerce_sync {
 		//create product
 		$post_id = wp_insert_post(array(
 			'post_title' => $product->SKU,
-			'post_content' => $product->description,
+			'post_content' => $product->long_description,
+			'post_excerpt' => $product->description,
 			'post_status' => 'publish',
 			'post_type' => "product",
 		));
@@ -77,7 +78,8 @@ class Woocommerce_sync {
 		//wp_set_object_terms($post_id, 'simple', 'product_type');
 
 		//set other information
-		update_post_meta($post_id, '_visibility', 'visible' );
+		update_post_meta($post_id, '_short_description', 'blah');
+		update_post_meta($post_id, '_visibility', 'visible');
 		update_post_meta($post_id, '_stock_status', 'instock');
 		update_post_meta($post_id, 'total_sales', '0');
 		update_post_meta($post_id, '_downloadable', 'no');
@@ -102,6 +104,8 @@ class Woocommerce_sync {
 		
 		echo "<br>product: ";
 		var_dump($product);
+		echo "<br>post: ";
+		var_dump($post_id);
 	}
 }
 

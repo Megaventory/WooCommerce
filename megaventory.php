@@ -43,6 +43,8 @@ class Megaventory {
 			$product->SKU = $prod['ProductSKU'];
 			$product->EAN = $prod['ProductEAN'];
 			$product->description = $prod['ProductDescription'];
+			$product->long_description = $prod['ProductLongDescription'];
+			
 			$product->regular_price = $prod['ProductSellingPrice'];
 			$product->category = $categories[$prod['ProductCategoryID']];
 			
