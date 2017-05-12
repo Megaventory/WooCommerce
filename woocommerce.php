@@ -47,39 +47,52 @@ class Woocommerce_sync {
 			);
 		}
 		if ($with_delete) {
-			echo "<br> to delete : ";
 			foreach ($categories_to_delete as $cat) {
-				var_dump($cat);
 				wp_delete_term($cat->term_id, 'product_cat');
 			}
 		}
 	}
 	
 	function synchronize_procucts($products, $with_delete = false) {
-		echo "<br><br> ALL POSTS: ";
-		var_dump(get_posts());
 		$wc_products = $this->get_products();
-		var_dump($wc_products);
 		$skus = array();
+		//get SKUs of existing products
 		foreach ($wc_products as $wc_product) {
 			$sku = get_post_meta($wc_product->ID, '_sku', true);
 			array_push($skus, $sku);
 		}
 		
+		//update if product exists,
+		//create if it does not exist
 		foreach ($products as $product) {
 			if (in_array($product->SKU, $skus)) {
-				echo "<br>PRODUCT " . $product->SKU . " IN SHOP";
-				echo "<br> UPDATE THIS PROD: ";
 				$post = $this->get_product_by_SKU($product->SKU);
 				
 				$this->update_simple_product($post->ID, $product);
 			} else {
-				echo "<br>PRODUCT " . $product->SKU . " NOT IN SHOP";
 				$this->add_simple_product($product);
 			}
 		}
 		
-		
+		//delete unneeded products if so instructed
+		if ($with_delete) {
+			$to_delete = $skus;
+			foreach ($skus as $sku) {
+				foreach ($products as $product) {
+					if ($product->SKU == $sku) {
+						$key = array_search($sku, $to_delete);
+						unset($to_delete[$key]);
+					}
+				}
+			}
+			
+			foreach ($to_delete as $sku) {
+				$product_to_delete = $this->get_product_by_SKU($sku);
+				wp_delete_post($product_to_delete->ID);
+			}
+			
+		}
+			
 	}
 	
 	function get_products() {

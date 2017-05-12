@@ -57,12 +57,13 @@ if (isset($_POST['sync-categories'])) {
 }
 
 function synchronize_categories() {
+	$with_delete = isset($_POST['with_delete']);
 	
 	$prods = $GLOBALS["MG"]->get_products();
 	$categories = $GLOBALS["MG"]->get_categories();
-	$GLOBALS["WC"]->synchronize_categories($categories);
+	$GLOBALS["WC"]->synchronize_categories($categories, $with_delete);
 	
-	$GLOBALS["WC"]->synchronize_procucts($prods); 
+	$GLOBALS["WC"]->synchronize_procucts($prods, $with_delete); 
 
 	
 }
