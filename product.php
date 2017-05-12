@@ -10,6 +10,7 @@ class Product {
 	public $quantity;
 	public $category;
 	public $type;
+	public $image_url;
 	
 	public $regular_price;
 	

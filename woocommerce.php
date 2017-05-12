@@ -53,11 +53,62 @@ class Woocommerce_sync {
 			wp_delete_term($cat->term_id, 'product_cat');
 		}
 	}
+	
+	function synchronize_procucts($products) {
+		echo "<br><br> ALL POSTS: ";
+		var_dump(get_posts());
+		$wc_products = $this->get_products();
+		var_dump($wc_products);
+		$skus = array();
+		foreach ($wc_products as $wc_product) {
+			$sku = get_post_meta($wc_product->ID, '_sku', true);
+			array_push($skus, $sku);
+		}
+		
+		foreach ($products as $product) {
+			if (in_array($product->SKU, $skus)) {
+				echo "<br>PRODUCT " . $product->SKU . " IN SHOP";
+				echo "<br> UPDATE THIS PROD: ";
+				$post = $this->get_product_by_SKU($product->SKU);
+				
+				$this->update_simple_product($post->ID, $product);
+			} else {
+				echo "<br>PRODUCT " . $product->SKU . " NOT IN SHOP";
+				$this->add_simple_product($product);
+			}
+		}
+		
+		
+	}
+	
+	function get_products() {
+		$args = array('post_type' => 'product', numberposts => -1);
+		$products = get_posts($args);
+		return $products;
+	}
+	
+	function get_product_by_SKU($SKU) {
+		$products = $this->get_products();
+		$to_return = null;
+		foreach($products as $product) {
+			$sku = get_post_meta($product->ID, '_sku', true);
+			if ($SKU == $sku) {
+				$to_return = $product;
+				break;
+			}
+		}
+		return $to_return;
+	}
+	
+	function update_simple_product($post_id, $product) {
+		
+		update_post_meta($post_id, '_price', "10000");
+	}
 		
 	function add_simple_product($product) {
 		//create product
 		$post_id = wp_insert_post(array(
-			'post_title' => $product->SKU,
+			'post_title' => $product->description,
 			'post_content' => $product->long_description,
 			'post_excerpt' => $product->description,
 			'post_status' => 'publish',
@@ -78,15 +129,14 @@ class Woocommerce_sync {
 		//wp_set_object_terms($post_id, 'simple', 'product_type');
 
 		//set other information
-		update_post_meta($post_id, '_short_description', 'blah');
 		update_post_meta($post_id, '_visibility', 'visible');
 		update_post_meta($post_id, '_stock_status', 'instock');
-		update_post_meta($post_id, 'total_sales', '0');
-		update_post_meta($post_id, '_downloadable', 'no');
-		update_post_meta($post_id, '_virtual', 'no');
+		//update_post_meta($post_id, 'total_sales', '0');
+		//update_post_meta($post_id, '_downloadable', 'no');
+		//update_post_meta($post_id, '_virtual', 'no');
 		update_post_meta($post_id, '_regular_price', $product->regular_price);
 		//update_post_meta($post_id, '_sale_price', "0");
-		update_post_meta($post_id, '_purchase_note', "");
+		//update_post_meta($post_id, '_purchase_note', "");
 		update_post_meta($post_id, '_featured', "no");
 		update_post_meta($post_id, '_weight', $product->weight);
 		update_post_meta($post_id, '_length', $product->length);
@@ -94,18 +144,69 @@ class Woocommerce_sync {
 		update_post_meta($post_id, '_height', $product->height);
 		update_post_meta($post_id, '_sku', $product->SKU);
 		update_post_meta($post_id, '_product_attributes', array());
-		update_post_meta($post_id, '_sale_price_dates_from', "");
-		update_post_meta($post_id, '_sale_price_dates_to', "");
+		//update_post_meta($post_id, '_sale_price_dates_from', "");
+		//update_post_meta($post_id, '_sale_price_dates_to', "");
 		update_post_meta($post_id, '_price', $product->regular_price);
-		update_post_meta($post_id, '_sold_individually', "");
-		update_post_meta($post_id, '_manage_stock', "no");
-		update_post_meta($post_id, '_backorders', "no");
+		//update_post_meta($post_id, '_sold_individually', "");
+		update_post_meta($post_id, '_manage_stock', "yes");
+		//update_post_meta($post_id, '_backorders', "no");
 		update_post_meta($post_id, '_stock', "");
+		
+		$this->attach_image($post_id, $product);
 		
 		echo "<br>product: ";
 		var_dump($product);
 		echo "<br>post: ";
 		var_dump($post_id);
+	}
+	
+	function attach_image($post_id, $product) {
+		if ($product->image_url == null or $product->image_url == "") {
+			return;
+		}
+		
+		$dir = dirname(__FILE__);
+		$imageFolder = $dir.'/../import/';
+		$imageFile   = $product->SKU;
+		$imageFull = $imageFolder.$imageFile;
+
+		// only need these if performing outside of admin environment
+		require_once(ABSPATH . 'wp-admin/includes/media.php');
+		require_once(ABSPATH . 'wp-admin/includes/file.php');
+		require_once(ABSPATH . 'wp-admin/includes/image.php');
+
+		// example image
+		$image = $product->image_url;
+
+		// magic sideload image returns an HTML image, not an ID
+		$media = media_sideload_image($image, $post_id);
+
+		// therefore we must find it so we can set it as featured ID
+		if(!empty($media) && !is_wp_error($media)){
+			$args = array(
+				'post_type' => 'attachment',
+				'posts_per_page' => -1,
+				'post_status' => 'any',
+				'post_parent' => $post_id
+			);
+
+			// reference new image to set as featured
+			$attachments = get_posts($args);
+
+			if(isset($attachments) && is_array($attachments)){
+				foreach($attachments as $attachment){
+					// grab source of full size images (so no 300x150 nonsense in path)
+					$image = wp_get_attachment_image_src($attachment->ID, 'full');
+					// determine if in the $media image we created, the string of the URL exists
+					if(strpos($media, $image[0]) !== false){
+						// if so, we found our image. set it as thumbnail
+						set_post_thumbnail($post_id, $attachment->ID);
+						// only want one image
+						break;
+					}
+				}
+			}
+		}
 	}
 }
 

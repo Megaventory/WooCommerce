@@ -61,11 +61,8 @@ function synchronize_categories() {
 	$categories = $GLOBALS["MG"]->get_categories();
 	$GLOBALS["WC"]->synchronize_categories($categories);
 	
-	foreach ($prods as $product) {		
-		$GLOBALS["WC"]->add_simple_product($product); 
-		
-		//break; //debug
-	}
+	$GLOBALS["WC"]->synchronize_procucts($prods); 
+
 	
 }
 
