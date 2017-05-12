@@ -16,7 +16,7 @@ class Woocommerce_sync {
 		
 	}
 	
-	function synchronize_categories($mg_categories) {
+	function synchronize_categories($mg_categories, $with_delete = false) {
 		
 		$wc_categories = $this->get_categories();
 		
@@ -46,15 +46,16 @@ class Woocommerce_sync {
 				)
 			);
 		}
-		
-		echo "<br> to delete : ";
-		foreach ($categories_to_delete as $cat) {
-			var_dump($cat);
-			wp_delete_term($cat->term_id, 'product_cat');
+		if ($with_delete) {
+			echo "<br> to delete : ";
+			foreach ($categories_to_delete as $cat) {
+				var_dump($cat);
+				wp_delete_term($cat->term_id, 'product_cat');
+			}
 		}
 	}
 	
-	function synchronize_procucts($products) {
+	function synchronize_procucts($products, $with_delete = false) {
 		echo "<br><br> ALL POSTS: ";
 		var_dump(get_posts());
 		$wc_products = $this->get_products();
@@ -110,6 +111,8 @@ class Woocommerce_sync {
 		wp_update_post($post);
 		
 		$this->set_product_meta($post_id, $product);
+		
+		$this->attach_image($post_id, $product);
 	}
 		
 	function add_simple_product($product) {
@@ -134,21 +137,26 @@ class Woocommerce_sync {
 	}
 	
 	function attach_image($post_id, $product) {
-		if ($product->image_url == null or $product->image_url == "") {
-			return;
-		}
-		
-		$dir = dirname(__FILE__);
-		$imageFolder = $dir.'/../import/';
-		$imageFile   = $product->SKU;
-		$imageFull = $imageFolder.$imageFile;
-
-		// only need these if performing outside of admin environment
 		require_once(ABSPATH . 'wp-admin/includes/media.php');
 		require_once(ABSPATH . 'wp-admin/includes/file.php');
 		require_once(ABSPATH . 'wp-admin/includes/image.php');
 
-		// example image
+		
+		if ($product->image_url == null or $product->image_url == "") {
+			return;
+		} else {
+			//only upload image id doesn't exist
+			if (wp_get_attachment_image_src(get_post_thumbnail_id($post_id)) != null) {
+				return;
+			}			
+		}
+		
+		$dir = dirname(__FILE__);
+		$imageFolder = $dir.'/../import/';
+		$imageFile = $product->SKU;
+		$imageFull = $imageFolder.$imageFile;
+		
+		// image
 		$image = $product->image_url;
 
 		// magic sideload image returns an HTML image, not an ID

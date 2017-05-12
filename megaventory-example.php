@@ -45,6 +45,7 @@ function test_plugin_setup_menu(){
  
 function test_init(){
 	echo '<form id="sync-categories-form" method="post">';
+	echo '<input type="checkbox" name="with_delete" /> with delete';
 	echo '<input type="hidden" name="sync-categories" value="true" />';
 	echo '<input type="submit" value="Synchronize Products" />';
 	echo '</form>';
