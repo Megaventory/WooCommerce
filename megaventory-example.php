@@ -13,6 +13,8 @@ require_once("woocommerce.php");
 $GLOBALS["MG"] = new Megaventory();
 $GLOBALS["WC"] = new Woocommerce_sync();
 
+
+
 function order_placed($order_id){
     $order = wc_get_order($order_id);
     var_dump($order);
@@ -25,19 +27,20 @@ function order_placed($order_id){
 	}
 }
 
+//main
 if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
-	
 	$hook_to = 'woocommerce_thankyou';
 	$what_to_hook = 'order_placed';
 	$prioriy = 111;
 	$num_of_arg = 1;    
 	add_action($hook_to, $what_to_hook, $prioriy, $num_of_arg);
 	
+	//configure admin panel
 	add_action('admin_menu', 'test_plugin_setup_menu');
 }
 
 function test_plugin_setup_menu(){
-        add_menu_page( 'Test Plugin Page', 'Test Plugin', 'manage_options', 'test-plugin', 'test_init' );
+	add_menu_page( 'Test Plugin Page', 'Test Plugin', 'manage_options', 'test-plugin', 'test_init' );
 }
  
 function test_init(){
@@ -47,6 +50,7 @@ function test_init(){
 	echo '</form>';
 }
 
+//sync button clicked
 if (isset($_POST['sync-categories'])) {
 	add_action('init', 'synchronize_categories');
 }

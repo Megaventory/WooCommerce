@@ -86,10 +86,10 @@ class Woocommerce_sync {
 		//update_post_meta($post_id, '_sale_price', "0");
 		update_post_meta($post_id, '_purchase_note', "");
 		update_post_meta($post_id, '_featured', "no");
-		update_post_meta($post_id, '_weight', "");
-		update_post_meta($post_id, '_length', "");
-		update_post_meta($post_id, '_width', "");
-		update_post_meta($post_id, '_height', "");
+		update_post_meta($post_id, '_weight', $product->weight);
+		update_post_meta($post_id, '_length', $product->length);
+		update_post_meta($post_id, '_width', $product->breadth);
+		update_post_meta($post_id, '_height', $product->height);
 		update_post_meta($post_id, '_sku', $product->SKU);
 		update_post_meta($post_id, '_product_attributes', array());
 		update_post_meta($post_id, '_sale_price_dates_from', "");
@@ -99,6 +99,9 @@ class Woocommerce_sync {
 		update_post_meta($post_id, '_manage_stock', "no");
 		update_post_meta($post_id, '_backorders', "no");
 		update_post_meta($post_id, '_stock', "");
+		
+		echo "<br>product: ";
+		var_dump($product);
 	}
 }
 

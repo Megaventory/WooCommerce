@@ -45,6 +45,12 @@ class Megaventory {
 			$product->description = $prod['ProductDescription'];
 			$product->regular_price = $prod['ProductSellingPrice'];
 			$product->category = $categories[$prod['ProductCategoryID']];
+			
+			$product->weight = $prod['ProductWeight'];
+			$product->length = $prod['ProductLength'];
+			$product->breadth = $prod['ProductBreadth'];
+			$product->height = $prod['ProductHeight'];
+			
 			//$product->ID = $prod['ProductLongDescription'];
 			//$product->ID = $prod['ProductCategoryID'];
 			
