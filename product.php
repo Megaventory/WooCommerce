@@ -1,7 +1,7 @@
 <?php
 
 class Product {
-	public $ID;
+	public $MV_ID;
 	public $name;
 	public $SKU;
 	public $EAN;
@@ -19,6 +19,8 @@ class Product {
 	public $height;
 	
 	public $version;
+	
+	public $stock_on_hand;
 
 }
 

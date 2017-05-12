@@ -9,6 +9,7 @@ class Megaventory {
 	
 	public $product_get_call = "ProductGet";
 	public $category_get_call = "ProductCategoryGet";
+	public $product_stock_call = "InventoryLocationStockGet";
 	
 	function create_json_url($call) {
 		return $this->url . $call . "?APIKEY=" . $this->API_KEY;
@@ -38,7 +39,7 @@ class Megaventory {
 		foreach ($jsonprod['mvProducts'] as $prod) {
 			$product = new Product();
 			
-			$product->ID = $prod['ProductID'];
+			$product->MV_ID = $prod['ProductID'];
 			$product->type = $prod['ProductType'];
 			$product->SKU = $prod['ProductSKU'];
 			$product->EAN = $prod['ProductEAN'];
@@ -54,14 +55,27 @@ class Megaventory {
 			$product->breadth = $prod['ProductBreadth'];
 			$product->height = $prod['ProductHeight'];
 			
-			//$product->ID = $prod['ProductLongDescription'];
-			//$product->ID = $prod['ProductCategoryID'];
-			
+			$product->stock_on_hand = $this->get_product_stock_on_hand($prod['ProductID']);
 			
 			array_push($products, $product);
 		}
 		
 		return $products;
+	}
+	
+	function get_product_stock_on_hand($product_id) {
+		$json_url = $this->create_json_url($this->product_stock_call) . "&Filters={FieldName:productid,SearchOperator:Equals,SearchValue:" . $product_id ."}";
+		
+		$response = file_get_contents($json_url);
+		$response = json_decode($response, true);
+		
+		$response = $response['mvProductStockList'];
+		$total_on_hand = 0;
+		foreach ($response[0]['mvStock'] as $inventory) {
+			$total_on_hand += $inventory['StockOnHand'];
+		}
+		
+		return $total_on_hand;
 	}
 }
 

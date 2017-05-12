@@ -220,7 +220,7 @@ class Woocommerce_sync {
 
 		//set other information
 		update_post_meta($post_id, '_visibility', 'visible');
-		update_post_meta($post_id, '_stock_status', 'instock');
+		update_post_meta($post_id, '_stock_status', ($product->stock_on_hand > 0 ? "instock" : "outofstock"));
 		//update_post_meta($post_id, 'total_sales', '0');
 		//update_post_meta($post_id, '_downloadable', 'no');
 		//update_post_meta($post_id, '_virtual', 'no');
@@ -240,7 +240,8 @@ class Woocommerce_sync {
 		//update_post_meta($post_id, '_sold_individually', "");
 		update_post_meta($post_id, '_manage_stock', "yes");
 		//update_post_meta($post_id, '_backorders', "no");
-		update_post_meta($post_id, '_stock', "");
+		update_post_meta($post_id, '_stock', (string)$product->stock_on_hand);
+		echo "<br>" . $product->stock_on_hand;
 	}
 }
 
