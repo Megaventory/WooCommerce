@@ -231,9 +231,9 @@ class Megaventory_sync {
 		$url .= "ProductLongDescription:" . $product->long_description;
 		
 		$url.= "}&mvRecordAction=InsertOrUpdateNonEmptyFields";
-		echo "<br> " . $url;
 		$response = file_get_contents(($url));
 		
+		echo "<br> " . $url;
 		echo "<br> " . $response;
 	
 	}
