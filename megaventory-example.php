@@ -50,23 +50,25 @@ function test_init(){
 	echo '<form id="sync-mv-wc" method="post">';
 	echo '<input type="checkbox" name="with_delete" /> with delete';
 	echo '<input type="hidden" name="sync-mv-wc" value="true" />';
-	echo '<input type="submit" value="Synchronize Products" />';
+	echo '<input type="submit" value="Synchronize Products From MV to WC" />';
 	echo '</form>';
 	
+	echo '<br><br>';
 	
-	echo '<form id="sync-categories-form" method="post">';
+	echo '<form id="sync-wc-mv" method="post">';
 	echo '<input type="checkbox" name="with_delete" /> with delete';
-	echo '<input type="hidden" name="sync-mc-wc" value="true" />';
-	echo '<input type="submit" value="Synchronize Products" />';
+	echo '<input type="hidden" name="sync-wc-mv" value="true" />';
+	echo '<input type="submit" value="Synchronize Products From WC to MV" />';
 	echo '</form>';
 }
 
 // sync button clicked
+// code will only run correctly on 'init' hook
+// otherwise, some wc variables are not correctly initialized
 if (isset($_POST['sync-mv-wc'])) {
-	
-	// code will only run correctly on 'init' hook
-	// otherwise, some wc variables are not correctly initialized
 	add_action('init', 'synchronize_products_mv_wc');
+} else if (isset($_POST['sync-wc-mv'])) {
+	add_action('init', 'synchronize_products_wc_mv');
 }
 
 function synchronize_products_mv_wc() {
@@ -80,6 +82,18 @@ function synchronize_products_mv_wc() {
 	// synchronize WC products and categories based on retrieved MV products and categories
 	$GLOBALS["WC"]->synchronize_categories($categories, $with_delete);
 	$GLOBALS["WC"]->synchronize_products($prods, $with_delete); 
+}
+
+function synchronize_products_wc_mv() {
+	// synchronize with delete?
+	$with_delete = isset($_POST['with_delete']);
+	
+	// get WC products and categories();
+	$prods = $GLOBALS["WC"]->get_products();
+	$categories = $GLOBALS["WC"]->get_categories();
+	
+	var_dump($prods);
+	
 }
 
 ?>

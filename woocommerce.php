@@ -16,27 +16,35 @@ class Woocommerce_sync {
 			'include'    => $ids
 		);
 		return get_terms('product_cat', $args);
-		
+	}
+	
+	function get_categories() {
+		$categories = array();
+		$wc_cats = $this->get_categories_posts();
+		foreach ($wc_cats as $wc_cat) {
+			$categories[$wc_cat->term_id] = $wc_cat->name;
+		}
+		return $categories;
 	}
 	
 	// synchronize categories with those provided in arguments
-	function synchronize_categories($mg_categories, $with_delete = false) {
+	function synchronize_categories($mv_categories, $with_delete = false) {
 		
-		$wc_categories = $this->get_categories_posts();
+		$wc_categories = $this->get_categories();
 		
 		$categories_to_delete = $wc_categories;
-		$categories_to_create = $mg_categories;
+		$categories_to_create = $mv_categories;
 		
 		// leave categories that exist both in WC and MV
 		// Add categories that exist only in MV
 		// Delete categories that exist only in WC (if requested)
 		foreach ($wc_categories as $wc_category) {
-			foreach ($mg_categories as $mg_category) {
-				if ($mg_category == $wc_category->name) {
+			foreach ($mv_categories as $mv_category) {
+				if ($mv_category == $wc_category) {
 					$key = array_search($wc_category, $categories_to_delete);
 					unset($categories_to_delete[$key]);
 					
-					$key = array_search($mg_category, $categories_to_create);
+					$key = array_search($mv_category, $categories_to_create);
 					unset($categories_to_add[$key]);
 				} 
 			}
@@ -121,6 +129,37 @@ class Woocommerce_sync {
 			}
 		}
 		return $to_return;
+	}
+	
+	function get_products() {
+		$prods_posts = $this->get_products_posts();
+		$prods = array();
+		foreach ($prods_posts as $prod_post) {
+			$prod = new Product();
+			$ID = $prod_post->ID;
+			
+			$prod->WC_ID = $prod_post->ID;
+			$prod->description = $prod_post->post_title;
+			$prod->long_description = $prod_post->post_content;
+			$prod->description = $prod_post->post_excerpt;
+			
+			$prod->SKU = get_post_meta($ID, '_sku', true);
+			$prod->regular_price = get_post_meta($ID, '_regular_price', true);
+			$prod->weight = get_post_meta($ID, '_weight', true);
+			$prod->length = get_post_meta($ID, '_length', true);
+			$prod->breadth = get_post_meta($ID, '_width', true);
+			$prod->height = get_post_meta($ID, '_height', true);
+			$prod->breadth = get_post_meta($ID, '_width', true);
+			$prod->breadth = get_post_meta($ID, '_width', true);
+			$prod->breadth = get_post_meta($ID, '_width', true);
+			$prod->category = wp_get_object_terms($ID, 'product_cat')[0]->name; // primary category
+			$prod->image_url = wp_get_attachment_image_src(get_post_thumbnail_id($ID));
+			
+			
+			array_push($prods, $prod);
+		}
+		
+		return $prods;
 	}
 	
 	function update_simple_product($post_id, $product) {

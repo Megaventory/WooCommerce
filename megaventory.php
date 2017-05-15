@@ -10,11 +10,16 @@ class Megaventory_sync {
 	
 	public $product_get_call = "ProductGet";
 	public $category_get_call = "ProductCategoryGet";
+	public $category_update_call = "ProductCategoryUpdate";
 	public $product_stock_call = "InventoryLocationStockGet";
 	
 	// create URL using the API key and call
 	function create_json_url($call) {
 		return $this->url . $call . "?APIKEY=" . $this->API_KEY;
+	}
+	
+	function create_json_url_filter($call, $fieldName, $searchOperator, $searchValue) {
+		return $this->create_json_url($call) . "&Filters={FieldName:" . $fieldName . ",SearchOperator:" . $searchOperator . ",SearchValue:" . $searchValue ."}";
 	}
 	
 	// this function retrieves all existing categories as strings (names of categories)
@@ -74,7 +79,7 @@ class Megaventory_sync {
 	
 	// get inventory per product ID
 	function get_product_stock_on_hand($product_id) {
-		$json_url = $this->create_json_url($this->product_stock_call) . "&Filters={FieldName:productid,SearchOperator:Equals,SearchValue:" . $product_id ."}";
+		$json_url = $this->create_json_url_filter($this->product_stock_call, "productid", "Equals", $product_id);
 		
 		$response = file_get_contents($json_url);
 		$response = json_decode($response, true);
@@ -87,6 +92,27 @@ class Megaventory_sync {
 		}
 		
 		return $total_on_hand;
+	}
+	
+	function synchronize_categories($wc_categories, $with_delete = false) {
+		$mv_categories = $this->get_categories();
+				$categories_to_delete = $wc_categories;
+		$categories_to_create = $mg_categories;
+		
+		// leave categories that exist both in WC and MV
+		// Add categories that exist only in MV
+		// Delete categories that exist only in WC (if requested)
+		foreach ($wc_categories as $wc_category) {
+			foreach ($mv_categories as $mv_category) {
+				if ($mv_category == $wc_category) {
+					$key = array_search($wc_category, $categories_to_delete);
+					unset($categories_to_delete[$key]);
+					
+					$key = array_search($mv_category, $categories_to_create);
+					unset($categories_to_add[$key]);
+				} 
+			}
+		}
 	}
 }
 
