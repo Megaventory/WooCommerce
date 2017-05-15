@@ -11,6 +11,7 @@ class Megaventory_sync {
 	public $product_get_call = "ProductGet";
 	public $category_get_call = "ProductCategoryGet";
 	public $category_update_call = "ProductCategoryUpdate";
+	public $category_delete_call = "ProductCategoryDelete";
 	public $product_stock_call = "InventoryLocationStockGet";
 	
 	// create URL using the API key and call
@@ -96,8 +97,9 @@ class Megaventory_sync {
 	
 	function synchronize_categories($wc_categories, $with_delete = false) {
 		$mv_categories = $this->get_categories();
-				$categories_to_delete = $wc_categories;
-		$categories_to_create = $mg_categories;
+		
+		$categories_to_delete = $mv_categories;
+		$categories_to_create = $wc_categories;
 		
 		// leave categories that exist both in WC and MV
 		// Add categories that exist only in MV
@@ -105,14 +107,43 @@ class Megaventory_sync {
 		foreach ($wc_categories as $wc_category) {
 			foreach ($mv_categories as $mv_category) {
 				if ($mv_category == $wc_category) {
-					$key = array_search($wc_category, $categories_to_delete);
+					$key = array_search($mv_category, $categories_to_delete);
 					unset($categories_to_delete[$key]);
 					
-					$key = array_search($mv_category, $categories_to_create);
-					unset($categories_to_add[$key]);
+					$key = array_search($wc_category, $categories_to_create);
+					unset($categories_to_create[$key]);
 				} 
 			}
+		}	
+		
+		$create_url = $this->create_json_url($this->category_update_call);
+		$delete_url = $this->create_json_url($this->category_delete_call);
+		
+		foreach ($categories_to_create as $name) {
+			//create category
+			$url = $create_url . "&mvProductCategory={ProductCategoryName:" . $name . "}";
+			$response = file_get_contents($url);
 		}
+		
+		if ($with_delete) {
+			foreach ($categories_to_delete as $key => $name) {
+				//TO DO
+				//$url = $delete_url . "&
+			}
+		}
+	}
+	
+	function synchronize_products($wc_products, $with_delete = false) {
+		$mv_products = $this->get_products();
+	
+		$skus = array();
+		//get SKUs of existing products
+		foreach ($mv_products as $mv_product) {
+			$sku = $mv_product->SKU;
+			array_push($skus, $sku);
+		}
+		
+		
 	}
 }
 

@@ -92,8 +92,8 @@ function synchronize_products_wc_mv() {
 	$prods = $GLOBALS["WC"]->get_products();
 	$categories = $GLOBALS["WC"]->get_categories();
 	
-	var_dump($prods);
-	
+	$GLOBALS["MV"]->synchronize_categories($categories, $with_delete);
+	$GLOBALS["MV"]->synchronize_products($prods, $with_delete);
 }
 
 ?>

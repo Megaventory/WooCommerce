@@ -45,7 +45,7 @@ class Woocommerce_sync {
 					unset($categories_to_delete[$key]);
 					
 					$key = array_search($mv_category, $categories_to_create);
-					unset($categories_to_add[$key]);
+					unset($categories_to_create[$key]);
 				} 
 			}
 		}
@@ -71,11 +71,11 @@ class Woocommerce_sync {
 	
 	// synchronize products with those provided in arguments
 	function synchronize_products($products, $with_delete = false) {
-		$wc_products = $this->get_products_posts();
+		$wc_products = $this->get_products();
 		$skus = array();
 		//get SKUs of existing products
 		foreach ($wc_products as $wc_product) {
-			$sku = get_post_meta($wc_product->ID, '_sku', true);
+			$sku = $wc_product->SKU;
 			array_push($skus, $sku);
 		}
 		
