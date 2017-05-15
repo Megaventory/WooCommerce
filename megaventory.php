@@ -2,7 +2,7 @@
 
 require_once("product.php");
 
-class Megaventory {
+class Megaventory_sync {
 	public $url = "https://api.megaventory.com/v2017a/json/reply/";
 	
 	public $API_KEY = "827bc7518941837b@m65192"; // DEV AND DEBUG ONLY
