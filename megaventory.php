@@ -9,6 +9,7 @@ class Megaventory_sync {
 	public $API_KEY = "827bc7518941837b@m65192"; // DEV AND DEBUG ONLY
 	
 	public $product_get_call = "ProductGet";
+	public $product_update_call = "ProductUpdate";
 	public $category_get_call = "ProductCategoryGet";
 	public $category_update_call = "ProductCategoryUpdate";
 	public $category_delete_call = "ProductCategoryDelete";
@@ -88,8 +89,13 @@ class Megaventory_sync {
 		// summarise product on hand in all inventories
 		$response = $response['mvProductStockList'];
 		$total_on_hand = 0;
-		foreach ($response[0]['mvStock'] as $inventory) {
-			$total_on_hand += $inventory['StockOnHand'];
+		
+		if ($response[0]['mvStock'] != null) {
+			foreach ($response[0]['mvStock'] as $inventory) {
+				$total_on_hand += $inventory['StockOnHand'];
+			}
+		} else {
+			return 0;
 		}
 		
 		return $total_on_hand;
@@ -135,6 +141,7 @@ class Megaventory_sync {
 	
 	function synchronize_products($wc_products, $with_delete = false) {
 		$mv_products = $this->get_products();
+		$mv_categories = $this->get_categories();
 	
 		$skus = array();
 		//get SKUs of existing products
@@ -143,8 +150,94 @@ class Megaventory_sync {
 			array_push($skus, $sku);
 		}
 		
+		//update MV IDs in WC product array
+		//it is much quicker to do this now
+		foreach ($wc_products as $wc_product) {
+			foreach ($mv_products as $mv_product) {
+				if ($wc_product->SKU == $mv_product->SKU) {
+					$wc_product->MV_ID = $mv_product->MV_ID;
+				}
+			}
+		}
+		
+		//update if product exists,
+		//create if it does not exist
+		foreach ($wc_products as $product) {
+			if (in_array($product->SKU, $skus)) {				
+				$this->update_simple_product($product, false, $mv_categories);
+			} else {
+				$this->update_simple_product($product, true, $mv_categories);
+			}
+		}
+		
 		
 	}
+	
+	function get_product_by_sku($SKU) {
+		$prod = null;
+		$prods = $this->get_products();
+		foreach($prods as $p) {
+			if ($p->SKU == $SKU) {
+				$prod = $p;
+				break;
+			}
+		}
+		return $prod;
+	}
+	
+	function update_simple_product($product, $create_new, $categories = null) {
+		if ($categories == null) {
+			$categories = $this->get_categories();
+		}
+		$action = ($create_new ? "Insert" : "InsertOrUpdateNonEmptyFields");
+		$category_id = array_search($product->category, $categories);
+		
+		//this needs to be split into few small requests, as urls get too long otherwise
+		$create_url = $this->create_json_url($this->product_update_call);
+		
+		//short requests
+		$url = $create_url . "&mvProduct={";
+		
+		$url .= "ProductSKU:" . $product->SKU .",";
+		$url .= "ProductDescription:" . $product->description;
+		
+		$url.= "}&mvRecordAction=" . $action;
+		$response = file_get_contents(($url));
+		
+		echo "<br> " . $url;
+		echo "<br> " . $response;
+		
+		//medium requests
+		$url = $create_url . "&mvProduct={";
+		
+		$url .= "ProductSKU:" . $product->SKU .",";
+		$url .= "ProductWeight:" . $product->weight . ",";
+		$url .= "ProductLength:" . $product->length . ",";
+		$url .= "ProductBreadth:" . $product->breadth . ",";
+		$url .= "ProductHeight:" . $product->height;
+		
+		$url.= "}&mvRecordAction=InsertOrUpdateNonEmptyFields";
+		$response = file_get_contents(($url));
+		
+		echo "<br> " . $url;
+		echo "<br> " . $response;
+		
+		//long requests
+		$url = $create_url . "&mvProduct={";
+		
+		$url .= "ProductSKU:" . $product->SKU .",";
+		$url .= "ProductSellingPrice:" . $product->regular_price . ",";
+		$url .= "ProductCategoryID:" . $category_id . ",";
+		$url .= "ProductLongDescription:" . $product->long_description;
+		
+		$url.= "}&mvRecordAction=InsertOrUpdateNonEmptyFields";
+		echo "<br> " . $url;
+		$response = file_get_contents(($url));
+		
+		echo "<br> " . $response;
+	
+	}
+		
 }
 
 ?>
