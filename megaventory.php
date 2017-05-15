@@ -236,6 +236,7 @@ class Megaventory_sync {
 		echo "<br> " . $url;
 		echo "<br> " . $response;
 	
+		echo "<br><br><br>";
 	}
 		
 }
