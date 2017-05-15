@@ -2,9 +2,12 @@
 
 require_once("product.php");
 
+// This class makes it easier to store/retrieve information
+// from woocommerce
 class Woocommerce_sync {
 	
-	function get_categories() {
+	//get categories as wordpress post
+	function get_categories_posts() {
 		$args = array(
 			'number'     => $number,
 			'orderby'    => $orderby,
@@ -16,16 +19,20 @@ class Woocommerce_sync {
 		
 	}
 	
+	// synchronize categories with those provided in arguments
 	function synchronize_categories($mg_categories, $with_delete = false) {
 		
-		$wc_categories = $this->get_categories();
+		$wc_categories = $this->get_categories_posts();
 		
 		$categories_to_delete = $wc_categories;
 		$categories_to_create = $mg_categories;
 		
+		// leave categories that exist both in WC and MV
+		// Add categories that exist only in MV
+		// Delete categories that exist only in WC (if requested)
 		foreach ($wc_categories as $wc_category) {
 			foreach ($mg_categories as $mg_category) {
-				if ($mg_category == $wc_category->name) { // untested
+				if ($mg_category == $wc_category->name) {
 					$key = array_search($wc_category, $categories_to_delete);
 					unset($categories_to_delete[$key]);
 					
@@ -46,6 +53,7 @@ class Woocommerce_sync {
 				)
 			);
 		}
+		
 		if ($with_delete) {
 			foreach ($categories_to_delete as $cat) {
 				wp_delete_term($cat->term_id, 'product_cat');
@@ -53,6 +61,7 @@ class Woocommerce_sync {
 		}
 	}
 	
+	// synchronize products with those provided in arguments
 	function synchronize_products($products, $with_delete = false) {
 		$wc_products = $this->get_products_posts();
 		$skus = array();
@@ -127,7 +136,8 @@ class Woocommerce_sync {
 		
 		$this->attach_image($post_id, $product);
 	}
-		
+	
+	// add simple product
 	function add_simple_product($product) {
 		//create product
 		$post_id = wp_insert_post(array(
@@ -149,6 +159,7 @@ class Woocommerce_sync {
 		var_dump($post_id);
 	}
 	
+	// image is attached only if a product has no image yet
 	function attach_image($post_id, $product) {
 		require_once(ABSPATH . 'wp-admin/includes/media.php');
 		require_once(ABSPATH . 'wp-admin/includes/file.php');
@@ -206,7 +217,7 @@ class Woocommerce_sync {
 	function set_product_meta($post_id, $product) {
 				
 		//set category
-		$product_categories = $this->get_categories();
+		$product_categories = $this->get_categories_posts();
 		$category_id = array();
 		foreach($product_categories as $item) {
 			if ($item->name == $product->category) {

@@ -47,22 +47,29 @@ function plugin_setup_menu(){
  
 // admin panel
 function test_init(){
+	echo '<form id="sync-mv-wc" method="post">';
+	echo '<input type="checkbox" name="with_delete" /> with delete';
+	echo '<input type="hidden" name="sync-mv-wc" value="true" />';
+	echo '<input type="submit" value="Synchronize Products" />';
+	echo '</form>';
+	
+	
 	echo '<form id="sync-categories-form" method="post">';
 	echo '<input type="checkbox" name="with_delete" /> with delete';
-	echo '<input type="hidden" name="sync-categories" value="true" />';
+	echo '<input type="hidden" name="sync-mc-wc" value="true" />';
 	echo '<input type="submit" value="Synchronize Products" />';
 	echo '</form>';
 }
 
 // sync button clicked
-if (isset($_POST['sync-categories'])) {
+if (isset($_POST['sync-mv-wc'])) {
 	
 	// code will only run correctly on 'init' hook
 	// otherwise, some wc variables are not correctly initialized
-	add_action('init', 'synchronize_products');
+	add_action('init', 'synchronize_products_mv_wc');
 }
 
-function synchronize_products() {
+function synchronize_products_mv_wc() {
 	// synchronize with delete?
 	$with_delete = isset($_POST['with_delete']);
 	
