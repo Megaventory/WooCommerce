@@ -1,6 +1,7 @@
 <?php
 
 require_once("product.php");
+require_once("client.php");
 
 // This class makes it easier to store/retrieve information
 // from woocommerce
@@ -298,6 +299,40 @@ class Woocommerce_sync {
 		//update_post_meta($post_id, '_backorders', "no");
 		
 		echo "<br>" . $product->stock_on_hand;
+	}
+	
+	function get_clients() {
+		$clients = array();
+		
+		foreach (get_users() as $user) {
+			$client = new Client();
+			$client->WC_ID = $user->ID;
+			$client->email = $user->user_email;
+			
+			$client->contact_name = get_user_meta($user->ID, 'shipping_first_name', true) . " " . get_user_meta($user->ID, 'shipping_last_name', true);
+			$client->company = get_user_meta($user->ID, 'billing_company', true);
+			
+			$client->shipping_address = $client->contact_name;
+			$client->shipping_address = "\n" . $client->company;
+			$client->shipping_address .= get_user_meta($user->ID, 'shipping_address_1', true);
+			$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_address_2', true);
+			$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_city', true);
+			$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_postcode', true);
+			$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_country', true);
+			
+			$client->billing_address = $client->contact_name;
+			$client->billing_address = "\n" . $client->company;
+			$client->billing_address = get_user_meta($user->ID, 'billing_address_1', true);
+			$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_address_2', true);
+			$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_city', true);
+			$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_postcode', true);
+			$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_country', true);
+			
+			
+			array_push($clients, $client);
+		}
+		
+		return $clients;	
 	}
 }
 
