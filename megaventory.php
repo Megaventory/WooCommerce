@@ -6,6 +6,7 @@ require_once("product.php");
 // and send values to the megaventory API
 class Megaventory_sync {
 	public $url = "https://api.megaventory.com/v2017a/json/reply/";
+	public $xml_url = "https://api.megaventory.com/v2017a/xml/reply/";
 	public $API_KEY = "827bc7518941837b@m65192"; // DEV AND DEBUG ONLY
 	
 	public $product_get_call = "ProductGet";
@@ -18,6 +19,10 @@ class Megaventory_sync {
 	// create URL using the API key and call
 	function create_json_url($call) {
 		return $this->url . $call . "?APIKEY=" . $this->API_KEY;
+	}
+	
+	function create_xml_url($call) {
+		return $this->xml_url . $call . "?APIKEY" . $this->API_KEY;
 	}
 	
 	function create_json_url_filter($call, $fieldName, $searchOperator, $searchValue) {
@@ -196,10 +201,10 @@ class Megaventory_sync {
 		$create_url = $this->create_json_url($this->product_update_call);
 		
 		//short requests
-		$url = $create_url . "&mvProduct={";
+		$url = $create_url . '&"mvProduct"={';
 		
-		$url .= "ProductSKU:" . $product->SKU .",";
-		$url .= "ProductDescription:" . $product->description;
+		$url .= '"ProductSKU":' . urlencode('"' . $product->SKU) .",";
+		$url .= '"ProductDescription":' . urlencode('"' . $product->description);
 		
 		$url.= "}&mvRecordAction=" . $action;
 		$response = file_get_contents(($url));
@@ -210,11 +215,11 @@ class Megaventory_sync {
 		//medium requests
 		$url = $create_url . "&mvProduct={";
 		
-		$url .= "ProductSKU:" . $product->SKU .",";
-		$url .= "ProductWeight:" . $product->weight . ",";
-		$url .= "ProductLength:" . $product->length . ",";
-		$url .= "ProductBreadth:" . $product->breadth . ",";
-		$url .= "ProductHeight:" . $product->height;
+		$url .= "ProductSKU:" . urlencode('"' . $product->SKU) .",";
+		$url .= "ProductWeight:" . urlencode('"' . $product->weight) . ",";
+		$url .= "ProductLength:" . urlencode('"' . $product->length) . ",";
+		$url .= "ProductBreadth:" . urlencode('"' . $product->breadth) . ",";
+		$url .= "ProductHeight:" . urlencode('"' . $product->height);
 		
 		$url.= "}&mvRecordAction=InsertOrUpdateNonEmptyFields";
 		$response = file_get_contents(($url));
@@ -225,10 +230,10 @@ class Megaventory_sync {
 		//long requests
 		$url = $create_url . "&mvProduct={";
 		
-		$url .= "ProductSKU:" . $product->SKU .",";
-		$url .= "ProductSellingPrice:" . $product->regular_price . ",";
-		$url .= "ProductCategoryID:" . $category_id . ",";
-		$url .= "ProductLongDescription:" . $product->long_description;
+		$url .= "ProductSKU:" . urlencode($product->SKU) .",";
+		$url .= "ProductSellingPrice:" . urlencode($product->regular_price) . ",";
+		$url .= "ProductCategoryID:" . urlencode($category_id) . ",";
+		$url .= "ProductLongDescription:" . urlencode($product->long_description);
 		
 		$url.= "}&mvRecordAction=InsertOrUpdateNonEmptyFields";
 		$response = file_get_contents(($url));
