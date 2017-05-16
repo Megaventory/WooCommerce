@@ -115,6 +115,8 @@ function synchronize_clients() {
 	
 	echo "CLIENTS";
 	var_dump($clients);
+	
+	$GLOBALS["MV"]->synchronize_clients($clients, $with_delete);
 }
 
 ?>

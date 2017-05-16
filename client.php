@@ -3,6 +3,7 @@
 // This class works as a model for a client
 // clients are only transfered from wc to mv
 class Client {
+	public $MV_ID;
 	public $WC_ID;
 	public $contact_name;
 	public $billing_address;

@@ -15,6 +15,7 @@ class Megaventory_sync {
 	public $category_update_call = "ProductCategoryUpdate";
 	public $category_delete_call = "ProductCategoryDelete";
 	public $product_stock_call = "InventoryLocationStockGet";
+	public $supplierclient_get_call = "SupplierClientGet";
 	
 	// create URL using the API key and call
 	function create_json_url($call) {
@@ -223,20 +224,78 @@ class Megaventory_sync {
 				<mvInsertUpdateDeleteSourceApplication>String</mvInsertUpdateDeleteSourceApplication>
 			</ProductUpdate>
 			';
+		
+		echo "<br>";
+		var_dump(htmlentities($xml_request));
 			
-			echo "<br>";
-			var_dump(htmlentities($xml_request));
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $this->create_xml_url($this->product_update_call));
+		curl_setopt( $ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
+		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+		curl_setopt( $ch, CURLOPT_POSTFIELDS, ($xml_request));
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 300);
+		$data = curl_exec($ch);
+		
+		curl_close($ch);
+	}
+	
+	function get_clients() {
+		// get suppliers/clients as json
+		$jsonurl = $this->create_json_url($this->supplierclient_get_call);
+		$jsonprod = file_get_contents($jsonurl);
+		$supplierclients = json_decode($jsonprod, true)['mvSupplierClients'];
+		
+		
+		$clients = array();
+		foreach ($supplierclients as $supplierclient) {
+			echo "TYPE: " . $supplierclient['SupplierClientType'];
+			if ($supplierclient['SupplierClientType'] == "Client") {
+				$client = new Client();
 				
-			$ch = curl_init();
-			curl_setopt($ch, CURLOPT_URL, $this->create_xml_url($this->product_update_call));
-			curl_setopt( $ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
-			curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-			curl_setopt( $ch, CURLOPT_POSTFIELDS, ($xml_request));
-			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 300);
-			$data = curl_exec($ch);
-			
-			curl_close($ch);
-
+				$client->MV_ID = $supplierclient['SupplierClientID'];
+				$client->contact_name = $supplierclient['SupplierClientName'];
+				$client->shipping_address = $supplierclient['SupplierClientShippingAddress1'];
+				$client->shipping_address2 = $supplierclient['SupplierClientShippingAddress2'];
+				$client->billing_address = $supplierclient['SupplierClientBillingAddress2'];
+				$client->tax_ID = $supplierclient['SupplierClientTaxID'];
+				$client->phone = $supplierclient['SupplierPhone1'];
+				
+				array_push($clients, $client);
+			}
+		}
+		
+		return $clients;
+	}
+	
+	function synchronize_clients($wc_clients, $with_delete = false) {
+		$mv_clients = $this->get_clients();
+		
+		$clients_to_create = $wc_clients;
+		$clients_to_delete = $mv_clients;
+		$clients_to_update = array();
+		
+		foreach ($wc_clients as $wc_client) {
+			foreach ($mv_clients as $mv_client) {
+				if ($wc_client->email == $mv_client->email) {
+					$wc_client->MV_ID = $mv_client->MV_ID;
+					array_push($clients_to_update, $wc_client);
+					
+					$key = array_search($wc_client, $clients_to_create);
+					unset($clients_to_create[$key]);
+					
+					$key = array_search($mv_client, $clients_to_delete);
+					unset($clients_to_delete[$key]);
+				}
+			}
+		} 
+		
+		echo "<br> Clients to create";
+		var_dump($clients_to_create);
+		echo "<br> Clients to delete";
+		var_dump($clients_to_delete);
+		echo "<br> Clients to update";
+		var_dump($clients_to_update);
+		
 	}
 		
 }

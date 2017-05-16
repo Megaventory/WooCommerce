@@ -328,6 +328,7 @@ class Woocommerce_sync {
 			$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_postcode', true);
 			$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_country', true);
 			
+			$client->phone = get_user_meta($user->ID, 'billing_phone', true);
 			
 			array_push($clients, $client);
 		}
