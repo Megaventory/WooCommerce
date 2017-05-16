@@ -22,7 +22,7 @@ class Megaventory_sync {
 	}
 	
 	function create_xml_url($call) {
-		return $this->xml_url . $call . "?APIKEY" . $this->API_KEY;
+		return $this->xml_url . $call . "?APIKEY=" . $this->API_KEY;
 	}
 	
 	function create_json_url_filter($call, $fieldName, $searchOperator, $searchValue) {
@@ -194,12 +194,61 @@ class Megaventory_sync {
 		if ($categories == null) {
 			$categories = $this->get_categories();
 		}
-		$action = ($create_new ? "Insert" : "InsertOrUpdateNonEmptyFields");
+		$action = ($create_new ? "Insert" : "Update");
 		$category_id = array_search($product->category, $categories);
 		
 		//this needs to be split into few small requests, as urls get too long otherwise
-		$create_url = $this->create_json_url($this->product_update_call);
+		//$create_url = $this->create_json_url($this->product_update_call);
+		$url = $this->create_xml_url($this->product_update_call);
 		
+		$xml_request = '
+			<ProductUpdate xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types">
+				<APIKEY>' . $this->API_KEY . '</APIKEY>
+				<mvProduct>
+					' . ($create_new ? '<ProductType>BuyFromSupplier</ProductType>' : '') . '
+					' . ($create_new ? '' : '<ProductID>' . $product->MV_ID . '</ProductID>') . '
+					<ProductSKU>' . $product->SKU . '</ProductSKU>
+					<ProductEAN>String</ProductEAN>
+					<ProductDescription>String</ProductDescription>
+					<ProductVersion>String</ProductVersion>
+					<ProductLongDescription>String</ProductLongDescription>
+					<ProductCategoryID>0</ProductCategoryID>
+					<ProductUnitOfMeasurement>String</ProductUnitOfMeasurement>
+					<ProductSellingPrice>0</ProductSellingPrice>
+					<ProductPurchasePrice>0</ProductPurchasePrice>
+					<ProductWeight>0</ProductWeight>
+					<ProductLength>0</ProductLength>
+					<ProductBreadth>0</ProductBreadth>
+					<ProductHeight>0</ProductHeight>
+					<ProductImageURL>String</ProductImageURL>
+					<ProductComments>String</ProductComments>
+				</mvProduct>
+				<mvRecordAction>' . $action . '</mvRecordAction>
+				<mvInsertUpdateDeleteSourceApplication>String</mvInsertUpdateDeleteSourceApplication>
+			</ProductUpdate>
+			';
+			
+			var_dump($xml_request);
+				
+			$ch = curl_init();
+			curl_setopt($ch, CURLOPT_URL, $this->create_xml_url($this->product_update_call));
+			curl_setopt( $ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
+			curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+			curl_setopt( $ch, CURLOPT_POSTFIELDS, ($xml_request));
+			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 300);
+			$data = curl_exec($ch);
+			
+			
+			echo "<br>" . curl_getinfo($ch);
+			echo "<br>" . curl_errno($ch);
+			echo "<br>" . curl_error($ch);
+			
+			curl_close($ch);
+
+			var_dump($data);
+		
+		
+		/*
 		//short requests
 		$url = $create_url . '&"mvProduct"={';
 		
@@ -242,6 +291,7 @@ class Megaventory_sync {
 		echo "<br> " . $response;
 	
 		echo "<br><br><br>";
+		*/
 	}
 		
 }
