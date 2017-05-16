@@ -107,6 +107,7 @@ class Megaventory_sync {
 	}
 	
 	function synchronize_categories($wc_categories, $with_delete = false) {
+		//delete not handled - product not in eshop can still physically exist as stock
 		$mv_categories = $this->get_categories();
 		
 		$categories_to_delete = $mv_categories;
@@ -138,8 +139,8 @@ class Megaventory_sync {
 		
 		if ($with_delete) {
 			foreach ($categories_to_delete as $key => $name) {
-				//TO DO
-				//$url = $delete_url . "&
+				$url = $delete_url . "&ProductCategoryIDToDelete=" . $key . "&mvCategoryDeleteAction=LeaveProductsOrphan";
+				$response = file_get_contents($url);
 			}
 		}
 	}
@@ -175,7 +176,7 @@ class Megaventory_sync {
 			}
 		}
 		
-		
+		var_dump($wc_products);
 	}
 	
 	function get_product_by_sku($SKU) {
@@ -207,28 +208,24 @@ class Megaventory_sync {
 				<mvProduct>
 					' . ($create_new ? '<ProductType>BuyFromSupplier</ProductType>' : '') . '
 					' . ($create_new ? '' : '<ProductID>' . $product->MV_ID . '</ProductID>') . '
-					<ProductSKU>' . $product->SKU . '</ProductSKU>
-					<ProductEAN>String</ProductEAN>
-					<ProductDescription>String</ProductDescription>
-					<ProductVersion>String</ProductVersion>
-					<ProductLongDescription>String</ProductLongDescription>
-					<ProductCategoryID>0</ProductCategoryID>
-					<ProductUnitOfMeasurement>String</ProductUnitOfMeasurement>
-					<ProductSellingPrice>0</ProductSellingPrice>
-					<ProductPurchasePrice>0</ProductPurchasePrice>
-					<ProductWeight>0</ProductWeight>
-					<ProductLength>0</ProductLength>
-					<ProductBreadth>0</ProductBreadth>
-					<ProductHeight>0</ProductHeight>
-					<ProductImageURL>String</ProductImageURL>
-					<ProductComments>String</ProductComments>
+					<ProductSKU>' . $product->SKU . '</ProductSKU> 
+					<ProductDescription>' . $product->description . '</ProductDescription> 
+					' . ($product->long_description ? '<ProductLongDescription>' . $product->long_description . '</ProductLongDescription>' : '') . '
+					' . ($category_id ? '<ProductCategoryID>' . $category_id . '</ProductCategoryID>' : '') . '
+					' . ($product->regular_price ? '<ProductSellingPrice>' . $product->regular_price . '</ProductSellingPrice>' : '') . '
+					' . ($product->weight ? '<ProductWeight>' . $product->weight . '</ProductWeight>' : '') . '
+					' . ($product->length ? '<ProductLength>' . $product->length . '</ProductLength>' : '') . '
+					' . ($product->breadth ? '<ProductBreadth>' . $product->breadth . '</ProductBreadth>' : '') . '
+					' . ($product->height ? '<ProductHeight>' . $product->height . '</ProductHeight>' : '') . '
+					' . ($product->image_url ? '<ProductImageURL>' . $product->image_url . '</ProductImageURL>' : '') . '
 				</mvProduct>
 				<mvRecordAction>' . $action . '</mvRecordAction>
 				<mvInsertUpdateDeleteSourceApplication>String</mvInsertUpdateDeleteSourceApplication>
 			</ProductUpdate>
 			';
 			
-			var_dump($xml_request);
+			echo "<br>";
+			var_dump(htmlentities($xml_request));
 				
 			$ch = curl_init();
 			curl_setopt($ch, CURLOPT_URL, $this->create_xml_url($this->product_update_call));
@@ -238,60 +235,8 @@ class Megaventory_sync {
 			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 300);
 			$data = curl_exec($ch);
 			
-			
-			echo "<br>" . curl_getinfo($ch);
-			echo "<br>" . curl_errno($ch);
-			echo "<br>" . curl_error($ch);
-			
 			curl_close($ch);
 
-			var_dump($data);
-		
-		
-		/*
-		//short requests
-		$url = $create_url . '&"mvProduct"={';
-		
-		$url .= '"ProductSKU":' . urlencode('"' . $product->SKU) .",";
-		$url .= '"ProductDescription":' . urlencode('"' . $product->description);
-		
-		$url.= "}&mvRecordAction=" . $action;
-		$response = file_get_contents(($url));
-		
-		echo "<br> " . $url;
-		echo "<br> " . $response;
-		
-		//medium requests
-		$url = $create_url . "&mvProduct={";
-		
-		$url .= "ProductSKU:" . urlencode('"' . $product->SKU) .",";
-		$url .= "ProductWeight:" . urlencode('"' . $product->weight) . ",";
-		$url .= "ProductLength:" . urlencode('"' . $product->length) . ",";
-		$url .= "ProductBreadth:" . urlencode('"' . $product->breadth) . ",";
-		$url .= "ProductHeight:" . urlencode('"' . $product->height);
-		
-		$url.= "}&mvRecordAction=InsertOrUpdateNonEmptyFields";
-		$response = file_get_contents(($url));
-		
-		echo "<br> " . $url;
-		echo "<br> " . $response;
-		
-		//long requests
-		$url = $create_url . "&mvProduct={";
-		
-		$url .= "ProductSKU:" . urlencode($product->SKU) .",";
-		$url .= "ProductSellingPrice:" . urlencode($product->regular_price) . ",";
-		$url .= "ProductCategoryID:" . urlencode($category_id) . ",";
-		$url .= "ProductLongDescription:" . urlencode($product->long_description);
-		
-		$url.= "}&mvRecordAction=InsertOrUpdateNonEmptyFields";
-		$response = file_get_contents(($url));
-		
-		echo "<br> " . $url;
-		echo "<br> " . $response;
-	
-		echo "<br><br><br>";
-		*/
 	}
 		
 }
