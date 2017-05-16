@@ -16,6 +16,7 @@ class Megaventory_sync {
 	public $category_delete_call = "ProductCategoryDelete";
 	public $product_stock_call = "InventoryLocationStockGet";
 	public $supplierclient_get_call = "SupplierClientGet";
+	public $supplierclient_update_call = "SupplierClientUpdate";
 	
 	// create URL using the API key and call
 	function create_json_url($call) {
@@ -289,15 +290,65 @@ class Megaventory_sync {
 			}
 		} 
 		
-		echo "<br> Clients to create";
-		var_dump($clients_to_create);
-		echo "<br> Clients to delete";
-		var_dump($clients_to_delete);
-		echo "<br> Clients to update";
-		var_dump($clients_to_update);
+		foreach ($clients_to_create as $client) {
+			$this->createUpdateClient($client, true);
+		}
+		
+		foreach ($clients_to_update as $client) {
+			$this->createUpdateClient($client, false);
+		}
+		
+		if ($with_delete) {
+			foreach ($clients_to_delete as $client) {
+				$this->deleteClient($client);
+			}
+		}
 		
 	}
 		
+	function createUpdateClient($client, $create_new = false) {
+		$url = $this->create_xml_url($this->supplierclient_update_call);
+		$action = ($create_new ? "Insert" : "Update");
+		
+		$xml_request = '
+			<SupplierClientUpdate xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types">
+				<APIKEY>' . $this->API_KEY . '</APIKEY>
+				<mvSupplierClient>
+					' . ($create_new ? '' : '<SupplierClientID>' . $client->MV_ID . '</SupplierClientID>') . '
+					' . ($create_new ? '<SupplierClientType>Client</SupplierClientType>' : '') . '
+					<SupplierClientName>' . $client->contact_name . '</SupplierClientName>
+					' . ($client->billing_address ? '<SupplierClientBillingAddress>' . $client->billing_address . '</SupplierClientBillingAddress>' : '') . '
+					' . ($client->shipping_address ? '<SupplierClientShippingAddress1>' . $client->shipping_address . '</SupplierClientShippingAddress1>' : '') . '
+					' . ($client->phone ? '<SupplierClientPhone1>' . $client->phone . '</SupplierClientPhone1>' : '') . '
+					' . ($client->email ? '<SupplierClientEmail>' . $client->email . '</SupplierClientEmail>' : '') . '
+				</mvSupplierClient>
+				<mvRecordAction>' . $action . '</mvRecordAction>
+			</SupplierClientUpdate>
+			';
+			
+		echo "<br><br>";
+		var_dump(htmlentities($xml_request));
+			
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, ($xml_request));
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 300);
+		$data = curl_exec($ch);
+		
+		echo curl_getinfo($ch);
+		echo curl_errno($ch);
+		echo curl_error($ch);
+		print_r($data);
+		
+		curl_close($ch);
+		
+	}
+	
+	function deleteClient($client) {
+		//todo
+	}
 }
 
 ?>
