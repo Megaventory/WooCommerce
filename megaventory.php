@@ -15,6 +15,8 @@ class Megaventory_sync {
 	public $category_update_call = "ProductCategoryUpdate";
 	public $category_delete_call = "ProductCategoryDelete";
 	public $product_stock_call = "InventoryLocationStockGet";
+	public $supplierclient_get_call = "SupplierClientGet";
+	public $supplierclient_update_call = "SupplierClientUpdate";
 	
 	// create URL using the API key and call
 	function create_json_url($call) {
@@ -223,22 +225,144 @@ class Megaventory_sync {
 				<mvInsertUpdateDeleteSourceApplication>String</mvInsertUpdateDeleteSourceApplication>
 			</ProductUpdate>
 			';
+		
+		echo "<br>";
+		var_dump(htmlentities($xml_request));
 			
-			echo "<br>";
-			var_dump(htmlentities($xml_request));
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $this->create_xml_url($this->product_update_call));
+		curl_setopt( $ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
+		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+		curl_setopt( $ch, CURLOPT_POSTFIELDS, ($xml_request));
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 300);
+		$data = curl_exec($ch);
+		
+		curl_close($ch);
+	}
+	
+	function get_clients() {
+		// get suppliers/clients as json
+		$jsonurl = $this->create_json_url($this->supplierclient_get_call);
+		$jsonprod = file_get_contents($jsonurl);
+		$supplierclients = json_decode($jsonprod, true)['mvSupplierClients'];
+		
+		var_dump($supplierclients);
+		
+		$clients = array();
+		foreach ($supplierclients as $supplierclient) {
+			if ($supplierclient['SupplierClientType'] == "Client" or $supplierclient['SupplierClientType'] == "Both") {
+				$client = new Client();
 				
-			$ch = curl_init();
-			curl_setopt($ch, CURLOPT_URL, $this->create_xml_url($this->product_update_call));
-			curl_setopt( $ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
-			curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-			curl_setopt( $ch, CURLOPT_POSTFIELDS, ($xml_request));
-			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 300);
-			$data = curl_exec($ch);
-			
-			curl_close($ch);
-
+				$client->MV_ID = $supplierclient['SupplierClientID'];
+				$client->contact_name = $supplierclient['SupplierClientName'];
+				$client->shipping_address = $supplierclient['SupplierClientShippingAddress1'];
+				$client->shipping_address2 = $supplierclient['SupplierClientShippingAddress2'];
+				$client->billing_address = $supplierclient['SupplierClientBillingAddress2'];
+				$client->tax_ID = $supplierclient['SupplierClientTaxID'];
+				$client->phone = $supplierclient['SupplierClientPhone1'];
+				$client->email = $supplierclient['SupplierClientEmail'];
+				$client->type = $supplierclient['SupplierClientType'];
+				
+				array_push($clients, $client);
+			}
+		}
+		
+		return $clients;
+	}
+	
+	function synchronize_clients($wc_clients, $with_delete = false) {
+		$mv_clients = $this->get_clients();
+		
+		$clients_to_create = $wc_clients;
+		$clients_to_delete = $mv_clients;
+		$clients_to_update = array();
+		
+		echo "COUNT: " . count($mv_clients) . "<br>";
+		
+		foreach ($wc_clients as $wc_client) {
+			foreach ($mv_clients as $mv_client) {
+				echo "COMPARING: " . $wc_client->email . " : " . $mv_client->email . "<br>";
+				if (strtolower($wc_client->email) === strtolower($mv_client->email)) {
+					$wc_client->MV_ID = $mv_client->MV_ID;
+					$wc_client->type = $mv_client->type; // override type. mv type is more importan, wc type is always "CLIENT"
+					array_push($clients_to_update, $wc_client);
+					
+					$key = array_search($wc_client, $clients_to_create);
+					unset($clients_to_create[$key]);
+					
+					$key = array_search($mv_client, $clients_to_delete);
+					unset($clients_to_delete[$key]);
+				}
+			}
+		} 
+		
+		echo "<br><br> TO CREATE: ";
+		var_dump($clients_to_create);
+		echo "<br><br> TO DELETE: ";
+		var_dump($clients_to_delete);
+		echo "<br><br> TO UPDATE: ";
+		var_dump($clients_to_update);
+		
+		foreach ($clients_to_create as $client) {
+			$this->createUpdateClient($client, true);
+		}
+		
+		foreach ($clients_to_update as $client) {
+			$this->createUpdateClient($client, false);
+		}
+		
+		if ($with_delete) {
+			foreach ($clients_to_delete as $client) {
+				$this->deleteClient($client);
+			}
+		}
+		
 	}
 		
+	function createUpdateClient($client, $create_new = false) {
+		$url = $this->create_xml_url($this->supplierclient_update_call);
+		$action = ($create_new ? "Insert" : "Update");
+		
+		$xml_request = '
+			<SupplierClientUpdate xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types">
+				<APIKEY>' . $this->API_KEY . '</APIKEY>
+				<mvSupplierClient>
+					' . ($create_new ? '' : '<SupplierClientID>' . $client->MV_ID . '</SupplierClientID>') . '
+					' . ($client->type ? '<SupplierClientType>' . $client->type . '</SupplierClientType>' : '') . '
+					<SupplierClientName>' . $client->email . '</SupplierClientName>
+					' . ($client->billing_address ? '<SupplierClientBillingAddress>' . $client->billing_address . '</SupplierClientBillingAddress>' : '') . '
+					' . ($client->shipping_address ? '<SupplierClientShippingAddress1>' . $client->shipping_address . '</SupplierClientShippingAddress1>' : '') . '
+					' . ($client->phone ? '<SupplierClientPhone1>' . $client->phone . '</SupplierClientPhone1>' : '') . '
+					' . ($client->email ? '<SupplierClientEmail>' . $client->email . '</SupplierClientEmail>' : '') . '
+					' . ($client->contact_name ? '<SupplierClientComments>' . $client->contact_name . '</SupplierClientComments>' : '') . '
+				</mvSupplierClient>
+				<mvRecordAction>' . $action . '</mvRecordAction>
+			</SupplierClientUpdate>
+			';
+			
+		echo "<br><br>";
+		var_dump(htmlentities($xml_request));
+			
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, ($xml_request));
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 300);
+		$data = curl_exec($ch);
+		
+		echo curl_getinfo($ch);
+		echo curl_errno($ch);
+		echo curl_error($ch);
+		print_r($data);
+		
+		curl_close($ch);
+		
+	}
+	
+	function deleteClient($client) {
+		//todo
+	}
 }
 
 ?>

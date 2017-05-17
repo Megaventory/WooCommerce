@@ -60,6 +60,15 @@ function test_init(){
 	echo '<input type="hidden" name="sync-wc-mv" value="true" />';
 	echo '<input type="submit" value="Synchronize Products From WC to MV" />';
 	echo '</form>';
+	
+	echo '<br><br>';
+	
+	echo '<form id="sync-clients" method="post">';
+	echo '<input type="checkbox" name="with_delete" /> with delete';
+	echo '<input type="hidden" name="sync-clients" value="true" />';
+	echo '<input type="submit" value="Synchronize Clients" />';
+	echo '</form>';
+
 }
 
 // sync button clicked
@@ -69,6 +78,8 @@ if (isset($_POST['sync-mv-wc'])) {
 	add_action('init', 'synchronize_products_mv_wc');
 } else if (isset($_POST['sync-wc-mv'])) {
 	add_action('init', 'synchronize_products_wc_mv');
+} else if (isset($_POST['sync-clients'])) {
+	add_action('init', 'synchronize_clients');
 }
 
 function synchronize_products_mv_wc() {
@@ -94,6 +105,18 @@ function synchronize_products_wc_mv() {
 	
 	$GLOBALS["MV"]->synchronize_categories($categories, $with_delete);
 	$GLOBALS["MV"]->synchronize_products($prods, $with_delete);
+}
+
+function synchronize_clients() {
+	// synchronize with delete?
+	$with_delete = isset($_POST['with_delete']);
+	
+	$clients = $GLOBALS["WC"]->get_clients();
+	
+	//echo "CLIENTS";
+	//var_dump($clients);
+	
+	$GLOBALS["MV"]->synchronize_clients($clients, $with_delete);
 }
 
 ?>
