@@ -26,6 +26,21 @@ function order_placed($order_id){
 		$product = new WC_Product($value['product_id']);
 		echo $product->get_sku();
 	}
+	echo "<br><br> customerID: " . $order->get_customer_id();
+	
+	$id = $order->get_customer_id();
+	$client = $GLOBALS["WC"]->get_client($id);
+	if ($client != null) {
+		$mv_client = $GLOBALS["MV"]->get_client_by_name($client->email);
+		$client->MV_ID = $mv_client->MV_ID;
+		$client->type = $mv_client->type;
+	} else {
+		$client = $GLOBALS["MV"]->get_guest_client();
+	}
+	
+	$GLOBALS["MV"]->place_sales_order($order, $client);
+	
+	var_dump($client);
 }
 
 // main. This code is executed only if woocommerce is an installed and activated plugin.

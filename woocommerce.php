@@ -305,37 +305,56 @@ class Woocommerce_sync {
 		$clients = array();
 		
 		foreach (get_users() as $user) {
-			$client = new Client();
-			$client->WC_ID = $user->ID;
-			$client->email = $user->user_email;
-			
-			$client->contact_name = get_user_meta($user->ID, 'first_name', true) . " " . get_user_meta($user->ID, 'last_name', true);
-			$ship_name = get_user_meta($user->ID, 'shipping_first_name', true) . " " . get_user_meta($user->ID, 'shipping_last_name', true);
-			$client->company = get_user_meta($user->ID, 'billing_company', true);
-			
-			$client->shipping_address = $ship_name;
-			$client->shipping_address = "\n" . $client->company;
-			$client->shipping_address .= get_user_meta($user->ID, 'shipping_address_1', true);
-			$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_address_2', true);
-			$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_city', true);
-			$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_postcode', true);
-			$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_country', true);
-			
-			$client->billing_address = $client->contact_name;
-			$client->billing_address = "\n" . $client->company;
-			$client->billing_address = get_user_meta($user->ID, 'billing_address_1', true);
-			$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_address_2', true);
-			$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_city', true);
-			$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_postcode', true);
-			$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_country', true);
-			
-			$client->phone = get_user_meta($user->ID, 'billing_phone', true);
-			$client->type = "Client";
+			$client = $this->user_to_client($user);
 			
 			array_push($clients, $client);
 		}
 		
 		return $clients;	
+	}
+	
+	function get_client($id) {
+		if ($id == 0) {
+			return null;
+		}
+		
+		$user = get_user_by("ID", $id);
+		if ($user) {
+			return $this->user_to_client($user);
+		} else {
+			return null;
+		}
+	}
+	
+	function user_to_client($user) {
+		$client = new Client();
+		$client->WC_ID = $user->ID;
+		$client->email = $user->user_email;
+		
+		$client->contact_name = get_user_meta($user->ID, 'first_name', true) . " " . get_user_meta($user->ID, 'last_name', true);
+		$ship_name = get_user_meta($user->ID, 'shipping_first_name', true) . " " . get_user_meta($user->ID, 'shipping_last_name', true);
+		$client->company = get_user_meta($user->ID, 'billing_company', true);
+		
+		$client->shipping_address = $ship_name;
+		$client->shipping_address = "\n" . $client->company;
+		$client->shipping_address .= get_user_meta($user->ID, 'shipping_address_1', true);
+		$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_address_2', true);
+		$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_city', true);
+		$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_postcode', true);
+		$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_country', true);
+		
+		$client->billing_address = $client->contact_name;
+		$client->billing_address = "\n" . $client->company;
+		$client->billing_address = get_user_meta($user->ID, 'billing_address_1', true);
+		$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_address_2', true);
+		$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_city', true);
+		$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_postcode', true);
+		$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_country', true);
+		
+		$client->phone = get_user_meta($user->ID, 'billing_phone', true);
+		$client->type = "Client";
+		
+		return $client;
 	}
 }
 

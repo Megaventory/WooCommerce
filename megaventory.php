@@ -17,6 +17,7 @@ class Megaventory_sync {
 	public $product_stock_call = "InventoryLocationStockGet";
 	public $supplierclient_get_call = "SupplierClientGet";
 	public $supplierclient_update_call = "SupplierClientUpdate";
+	public $salesorder_update_call = "SalesOrderUpdate";
 	
 	// create URL using the API key and call
 	function create_json_url($call) {
@@ -246,7 +247,7 @@ class Megaventory_sync {
 		$jsonprod = file_get_contents($jsonurl);
 		$supplierclients = json_decode($jsonprod, true)['mvSupplierClients'];
 		
-		var_dump($supplierclients);
+		//var_dump($supplierclients);
 		
 		$clients = array();
 		foreach ($supplierclients as $supplierclient) {
@@ -362,6 +363,99 @@ class Megaventory_sync {
 	
 	function deleteClient($client) {
 		//todo
+	}
+	
+	//to be rewritten as username? -- later
+	function get_client_by_name($email) {
+		$clients = $this->get_clients();
+		foreach ($clients as $client) {
+			//echo "<br> now rolling:";
+			//var_dump($client);
+			//echo " end <br>";
+			
+			if ($client->email === $email) {
+				return $client;
+			}
+		}
+		return null;
+	}
+	
+	function get_guest_client() {
+		return $this->get_client_by_name("WooCommerce");
+	}
+	
+	//woocommerce purchase is megaventory sale
+	function place_sales_order($order, $client) { 
+		$url = $this->create_xml_url($this->salesorder_update_call);
+		
+		$xml_request = '
+			<SalesOrderUpdate xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types">
+			  <APIKEY>' . $this->API_KEY . '</APIKEY>
+			  <mvSalesOrder>
+				<SalesOrderID>200</SalesOrderID>
+				<SalesOrderNo>5</SalesOrderNo>
+				<SalesOrderReferenceNo></SalesOrderReferenceNo>
+				<SalesOrderReferenceApplication></SalesOrderReferenceApplication>
+				<SalesOrderDate>0001-01-01T00:00:00</SalesOrderDate>
+				<SalesOrderCustomOrderDate1>0001-01-01T00:00:00</SalesOrderCustomOrderDate1>
+				<SalesOrderCustomOrderDate2>0001-01-01T00:00:00</SalesOrderCustomOrderDate2>
+				<SalesOrderCurrencyCode>EUR</SalesOrderCurrencyCode>
+				<SalesOrderClientID>16</SalesOrderClientID>
+				<SalesOrderBillingAddress>String</SalesOrderBillingAddress>
+				<SalesOrderShippingAddress>String</SalesOrderShippingAddress>
+				<SalesOrderContactPerson>String</SalesOrderContactPerson>
+				<SalesOrderInventoryLocationID>1</SalesOrderInventoryLocationID>
+				<SalesOrderCustomFlag1>false</SalesOrderCustomFlag1>
+				<SalesOrderCustomFlag2>false</SalesOrderCustomFlag2>
+				<SalesOrderCustomFlag3>false</SalesOrderCustomFlag3>
+				<SalesOrderCustomFlag4>false</SalesOrderCustomFlag4>
+				<SalesOrderCustomFlag5>false</SalesOrderCustomFlag5>
+				<SalesOrderComments>String</SalesOrderComments>
+				<SalesOrderTags>String</SalesOrderTags>
+				<SalesOrderTotalQuantity>1</SalesOrderTotalQuantity>
+				<SalesOrderAmountSubtotalWithoutTaxAndDiscount>0.00</SalesOrderAmountSubtotalWithoutTaxAndDiscount>
+				<SalesOrderAmountShipping>0.00</SalesOrderAmountShipping>
+				<SalesOrderAmountTotalDiscount>0.00</SalesOrderAmountTotalDiscount>
+				<SalesOrderAmountTotalTax>0.00</SalesOrderAmountTotalTax>
+				<SalesOrderAmountGrandTotal>0.00</SalesOrderAmountGrandTotal>
+				<SalesOrderDetails>
+				  <mvSalesOrderRow>
+					<SalesOrderRowProductSKU>dvd-sw3</SalesOrderRowProductSKU>
+					<SalesOrderRowProductDescription>Star Wars 3 Director&#39;s cut</SalesOrderRowProductDescription>
+					<SalesOrderRowQuantity>1</SalesOrderRowQuantity>
+					<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>
+					<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>
+					<SalesOrderRowUnitPriceWithoutTaxOrDiscount>0</SalesOrderRowUnitPriceWithoutTaxOrDiscount>
+					<SalesOrderRowTaxID>2</SalesOrderRowTaxID>
+					<SalesOrderTotalTaxAmount>0</SalesOrderTotalTaxAmount>
+					<SalesOrderRowDiscountID>1</SalesOrderRowDiscountID>
+					<SalesOrderRowTotalDiscountAmount>0</SalesOrderRowTotalDiscountAmount>
+					<SalesOrderRowTotalAmount>0</SalesOrderRowTotalAmount>
+				  </mvSalesOrderRow>
+				</SalesOrderDetails>
+				<SalesOrderStatus>Pending</SalesOrderStatus>
+			  </mvSalesOrder>
+			  <mvRecordAction>Insert</mvRecordAction>
+			  <mvInsertUpdateDeleteSourceApplication>String</mvInsertUpdateDeleteSourceApplication>
+			</SalesOrderUpdate>
+			';
+		
+		echo "<br>";
+		var_dump(htmlentities($xml_request));
+			
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, ($xml_request));
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 300);
+		$data = curl_exec($ch);
+		
+		curl_close($ch);
+		
+		echo ($data);
+		echo "<br><br>";
+		
 	}
 }
 
