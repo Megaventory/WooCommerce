@@ -246,11 +246,11 @@ class Megaventory_sync {
 		$jsonprod = file_get_contents($jsonurl);
 		$supplierclients = json_decode($jsonprod, true)['mvSupplierClients'];
 		
+		var_dump($supplierclients);
 		
 		$clients = array();
 		foreach ($supplierclients as $supplierclient) {
-			echo "TYPE: " . $supplierclient['SupplierClientType'];
-			if ($supplierclient['SupplierClientType'] == "Client") {
+			if ($supplierclient['SupplierClientType'] == "Client" or $supplierclient['SupplierClientType'] == "Both") {
 				$client = new Client();
 				
 				$client->MV_ID = $supplierclient['SupplierClientID'];
@@ -259,7 +259,9 @@ class Megaventory_sync {
 				$client->shipping_address2 = $supplierclient['SupplierClientShippingAddress2'];
 				$client->billing_address = $supplierclient['SupplierClientBillingAddress2'];
 				$client->tax_ID = $supplierclient['SupplierClientTaxID'];
-				$client->phone = $supplierclient['SupplierPhone1'];
+				$client->phone = $supplierclient['SupplierClientPhone1'];
+				$client->email = $supplierclient['SupplierClientEmail'];
+				$client->type = $supplierclient['SupplierClientType'];
 				
 				array_push($clients, $client);
 			}
@@ -275,10 +277,14 @@ class Megaventory_sync {
 		$clients_to_delete = $mv_clients;
 		$clients_to_update = array();
 		
+		echo "COUNT: " . count($mv_clients) . "<br>";
+		
 		foreach ($wc_clients as $wc_client) {
 			foreach ($mv_clients as $mv_client) {
-				if ($wc_client->email == $mv_client->email) {
+				echo "COMPARING: " . $wc_client->email . " : " . $mv_client->email . "<br>";
+				if (strtolower($wc_client->email) === strtolower($mv_client->email)) {
 					$wc_client->MV_ID = $mv_client->MV_ID;
+					$wc_client->type = $mv_client->type; // override type. mv type is more importan, wc type is always "CLIENT"
 					array_push($clients_to_update, $wc_client);
 					
 					$key = array_search($wc_client, $clients_to_create);
@@ -289,6 +295,13 @@ class Megaventory_sync {
 				}
 			}
 		} 
+		
+		echo "<br><br> TO CREATE: ";
+		var_dump($clients_to_create);
+		echo "<br><br> TO DELETE: ";
+		var_dump($clients_to_delete);
+		echo "<br><br> TO UPDATE: ";
+		var_dump($clients_to_update);
 		
 		foreach ($clients_to_create as $client) {
 			$this->createUpdateClient($client, true);
@@ -315,12 +328,13 @@ class Megaventory_sync {
 				<APIKEY>' . $this->API_KEY . '</APIKEY>
 				<mvSupplierClient>
 					' . ($create_new ? '' : '<SupplierClientID>' . $client->MV_ID . '</SupplierClientID>') . '
-					' . ($create_new ? '<SupplierClientType>Client</SupplierClientType>' : '') . '
-					<SupplierClientName>' . $client->contact_name . '</SupplierClientName>
+					' . ($client->type ? '<SupplierClientType>' . $client->type . '</SupplierClientType>' : '') . '
+					<SupplierClientName>' . $client->email . '</SupplierClientName>
 					' . ($client->billing_address ? '<SupplierClientBillingAddress>' . $client->billing_address . '</SupplierClientBillingAddress>' : '') . '
 					' . ($client->shipping_address ? '<SupplierClientShippingAddress1>' . $client->shipping_address . '</SupplierClientShippingAddress1>' : '') . '
 					' . ($client->phone ? '<SupplierClientPhone1>' . $client->phone . '</SupplierClientPhone1>' : '') . '
 					' . ($client->email ? '<SupplierClientEmail>' . $client->email . '</SupplierClientEmail>' : '') . '
+					' . ($client->contact_name ? '<SupplierClientComments>' . $client->contact_name . '</SupplierClientComments>' : '') . '
 				</mvSupplierClient>
 				<mvRecordAction>' . $action . '</mvRecordAction>
 			</SupplierClientUpdate>

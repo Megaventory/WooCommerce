@@ -113,8 +113,8 @@ function synchronize_clients() {
 	
 	$clients = $GLOBALS["WC"]->get_clients();
 	
-	echo "CLIENTS";
-	var_dump($clients);
+	//echo "CLIENTS";
+	//var_dump($clients);
 	
 	$GLOBALS["MV"]->synchronize_clients($clients, $with_delete);
 }

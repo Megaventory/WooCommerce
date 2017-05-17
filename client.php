@@ -14,6 +14,7 @@ class Client {
 	public $tax_ID;
 	public $email;
 	public $company;
+	public $type;
 
 }
 

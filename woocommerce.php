@@ -309,10 +309,11 @@ class Woocommerce_sync {
 			$client->WC_ID = $user->ID;
 			$client->email = $user->user_email;
 			
-			$client->contact_name = get_user_meta($user->ID, 'shipping_first_name', true) . " " . get_user_meta($user->ID, 'shipping_last_name', true);
+			$client->contact_name = get_user_meta($user->ID, 'first_name', true) . " " . get_user_meta($user->ID, 'last_name', true);
+			$ship_name = get_user_meta($user->ID, 'shipping_first_name', true) . " " . get_user_meta($user->ID, 'shipping_last_name', true);
 			$client->company = get_user_meta($user->ID, 'billing_company', true);
 			
-			$client->shipping_address = $client->contact_name;
+			$client->shipping_address = $ship_name;
 			$client->shipping_address = "\n" . $client->company;
 			$client->shipping_address .= get_user_meta($user->ID, 'shipping_address_1', true);
 			$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_address_2', true);
@@ -329,6 +330,7 @@ class Woocommerce_sync {
 			$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_country', true);
 			
 			$client->phone = get_user_meta($user->ID, 'billing_phone', true);
+			$client->type = "Client";
 			
 			array_push($clients, $client);
 		}
