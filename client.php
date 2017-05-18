@@ -5,6 +5,7 @@
 class Client {
 	public $MV_ID;
 	public $WC_ID;
+	public $username;
 	public $contact_name;
 	public $billing_address;
 	public $shipping_address;

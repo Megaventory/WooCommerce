@@ -17,7 +17,10 @@ class Megaventory_sync {
 	public $product_stock_call = "InventoryLocationStockGet";
 	public $supplierclient_get_call = "SupplierClientGet";
 	public $supplierclient_update_call = "SupplierClientUpdate";
+	public $supplierclient_undelete_call = "SupplierClientUndelete";
 	public $salesorder_update_call = "SalesOrderUpdate";
+	
+	public $username_prefix = "wc_";
 	
 	// create URL using the API key and call
 	function create_json_url($call) {
@@ -255,7 +258,8 @@ class Megaventory_sync {
 				$client = new Client();
 				
 				$client->MV_ID = $supplierclient['SupplierClientID'];
-				$client->contact_name = $supplierclient['SupplierClientName'];
+				$client->username = str_replace("wc_", "", $supplierclient['SupplierClientName']);
+				$client->contact_name = $supplierclient['SupplierClientComments'];
 				$client->shipping_address = $supplierclient['SupplierClientShippingAddress1'];
 				$client->shipping_address2 = $supplierclient['SupplierClientShippingAddress2'];
 				$client->billing_address = $supplierclient['SupplierClientBillingAddress2'];
@@ -282,8 +286,8 @@ class Megaventory_sync {
 		
 		foreach ($wc_clients as $wc_client) {
 			foreach ($mv_clients as $mv_client) {
-				echo "COMPARING: " . $wc_client->email . " : " . $mv_client->email . "<br>";
-				if (strtolower($wc_client->email) === strtolower($mv_client->email)) {
+				echo "COMPARING: " . $wc_client->username . " : " . $mv_client->username . "<br>";
+				if (strtolower($wc_client->username) === strtolower($mv_client->username)) {
 					$wc_client->MV_ID = $mv_client->MV_ID;
 					$wc_client->type = $mv_client->type; // override type. mv type is more importan, wc type is always "CLIENT"
 					array_push($clients_to_update, $wc_client);
@@ -305,7 +309,13 @@ class Megaventory_sync {
 		var_dump($clients_to_update);
 		
 		foreach ($clients_to_create as $client) {
-			$this->createUpdateClient($client, true);
+			$response = $this->createUpdateClient($client, true);
+			
+			if ($response['InternalErrorCode'] == "SupplierClientAlreadyDeleted") {
+				// client must be undeleted first and then updated
+				$this->undeleteClient($response["entityID"]);
+				$this->createUpdateClient($client, false);
+			}
 		}
 		
 		foreach ($clients_to_update as $client) {
@@ -317,7 +327,12 @@ class Megaventory_sync {
 				$this->deleteClient($client);
 			}
 		}
-		
+	}
+	
+	function undeleteClient($id) {
+		$url = $this->create_json_url($this->supplierclient_undelete_call);
+		$url .= "&SupplierClientIDToUndelete=" . $id;
+		file_get_contents($url);
 	}
 		
 	function createUpdateClient($client, $create_new = false) {
@@ -330,7 +345,7 @@ class Megaventory_sync {
 				<mvSupplierClient>
 					' . ($create_new ? '' : '<SupplierClientID>' . $client->MV_ID . '</SupplierClientID>') . '
 					' . ($client->type ? '<SupplierClientType>' . $client->type . '</SupplierClientType>' : '') . '
-					<SupplierClientName>' . $client->email . '</SupplierClientName>
+					<SupplierClientName>' . $this->username_prefix . $client->username . '</SupplierClientName>
 					' . ($client->billing_address ? '<SupplierClientBillingAddress>' . $client->billing_address . '</SupplierClientBillingAddress>' : '') . '
 					' . ($client->shipping_address ? '<SupplierClientShippingAddress1>' . $client->shipping_address . '</SupplierClientShippingAddress1>' : '') . '
 					' . ($client->phone ? '<SupplierClientPhone1>' . $client->phone . '</SupplierClientPhone1>' : '') . '
@@ -354,11 +369,14 @@ class Megaventory_sync {
 		
 		echo curl_getinfo($ch);
 		echo curl_errno($ch);
-		echo curl_error($ch);
-		print_r($data);
-		
+		echo curl_error($ch);		
 		curl_close($ch);
 		
+		$data = simplexml_load_string($data, "SimpleXMLElement", LIBXML_NOCDATA);
+		$data = json_encode($data);
+		$data = json_decode($data, TRUE);
+		
+		return $data;
 	}
 	
 	function deleteClient($client) {
@@ -366,14 +384,14 @@ class Megaventory_sync {
 	}
 	
 	//to be rewritten as username? -- later
-	function get_client_by_name($email) {
+	function get_client_by_name($username) {
 		$clients = $this->get_clients();
 		foreach ($clients as $client) {
 			//echo "<br> now rolling:";
 			//var_dump($client);
 			//echo " end <br>";
 			
-			if ($client->email === $email) {
+			if ($client->username === $username) {
 				return $client;
 			}
 		}
