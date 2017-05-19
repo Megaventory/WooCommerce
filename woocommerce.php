@@ -2,6 +2,7 @@
 
 require_once("product.php");
 require_once("client.php");
+require_once("address.php");
 
 // This class makes it easier to store/retrieve information
 // from woocommerce
@@ -337,21 +338,23 @@ class Woocommerce_sync {
 		$ship_name = get_user_meta($user->ID, 'shipping_first_name', true) . " " . get_user_meta($user->ID, 'shipping_last_name', true);
 		$client->company = get_user_meta($user->ID, 'billing_company', true);
 		
-		$client->shipping_address = $ship_name;
-		$client->shipping_address .= "\n" . $client->company;
-		$client->shipping_address .= "\n" .get_user_meta($user->ID, 'shipping_address_1', true);
-		$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_address_2', true);
-		$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_city', true);
-		$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_postcode', true);
-		$client->shipping_address .= "\n" . get_user_meta($user->ID, 'shipping_country', true);
+		$shipping_address['name'] = $ship_name;
+		$shipping_address['company'] = $client->company;
+		$shipping_address['line_1'] = get_user_meta($user->ID, 'shipping_address_1', true);
+		$shipping_address['line_2'] = get_user_meta($user->ID, 'shipping_address_2', true);
+		$shipping_address['city'] = get_user_meta($user->ID, 'shipping_city', true);
+		$shipping_address['postcode'] = get_user_meta($user->ID, 'shipping_postcode', true);
+		$shipping_address['country'] = get_user_meta($user->ID, 'shipping_country', true);
+		$client->shipping_address = format_address($shipping_address);
 		
-		$client->billing_address = $client->contact_name;
-		$client->billing_address .= "\n" . $client->company;
-		$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_address_1', true);
-		$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_address_2', true);
-		$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_city', true);
-		$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_postcode', true);
-		$client->billing_address .= "\n" . get_user_meta($user->ID, 'billing_country', true);
+		$billing_address['name'] = $client->contact_name;
+		$billing_address['company'] = $client->company;
+		$billing_address['line_1'] = get_user_meta($user->ID, 'billing_address_1', true);
+		$billing_address['line_2'] = get_user_meta($user->ID, 'billing_address_2', true);
+		$billing_address['city'] = get_user_meta($user->ID, 'billing_city', true);
+		$billing_address['postcode'] = get_user_meta($user->ID, 'billing_postcode', true);
+		$billing_address['country'] = get_user_meta($user->ID, 'billing_country', true);
+		$client->shipping_address = format_address($billing_address);
 		
 		$client->phone = get_user_meta($user->ID, 'billing_phone', true);
 		$client->type = "Client";

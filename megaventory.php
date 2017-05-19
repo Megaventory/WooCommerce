@@ -1,6 +1,7 @@
 <?php
 
 require_once("product.php");
+require_once("address.php");
 
 // This class makes it easier to get values from
 // and send values to the megaventory API
@@ -410,35 +411,51 @@ class Megaventory_sync {
 		$products_xml = '';
 		foreach ($order->get_items() as $item) {
 			$product = new WC_Product($item['product_id']);
-			$produtstring = '<mvSalesOrderRow>';
-			$produtstring .= '<SalesOrderRowProductSKU>' . $product->get_sku() . '</SalesOrderRowProductSKU>';
-			$produtstring .= '<SalesOrderRowQuantity>' . $item['quantity'] . '</SalesOrderRowQuantity>';
-			$produtstring .= '<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>';
-			$produtstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
-			$produtstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . $product->get_regular_price() . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
-			$produtstring .= '</mvSalesOrderRow>';
+			$productstring = '<mvSalesOrderRow>';
+			$productstring .= '<SalesOrderRowProductSKU>' . $product->get_sku() . '</SalesOrderRowProductSKU>';
+			$productstring .= '<SalesOrderRowQuantity>' . $item['quantity'] . '</SalesOrderRowQuantity>';
+			$productstring .= '<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>';
+			$productstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
+			$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . $product->get_regular_price() . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
+			$productstring .= '</mvSalesOrderRow>';
 			
 			$products_xml .= $productstring;
 		}
+		
+		$shipping_address['name'] = $order->get_shipping_first_name() . " " . $order->get_shipping_last_name();
+		$shipping_address['company'] = $order->get_shipping_company();
+		$shipping_address['line_1'] = $order->get_shipping_address_1();
+		$shipping_address['line_2'] = $order->get_shipping_address_2();
+		$shipping_address['city'] = $order->get_shipping_city();
+		$shipping_address['county'] = $order->get_shipping_state();
+		$shipping_address['postcode'] = $order->get_shipping_postcode();
+		$shipping_address['country'] = $order->get_shipping_country();
+		$shipping_address = format_address($shipping_address);
+		
+		$billing_address['name'] = $order->get_billing_first_name() . " " . $order->get_billing_last_name();
+		$billing_address['company'] = $order->get_billing_company();
+		$billing_address['line_1'] = $order->get_billing_address_1();
+		$billing_address['line_2'] = $order->get_billing_address_2();
+		$billing_address['city'] = $order->get_billing_city();
+		$billing_address['county'] = $order->get_billing_state();
+		$billing_address['postcode'] = $order->get_billing_postcode();
+		$billing_address['country'] = $order->get_billing_country();
+		$billing_address = format_address($billing_address);
+		
 		
 		$xml_request = '
 			<SalesOrderUpdate xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types">
 			  <APIKEY>' . $this->API_KEY . '</APIKEY>
 			  <mvSalesOrder>
+				<SalesOrderReferenceNo>' . $order->get_order_number() . '</SalesOrderReferenceNo>
 				<SalesOrderCurrencyCode>EUR</SalesOrderCurrencyCode>
 				<SalesOrderClientID>' . $client->MV_ID . '</SalesOrderClientID>
-				<SalesOrderBillingAddress>' . $order->get_billing_address_1() . '</SalesOrderBillingAddress>
-				<SalesOrderShippingAddress>' . $order->get_shipping_address_1() . '</SalesOrderShippingAddress>
-				<SalesOrderComments>Order created automatically from WooCommerce</SalesOrderComments>
-				<SalesOrderTags></SalesOrderTags>
+				<SalesOrderBillingAddress>' . $shipping_address . '</SalesOrderBillingAddress>
+				<SalesOrderShippingAddress>' . $billing_address . '</SalesOrderShippingAddress>
+				<SalesOrderComments>' . $order->get_customer_note() . '</SalesOrderComments>
+				<SalesOrderTags>WooCommerce</SalesOrderTags>
 				<SalesOrderDetails>
-				  <mvSalesOrderRow>
-					<SalesOrderRowProductSKU>dvd-sw2</SalesOrderRowProductSKU>
-					<SalesOrderRowQuantity>1</SalesOrderRowQuantity>
-					<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>
-					<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>
-					<SalesOrderRowUnitPriceWithoutTaxOrDiscount>20</SalesOrderRowUnitPriceWithoutTaxOrDiscount>
-				  </mvSalesOrderRow>
+					' . $products_xml . '
 				</SalesOrderDetails>
 				<SalesOrderStatus>Pending</SalesOrderStatus>
 			  </mvSalesOrder>
