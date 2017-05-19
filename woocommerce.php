@@ -114,12 +114,14 @@ class Woocommerce_sync {
 			
 	}
 	
+	//get all products as wordpress posts
 	function get_products_posts() {
 		$args = array('post_type' => 'product', numberposts => -1);
 		$products = get_posts($args);
 		return $products;
 	}
 	
+	//find product post by SKU
 	function get_product_post_by_SKU($SKU) {
 		$products = $this->get_products_posts();
 		$to_return = null;
@@ -133,6 +135,7 @@ class Woocommerce_sync {
 		return $to_return;
 	}
 	
+	//find all products in WooCommerce and map them into Product class
 	function get_products() {
 		$prods_posts = $this->get_products_posts();
 		$prods = array();
@@ -258,6 +261,7 @@ class Woocommerce_sync {
 		}
 	}
 	
+	//set metadata of the product - the same regardless if update of create
 	function set_product_meta($post_id, $product) {
 				
 		//set category
@@ -302,6 +306,7 @@ class Woocommerce_sync {
 		echo "<br>" . $product->stock_on_hand;
 	}
 	
+	//get all users as Client class
 	function get_clients() {
 		$clients = array();
 		
@@ -314,6 +319,7 @@ class Woocommerce_sync {
 		return $clients;	
 	}
 	
+	//get Client class by WooCommerce ID
 	function get_client($id) {
 		if ($id == 0) {
 			return null;
@@ -327,6 +333,7 @@ class Woocommerce_sync {
 		}
 	}
 	
+	//map wordpress user to Client class
 	function user_to_client($user) {
 		$client = new Client();
 		$client->WC_ID = $user->ID;

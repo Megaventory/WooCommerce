@@ -1,5 +1,6 @@
 <?php
 
+// help correctly format the address
 function format_address($ar) {
 	$name = $ar['name'];
 	$company = $ar['company'];

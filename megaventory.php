@@ -198,6 +198,7 @@ class Megaventory_sync {
 		return $prod;
 	}
 	
+	//update of create simple product
 	function update_simple_product($product, $create_new, $categories = null) {
 		if ($categories == null) {
 			$categories = $this->get_categories();
@@ -276,6 +277,7 @@ class Megaventory_sync {
 		return $clients;
 	}
 	
+	//synchronize clients with those of WooCommerce
 	function synchronize_clients($wc_clients, $with_delete = false) {
 		$mv_clients = $this->get_clients();
 		
@@ -384,7 +386,6 @@ class Megaventory_sync {
 		//todo
 	}
 	
-	//to be rewritten as username? -- later
 	function get_client_by_name($username) {
 		$clients = $this->get_clients();
 		foreach ($clients as $client) {
