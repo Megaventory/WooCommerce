@@ -30,8 +30,8 @@ function order_placed($order_id){
 	
 	$id = $order->get_customer_id();
 	$client = $GLOBALS["WC"]->get_client($id);
-	if ($client != null) {
-		$mv_client = $GLOBALS["MV"]->get_client_by_name($client->email);
+	$mv_client = $GLOBALS["MV"]->get_client_by_name($client->username);
+	if ($mv_client != null) {
 		$client->MV_ID = $mv_client->MV_ID;
 		$client->type = $mv_client->type;
 	} else {
@@ -79,7 +79,7 @@ function test_init(){
 	echo '<br><br>';
 	
 	echo '<form id="sync-clients" method="post">';
-	echo '<input type="checkbox" name="with_delete" /> with delete';
+	//echo '<input type="checkbox" name="with_delete" /> with delete';
 	echo '<input type="hidden" name="sync-clients" value="true" />';
 	echo '<input type="submit" value="Synchronize Clients" />';
 	echo '</form>';

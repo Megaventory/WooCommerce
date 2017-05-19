@@ -5,8 +5,8 @@ require_once("product.php");
 // This class makes it easier to get values from
 // and send values to the megaventory API
 class Megaventory_sync {
-	public $url = "https://api.megaventory.com/v2017a/json/reply/";
-	public $xml_url = "https://api.megaventory.com/v2017a/xml/reply/";
+	public $url = "https://apitest.megaventory.com/json/reply/";
+	public $xml_url = "https://apitest.megaventory.com/xml/reply/";
 	public $API_KEY = "827bc7518941837b@m65192"; // DEV AND DEBUG ONLY
 	
 	public $product_get_call = "ProductGet";
@@ -372,7 +372,7 @@ class Megaventory_sync {
 		echo curl_error($ch);		
 		curl_close($ch);
 		
-		$data = simplexml_load_string($data, "SimpleXMLElement", LIBXML_NOCDATA);
+		$data = simplexml_load_string(html_entity_decode($data), "SimpleXMLElement", LIBXML_NOCDATA);
 		$data = json_encode($data);
 		$data = json_decode($data, TRUE);
 		
@@ -403,58 +403,46 @@ class Megaventory_sync {
 	}
 	
 	//woocommerce purchase is megaventory sale
+	//$order is of type WC_ORDER - find documentation online
 	function place_sales_order($order, $client) { 
 		$url = $this->create_xml_url($this->salesorder_update_call);
+		
+		$products_xml = '';
+		foreach ($order->get_items() as $item) {
+			$product = new WC_Product($item['product_id']);
+			$produtstring = '<mvSalesOrderRow>';
+			$produtstring .= '<SalesOrderRowProductSKU>' . $product->get_sku() . '</SalesOrderRowProductSKU>';
+			$produtstring .= '<SalesOrderRowQuantity>' . $item['quantity'] . '</SalesOrderRowQuantity>';
+			$produtstring .= '<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>';
+			$produtstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
+			$produtstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . $product->get_regular_price() . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
+			$produtstring .= '</mvSalesOrderRow>';
+			
+			$products_xml .= $productstring;
+		}
 		
 		$xml_request = '
 			<SalesOrderUpdate xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types">
 			  <APIKEY>' . $this->API_KEY . '</APIKEY>
 			  <mvSalesOrder>
-				<SalesOrderID>200</SalesOrderID>
-				<SalesOrderNo>5</SalesOrderNo>
-				<SalesOrderReferenceNo></SalesOrderReferenceNo>
-				<SalesOrderReferenceApplication></SalesOrderReferenceApplication>
-				<SalesOrderDate>0001-01-01T00:00:00</SalesOrderDate>
-				<SalesOrderCustomOrderDate1>0001-01-01T00:00:00</SalesOrderCustomOrderDate1>
-				<SalesOrderCustomOrderDate2>0001-01-01T00:00:00</SalesOrderCustomOrderDate2>
 				<SalesOrderCurrencyCode>EUR</SalesOrderCurrencyCode>
-				<SalesOrderClientID>16</SalesOrderClientID>
-				<SalesOrderBillingAddress>String</SalesOrderBillingAddress>
-				<SalesOrderShippingAddress>String</SalesOrderShippingAddress>
-				<SalesOrderContactPerson>String</SalesOrderContactPerson>
-				<SalesOrderInventoryLocationID>1</SalesOrderInventoryLocationID>
-				<SalesOrderCustomFlag1>false</SalesOrderCustomFlag1>
-				<SalesOrderCustomFlag2>false</SalesOrderCustomFlag2>
-				<SalesOrderCustomFlag3>false</SalesOrderCustomFlag3>
-				<SalesOrderCustomFlag4>false</SalesOrderCustomFlag4>
-				<SalesOrderCustomFlag5>false</SalesOrderCustomFlag5>
-				<SalesOrderComments>String</SalesOrderComments>
-				<SalesOrderTags>String</SalesOrderTags>
-				<SalesOrderTotalQuantity>1</SalesOrderTotalQuantity>
-				<SalesOrderAmountSubtotalWithoutTaxAndDiscount>0.00</SalesOrderAmountSubtotalWithoutTaxAndDiscount>
-				<SalesOrderAmountShipping>0.00</SalesOrderAmountShipping>
-				<SalesOrderAmountTotalDiscount>0.00</SalesOrderAmountTotalDiscount>
-				<SalesOrderAmountTotalTax>0.00</SalesOrderAmountTotalTax>
-				<SalesOrderAmountGrandTotal>0.00</SalesOrderAmountGrandTotal>
+				<SalesOrderClientID>' . $client->MV_ID . '</SalesOrderClientID>
+				<SalesOrderBillingAddress>' . $order->get_billing_address_1() . '</SalesOrderBillingAddress>
+				<SalesOrderShippingAddress>' . $order->get_shipping_address_1() . '</SalesOrderShippingAddress>
+				<SalesOrderComments>Order created automatically from WooCommerce</SalesOrderComments>
+				<SalesOrderTags></SalesOrderTags>
 				<SalesOrderDetails>
 				  <mvSalesOrderRow>
-					<SalesOrderRowProductSKU>dvd-sw3</SalesOrderRowProductSKU>
-					<SalesOrderRowProductDescription>Star Wars 3 Director&#39;s cut</SalesOrderRowProductDescription>
+					<SalesOrderRowProductSKU>dvd-sw2</SalesOrderRowProductSKU>
 					<SalesOrderRowQuantity>1</SalesOrderRowQuantity>
 					<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>
 					<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>
-					<SalesOrderRowUnitPriceWithoutTaxOrDiscount>0</SalesOrderRowUnitPriceWithoutTaxOrDiscount>
-					<SalesOrderRowTaxID>2</SalesOrderRowTaxID>
-					<SalesOrderTotalTaxAmount>0</SalesOrderTotalTaxAmount>
-					<SalesOrderRowDiscountID>1</SalesOrderRowDiscountID>
-					<SalesOrderRowTotalDiscountAmount>0</SalesOrderRowTotalDiscountAmount>
-					<SalesOrderRowTotalAmount>0</SalesOrderRowTotalAmount>
+					<SalesOrderRowUnitPriceWithoutTaxOrDiscount>20</SalesOrderRowUnitPriceWithoutTaxOrDiscount>
 				  </mvSalesOrderRow>
 				</SalesOrderDetails>
 				<SalesOrderStatus>Pending</SalesOrderStatus>
 			  </mvSalesOrder>
 			  <mvRecordAction>Insert</mvRecordAction>
-			  <mvInsertUpdateDeleteSourceApplication>String</mvInsertUpdateDeleteSourceApplication>
 			</SalesOrderUpdate>
 			';
 		
@@ -471,7 +459,7 @@ class Megaventory_sync {
 		
 		curl_close($ch);
 		
-		echo ($data);
+		print_r (htmlentities($data));
 		echo "<br><br>";
 		
 	}
