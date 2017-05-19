@@ -26,6 +26,21 @@ function order_placed($order_id){
 		$product = new WC_Product($value['product_id']);
 		echo $product->get_sku();
 	}
+	echo "<br><br> customerID: " . $order->get_customer_id();
+	
+	$id = $order->get_customer_id();
+	$client = $GLOBALS["WC"]->get_client($id);
+	$mv_client = $GLOBALS["MV"]->get_client_by_name($client->username);
+	if ($mv_client != null) {
+		$client->MV_ID = $mv_client->MV_ID;
+		$client->type = $mv_client->type;
+	} else {
+		$client = $GLOBALS["MV"]->get_guest_client();
+	}
+	
+	$GLOBALS["MV"]->place_sales_order($order, $client);
+	
+	var_dump($client);
 }
 
 // main. This code is executed only if woocommerce is an installed and activated plugin.
@@ -64,9 +79,16 @@ function test_init(){
 	echo '<br><br>';
 	
 	echo '<form id="sync-clients" method="post">';
-	echo '<input type="checkbox" name="with_delete" /> with delete';
+	//echo '<input type="checkbox" name="with_delete" /> with delete';
 	echo '<input type="hidden" name="sync-clients" value="true" />';
 	echo '<input type="submit" value="Synchronize Clients" />';
+	echo '</form>';
+	
+	echo '<br><br>';
+	
+	echo '<form id="initialize" method="post">';
+	echo '<input type="hidden" name="initialize" value="true" />';
+	echo '<input type="submit" value="Initialize" />';
 	echo '</form>';
 
 }
@@ -80,6 +102,8 @@ if (isset($_POST['sync-mv-wc'])) {
 	add_action('init', 'synchronize_products_wc_mv');
 } else if (isset($_POST['sync-clients'])) {
 	add_action('init', 'synchronize_clients');
+} else if (isset($_POST['initialize'])) {
+	add_action('init', 'initialize_integration');
 }
 
 function synchronize_products_mv_wc() {
@@ -119,4 +143,13 @@ function synchronize_clients() {
 	$GLOBALS["MV"]->synchronize_clients($clients, $with_delete);
 }
 
+function initialize_integration() {
+	$wc_main = new Client();
+	$wc_main->email = "WooCommerce"; // in fact, this is contact_name. see megaventory->createUpdateClient
+	$wc_main->contact_name = "This client is the default client for guest woocommerce purchases"; //this is comment. I will make it clearer later
+	$wc_main->type = "Client";
+	
+	//later do also update, for patch purposes
+	$GLOBALS["MV"]->createUpdateClient($wc_main, true);
+}
 ?>

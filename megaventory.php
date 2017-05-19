@@ -1,12 +1,13 @@
 <?php
 
 require_once("product.php");
+require_once("address.php");
 
 // This class makes it easier to get values from
 // and send values to the megaventory API
 class Megaventory_sync {
-	public $url = "https://api.megaventory.com/v2017a/json/reply/";
-	public $xml_url = "https://api.megaventory.com/v2017a/xml/reply/";
+	public $url = "https://apitest.megaventory.com/json/reply/";
+	public $xml_url = "https://apitest.megaventory.com/xml/reply/";
 	public $API_KEY = "827bc7518941837b@m65192"; // DEV AND DEBUG ONLY
 	
 	public $product_get_call = "ProductGet";
@@ -17,6 +18,10 @@ class Megaventory_sync {
 	public $product_stock_call = "InventoryLocationStockGet";
 	public $supplierclient_get_call = "SupplierClientGet";
 	public $supplierclient_update_call = "SupplierClientUpdate";
+	public $supplierclient_undelete_call = "SupplierClientUndelete";
+	public $salesorder_update_call = "SalesOrderUpdate";
+	
+	public $username_prefix = "wc_";
 	
 	// create URL using the API key and call
 	function create_json_url($call) {
@@ -193,6 +198,7 @@ class Megaventory_sync {
 		return $prod;
 	}
 	
+	//update of create simple product
 	function update_simple_product($product, $create_new, $categories = null) {
 		if ($categories == null) {
 			$categories = $this->get_categories();
@@ -246,7 +252,7 @@ class Megaventory_sync {
 		$jsonprod = file_get_contents($jsonurl);
 		$supplierclients = json_decode($jsonprod, true)['mvSupplierClients'];
 		
-		var_dump($supplierclients);
+		//var_dump($supplierclients);
 		
 		$clients = array();
 		foreach ($supplierclients as $supplierclient) {
@@ -254,7 +260,8 @@ class Megaventory_sync {
 				$client = new Client();
 				
 				$client->MV_ID = $supplierclient['SupplierClientID'];
-				$client->contact_name = $supplierclient['SupplierClientName'];
+				$client->username = str_replace("wc_", "", $supplierclient['SupplierClientName']);
+				$client->contact_name = $supplierclient['SupplierClientComments'];
 				$client->shipping_address = $supplierclient['SupplierClientShippingAddress1'];
 				$client->shipping_address2 = $supplierclient['SupplierClientShippingAddress2'];
 				$client->billing_address = $supplierclient['SupplierClientBillingAddress2'];
@@ -270,6 +277,7 @@ class Megaventory_sync {
 		return $clients;
 	}
 	
+	//synchronize clients with those of WooCommerce
 	function synchronize_clients($wc_clients, $with_delete = false) {
 		$mv_clients = $this->get_clients();
 		
@@ -281,8 +289,8 @@ class Megaventory_sync {
 		
 		foreach ($wc_clients as $wc_client) {
 			foreach ($mv_clients as $mv_client) {
-				echo "COMPARING: " . $wc_client->email . " : " . $mv_client->email . "<br>";
-				if (strtolower($wc_client->email) === strtolower($mv_client->email)) {
+				echo "COMPARING: " . $wc_client->username . " : " . $mv_client->username . "<br>";
+				if (strtolower($wc_client->username) === strtolower($mv_client->username)) {
 					$wc_client->MV_ID = $mv_client->MV_ID;
 					$wc_client->type = $mv_client->type; // override type. mv type is more importan, wc type is always "CLIENT"
 					array_push($clients_to_update, $wc_client);
@@ -304,7 +312,13 @@ class Megaventory_sync {
 		var_dump($clients_to_update);
 		
 		foreach ($clients_to_create as $client) {
-			$this->createUpdateClient($client, true);
+			$response = $this->createUpdateClient($client, true);
+			
+			if ($response['InternalErrorCode'] == "SupplierClientAlreadyDeleted") {
+				// client must be undeleted first and then updated
+				$this->undeleteClient($response["entityID"]);
+				$this->createUpdateClient($client, false);
+			}
 		}
 		
 		foreach ($clients_to_update as $client) {
@@ -316,7 +330,12 @@ class Megaventory_sync {
 				$this->deleteClient($client);
 			}
 		}
-		
+	}
+	
+	function undeleteClient($id) {
+		$url = $this->create_json_url($this->supplierclient_undelete_call);
+		$url .= "&SupplierClientIDToUndelete=" . $id;
+		file_get_contents($url);
 	}
 		
 	function createUpdateClient($client, $create_new = false) {
@@ -329,7 +348,7 @@ class Megaventory_sync {
 				<mvSupplierClient>
 					' . ($create_new ? '' : '<SupplierClientID>' . $client->MV_ID . '</SupplierClientID>') . '
 					' . ($client->type ? '<SupplierClientType>' . $client->type . '</SupplierClientType>' : '') . '
-					<SupplierClientName>' . $client->email . '</SupplierClientName>
+					<SupplierClientName>' . $this->username_prefix . $client->username . '</SupplierClientName>
 					' . ($client->billing_address ? '<SupplierClientBillingAddress>' . $client->billing_address . '</SupplierClientBillingAddress>' : '') . '
 					' . ($client->shipping_address ? '<SupplierClientShippingAddress1>' . $client->shipping_address . '</SupplierClientShippingAddress1>' : '') . '
 					' . ($client->phone ? '<SupplierClientPhone1>' . $client->phone . '</SupplierClientPhone1>' : '') . '
@@ -353,15 +372,114 @@ class Megaventory_sync {
 		
 		echo curl_getinfo($ch);
 		echo curl_errno($ch);
-		echo curl_error($ch);
-		print_r($data);
-		
+		echo curl_error($ch);		
 		curl_close($ch);
 		
+		$data = simplexml_load_string(html_entity_decode($data), "SimpleXMLElement", LIBXML_NOCDATA);
+		$data = json_encode($data);
+		$data = json_decode($data, TRUE);
+		
+		return $data;
 	}
 	
 	function deleteClient($client) {
 		//todo
+	}
+	
+	function get_client_by_name($username) {
+		$clients = $this->get_clients();
+		foreach ($clients as $client) {
+			//echo "<br> now rolling:";
+			//var_dump($client);
+			//echo " end <br>";
+			
+			if ($client->username === $username) {
+				return $client;
+			}
+		}
+		return null;
+	}
+	
+	function get_guest_client() {
+		return $this->get_client_by_name("WooCommerce");
+	}
+	
+	//woocommerce purchase is megaventory sale
+	//$order is of type WC_ORDER - find documentation online
+	function place_sales_order($order, $client) { 
+		$url = $this->create_xml_url($this->salesorder_update_call);
+		
+		$products_xml = '';
+		foreach ($order->get_items() as $item) {
+			$product = new WC_Product($item['product_id']);
+			$productstring = '<mvSalesOrderRow>';
+			$productstring .= '<SalesOrderRowProductSKU>' . $product->get_sku() . '</SalesOrderRowProductSKU>';
+			$productstring .= '<SalesOrderRowQuantity>' . $item['quantity'] . '</SalesOrderRowQuantity>';
+			$productstring .= '<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>';
+			$productstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
+			$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . $product->get_regular_price() . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
+			$productstring .= '</mvSalesOrderRow>';
+			
+			$products_xml .= $productstring;
+		}
+		
+		$shipping_address['name'] = $order->get_shipping_first_name() . " " . $order->get_shipping_last_name();
+		$shipping_address['company'] = $order->get_shipping_company();
+		$shipping_address['line_1'] = $order->get_shipping_address_1();
+		$shipping_address['line_2'] = $order->get_shipping_address_2();
+		$shipping_address['city'] = $order->get_shipping_city();
+		$shipping_address['county'] = $order->get_shipping_state();
+		$shipping_address['postcode'] = $order->get_shipping_postcode();
+		$shipping_address['country'] = $order->get_shipping_country();
+		$shipping_address = format_address($shipping_address);
+		
+		$billing_address['name'] = $order->get_billing_first_name() . " " . $order->get_billing_last_name();
+		$billing_address['company'] = $order->get_billing_company();
+		$billing_address['line_1'] = $order->get_billing_address_1();
+		$billing_address['line_2'] = $order->get_billing_address_2();
+		$billing_address['city'] = $order->get_billing_city();
+		$billing_address['county'] = $order->get_billing_state();
+		$billing_address['postcode'] = $order->get_billing_postcode();
+		$billing_address['country'] = $order->get_billing_country();
+		$billing_address = format_address($billing_address);
+		
+		
+		$xml_request = '
+			<SalesOrderUpdate xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types">
+			  <APIKEY>' . $this->API_KEY . '</APIKEY>
+			  <mvSalesOrder>
+				<SalesOrderReferenceNo>' . $order->get_order_number() . '</SalesOrderReferenceNo>
+				<SalesOrderCurrencyCode>EUR</SalesOrderCurrencyCode>
+				<SalesOrderClientID>' . $client->MV_ID . '</SalesOrderClientID>
+				<SalesOrderBillingAddress>' . $shipping_address . '</SalesOrderBillingAddress>
+				<SalesOrderShippingAddress>' . $billing_address . '</SalesOrderShippingAddress>
+				<SalesOrderComments>' . $order->get_customer_note() . '</SalesOrderComments>
+				<SalesOrderTags>WooCommerce</SalesOrderTags>
+				<SalesOrderDetails>
+					' . $products_xml . '
+				</SalesOrderDetails>
+				<SalesOrderStatus>Pending</SalesOrderStatus>
+			  </mvSalesOrder>
+			  <mvRecordAction>Insert</mvRecordAction>
+			</SalesOrderUpdate>
+			';
+		
+		echo "<br>";
+		var_dump(htmlentities($xml_request));
+			
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, ($xml_request));
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 300);
+		$data = curl_exec($ch);
+		
+		curl_close($ch);
+		
+		print_r (htmlentities($data));
+		echo "<br><br>";
+		
 	}
 }
 
