@@ -289,6 +289,9 @@ class Megaventory_sync {
 		
 		$clients_to_create = array();
 		$clients_to_update = array();
+		echo "<br> ALLCLIENTS: ";
+		var_dump($wc_clients);
+		echo "<br>------------------------------------------------<br>";
 		
 		foreach ($wc_clients as $client) {
 			if ($client->MV_ID == null) {
@@ -298,34 +301,61 @@ class Megaventory_sync {
 			}
 		}
 		
+		echo "<br> TO CREATE: ";
+		var_dump($clients_to_create);
+		echo "<br> TO UPDATE: ";
+		var_dump($clients_to_update);
+		
 		foreach ($clients_to_create as $client) {
 			$response = $this->createUpdateClient($client, true);
 			
-			/*
+			echo "<br>CREATE RESPONSE: ";
+			var_dump($response);
+			
+			$undeleted = false;
 			if ($response['InternalErrorCode'] == "SupplierClientAlreadyDeleted") {
 				// client must be undeleted first and then updated
 				$this->undeleteClient($response["entityID"]);
-				$response = $this->createUpdateClient($client, false);
-			}
-			*/
+				
+				// if undelete, this name will exist. next if statement has to decide what to do next
+				$response['InternalErrorCode'] = "SupplierClientNameAlreadyExists";
+				$undeleted = true;
+			} 
 			
-			if ($response['InternalErrorCode'] === "SupplierClientNameAlreadyExists") {
+			if ($response['InternalErrorCode'] == "SupplierClientNameAlreadyExists") {
 				$mv_client = $this->get_client_by_name($client->contact_name);
 				//$client->MV_ID = $mv_client->MV_ID;
+				echo "<br> COMPARING " . $client->email . " : " . $mv_client->email;
 				if ($client->email == $mv_client->email) { //same person
 					$client->MV_ID = $mv_client->MV_ID;
 					$response = $this->createUpdateClient($client, false);
 				} else { //different person
 					$client->contact_name = $client->contact_name . " - " . $client->email;
 					$response = $this->createUpdateClient($client, true);
+					
+					if ($undeleted) {
+						//in the end, it seems that this client was undeleted for no reason
+						//however, he needs to be undeleted in order to gain information
+						//$this->delete_client($mv_client);
+					}
 				}
 			}
 			
 			
-			echo "<br>CREATE RESPONSE: ";
+			
+			echo "<br>CREATE RESPONSE2: ";
 			var_dump($response);
 			
-			add_user_meta($client->WC_ID, "MV_ID", $response["mvSupplierClient"]["SupplierClientID"], true);
+			$id = get_user_meta($client->WC_ID, "MV_ID", true);
+			update_user_meta($client->WC_ID, "MV_ID", $response["mvSupplierClient"]["SupplierClientID"]);
+			
+			
+			$id = $response["mvSupplierClient"]["SupplierClientID"];
+			if ($id != null) {
+				update_user_meta($client->WC_ID, "MV_ID", $id);
+			}
+				
+			
 		}
 		
 		foreach ($clients_to_update as $client) {
@@ -337,8 +367,20 @@ class Megaventory_sync {
 				$response = $this->createUpdateClient($client, false);
 			}
 			
+			// do not override, use ' - email'
+			if ($response['InternalErrorCode'] == "SupplierClientNameAlreadyExists") {
+				$client->contact_name = $client->contact_name . ' - ' . $client->email;
+				$response = $this->createUpdateClient($client, false);
+			}
+			
 			echo "<br>RESPONSE: ";
 			var_dump($response);
+			
+			//just to be sure
+			$id = $response["mvSupplierClient"]["SupplierClientID"];
+			if ($id != null) {
+				update_user_meta($client->WC_ID, "MV_ID", $id);
+			}
 		}
 		
 		
@@ -371,7 +413,7 @@ class Megaventory_sync {
 					' . ($client->shipping_address ? '<SupplierClientShippingAddress1>' . $client->shipping_address . '</SupplierClientShippingAddress1>' : '') . '
 					' . ($client->phone ? '<SupplierClientPhone1>' . $client->phone . '</SupplierClientPhone1>' : '') . '
 					' . ($client->email ? '<SupplierClientEmail>' . $client->email . '</SupplierClientEmail>' : '') . '
-					' . ($client->contact_name ? '<SupplierClientComments>' . $client->contact_name . '</SupplierClientComments>' : '') . '
+					' . ($client->contact_name ? '<SupplierClientComments>' . 'WooCommerce client' . '</SupplierClientComments>' : '') . '
 				</mvSupplierClient>
 				<mvRecordAction>' . $action . '</mvRecordAction>
 			</SupplierClientUpdate>
@@ -392,6 +434,9 @@ class Megaventory_sync {
 		echo curl_errno($ch);
 		echo curl_error($ch);		
 		curl_close($ch);
+		
+		//echo "<br> RAW RESPONSE: ";
+		//var_dump($data);
 		
 		$data = simplexml_load_string(html_entity_decode($data), "SimpleXMLElement", LIBXML_NOCDATA);
 		$data = json_encode($data);
