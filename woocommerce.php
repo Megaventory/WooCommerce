@@ -334,6 +334,7 @@ class Woocommerce_sync {
 	function user_to_client($user) {
 		$client = new Client();
 		$client->WC_ID = $user->ID;
+		$client->MV_ID = get_user_meta($user->ID, "MV_ID", true);
 		$client->email = $user->user_email;
 		
 		$client->username = $user->user_login;

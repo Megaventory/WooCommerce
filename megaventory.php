@@ -322,7 +322,15 @@ class Megaventory_sync {
 		}
 		
 		foreach ($clients_to_update as $client) {
-			$this->createUpdateClient($client, false);
+			$response = $this->createUpdateClient($client, false);
+			
+			echo "<br>RESPONSE: ";
+			var_dump($response);
+			if ($client->MV_ID == null) {
+				add_user_meta($client->WC_ID, "MV_ID", $response["mvSupplierClient"]["SupplierClientID"], true);
+			} else {
+				//update_user_meta($client->WC_ID, "MV_ID", $response["mvSupplierClient"]["SupplierClientID"]);
+			}
 		}
 		
 		if ($with_delete) {
@@ -330,6 +338,7 @@ class Megaventory_sync {
 				$this->deleteClient($client);
 			}
 		}
+		
 	}
 	
 	function undeleteClient($id) {
