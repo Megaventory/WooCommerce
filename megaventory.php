@@ -259,86 +259,95 @@ class Megaventory_sync {
 			if ($supplierclient['SupplierClientType'] == "Client" or $supplierclient['SupplierClientType'] == "Both") {
 				$client = new Client();
 				
-				$client->MV_ID = $supplierclient['SupplierClientID'];
-				$client->username = str_replace("wc_", "", $supplierclient['SupplierClientName']);
-				$client->contact_name = $supplierclient['SupplierClientComments'];
-				$client->shipping_address = $supplierclient['SupplierClientShippingAddress1'];
-				$client->shipping_address2 = $supplierclient['SupplierClientShippingAddress2'];
-				$client->billing_address = $supplierclient['SupplierClientBillingAddress2'];
-				$client->tax_ID = $supplierclient['SupplierClientTaxID'];
-				$client->phone = $supplierclient['SupplierClientPhone1'];
-				$client->email = $supplierclient['SupplierClientEmail'];
-				$client->type = $supplierclient['SupplierClientType'];
-				
-				array_push($clients, $client);
+				array_push($clients, $this->mv_client_to_client($supplierclient));
 			}
 		}
 		
 		return $clients;
 	}
 	
+	function mv_client_to_client($supplierclient) {
+		$client = new Client();
+				
+		$client->MV_ID = $supplierclient['SupplierClientID'];
+		$client->username = str_replace("wc_", "", $supplierclient['SupplierClientName']);
+		$client->contact_name = $supplierclient['SupplierClientComments'];
+		$client->shipping_address = $supplierclient['SupplierClientShippingAddress1'];
+		$client->shipping_address2 = $supplierclient['SupplierClientShippingAddress2'];
+		$client->billing_address = $supplierclient['SupplierClientBillingAddress2'];
+		$client->tax_ID = $supplierclient['SupplierClientTaxID'];
+		$client->phone = $supplierclient['SupplierClientPhone1'];
+		$client->email = $supplierclient['SupplierClientEmail'];
+		$client->type = $supplierclient['SupplierClientType'];
+		
+		return $client;
+	}
+		
+	
 	//synchronize clients with those of WooCommerce
 	function synchronize_clients($wc_clients, $with_delete = false) {
-		$mv_clients = $this->get_clients();
 		
-		$clients_to_create = $wc_clients;
-		$clients_to_delete = $mv_clients;
+		$clients_to_create = array();
 		$clients_to_update = array();
 		
-		echo "COUNT: " . count($mv_clients) . "<br>";
-		
-		foreach ($wc_clients as $wc_client) {
-			foreach ($mv_clients as $mv_client) {
-				echo "COMPARING: " . $wc_client->username . " : " . $mv_client->username . "<br>";
-				if (strtolower($wc_client->username) === strtolower($mv_client->username)) {
-					$wc_client->MV_ID = $mv_client->MV_ID;
-					$wc_client->type = $mv_client->type; // override type. mv type is more importan, wc type is always "CLIENT"
-					array_push($clients_to_update, $wc_client);
-					
-					$key = array_search($wc_client, $clients_to_create);
-					unset($clients_to_create[$key]);
-					
-					$key = array_search($mv_client, $clients_to_delete);
-					unset($clients_to_delete[$key]);
-				}
+		foreach ($wc_clients as $client) {
+			if ($client->MV_ID == null) {
+				array_push($clients_to_create, $client);
+			} else {
+				array_push($clients_to_update, $client);
 			}
-		} 
-		
-		echo "<br><br> TO CREATE: ";
-		var_dump($clients_to_create);
-		echo "<br><br> TO DELETE: ";
-		var_dump($clients_to_delete);
-		echo "<br><br> TO UPDATE: ";
-		var_dump($clients_to_update);
+		}
 		
 		foreach ($clients_to_create as $client) {
 			$response = $this->createUpdateClient($client, true);
 			
+			/*
 			if ($response['InternalErrorCode'] == "SupplierClientAlreadyDeleted") {
 				// client must be undeleted first and then updated
 				$this->undeleteClient($response["entityID"]);
-				$this->createUpdateClient($client, false);
+				$response = $this->createUpdateClient($client, false);
 			}
+			*/
+			
+			if ($response['InternalErrorCode'] === "SupplierClientNameAlreadyExists") {
+				$mv_client = $this->get_client_by_name($client->contact_name);
+				//$client->MV_ID = $mv_client->MV_ID;
+				if ($client->email == $mv_client->email) { //same person
+					$client->MV_ID = $mv_client->MV_ID;
+					$response = $this->createUpdateClient($client, false);
+				} else { //different person
+					$client->contact_name = $client->contact_name . " - " . $client->email;
+					$response = $this->createUpdateClient($client, true);
+				}
+			}
+			
+			
+			echo "<br>CREATE RESPONSE: ";
+			var_dump($response);
+			
+			add_user_meta($client->WC_ID, "MV_ID", $response["mvSupplierClient"]["SupplierClientID"], true);
 		}
 		
 		foreach ($clients_to_update as $client) {
 			$response = $this->createUpdateClient($client, false);
 			
+			if ($response['InternalErrorCode'] == "SupplierClientAlreadyDeleted") {
+				// client must be undeleted first and then updated
+				$this->undeleteClient($response["entityID"]);
+				$response = $this->createUpdateClient($client, false);
+			}
+			
 			echo "<br>RESPONSE: ";
 			var_dump($response);
-			if ($client->MV_ID == null) {
-				add_user_meta($client->WC_ID, "MV_ID", $response["mvSupplierClient"]["SupplierClientID"], true);
-			} else {
-				//update_user_meta($client->WC_ID, "MV_ID", $response["mvSupplierClient"]["SupplierClientID"]);
-			}
 		}
 		
-		if ($with_delete) {
-			foreach ($clients_to_delete as $client) {
-				$this->deleteClient($client);
-			}
-		}
 		
+	}
+	
+	function get_client_by_name($name) {
+		$url = $this->create_json_url_filter($this->supplierclient_get_call, "SupplierClientName", "Equals", urlencode($name));
+		$client = json_decode(file_get_contents($url), true)['mvSupplierClients'][0];
+		return $this->mv_client_to_client($client);
 	}
 	
 	function undeleteClient($id) {
@@ -357,7 +366,7 @@ class Megaventory_sync {
 				<mvSupplierClient>
 					' . ($create_new ? '' : '<SupplierClientID>' . $client->MV_ID . '</SupplierClientID>') . '
 					' . ($client->type ? '<SupplierClientType>' . $client->type . '</SupplierClientType>' : '') . '
-					<SupplierClientName>' . $this->username_prefix . $client->username . '</SupplierClientName>
+					<SupplierClientName>' . $client->contact_name . '</SupplierClientName>
 					' . ($client->billing_address ? '<SupplierClientBillingAddress>' . $client->billing_address . '</SupplierClientBillingAddress>' : '') . '
 					' . ($client->shipping_address ? '<SupplierClientShippingAddress1>' . $client->shipping_address . '</SupplierClientShippingAddress1>' : '') . '
 					' . ($client->phone ? '<SupplierClientPhone1>' . $client->phone . '</SupplierClientPhone1>' : '') . '
@@ -395,7 +404,7 @@ class Megaventory_sync {
 		//todo
 	}
 	
-	function get_client_by_name($username) {
+	function get_client_by_username($username) {
 		$clients = $this->get_clients();
 		foreach ($clients as $client) {
 			//echo "<br> now rolling:";
