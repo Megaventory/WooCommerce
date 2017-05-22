@@ -317,6 +317,7 @@ class Woocommerce_sync {
 	}
 	
 	//get Client class by WooCommerce ID
+	/*
 	function get_client($id) {
 		if ($id == 0) {
 			return null;
@@ -329,6 +330,7 @@ class Woocommerce_sync {
 			return null;
 		}
 	}
+	* */
 	
 	//map wordpress user to Client class
 	function user_to_client($user) {
@@ -365,6 +367,10 @@ class Woocommerce_sync {
 		$client->type = "Client";
 		
 		return $client;
+	}
+	
+	function get_client($id) {
+		return $this->user_to_client(get_user_by('id', $id));
 	}
 }
 

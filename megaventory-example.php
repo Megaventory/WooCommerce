@@ -143,13 +143,34 @@ function synchronize_clients() {
 	$GLOBALS["MV"]->synchronize_clients($clients, $with_delete);
 }
 
+
 function initialize_integration() {
-	$wc_main = new Client();
-	$wc_main->email = "WooCommerce"; // in fact, this is contact_name. see megaventory->createUpdateClient
-	$wc_main->contact_name = "This client is the default client for guest woocommerce purchases"; //this is comment. I will make it clearer later
-	$wc_main->type = "Client";
 	
-	//later do also update, for patch purposes
-	$GLOBALS["MV"]->createUpdateClient($wc_main, true);
+	$id = wp_create_user("WooCommerce_Guest", "Random Garbage", "WooCommerce@wordpress.com");
+	update_user_meta($id, "first_name", "WooCommerce");
+	update_user_meta($id, "last_name", "Guest");
+	
+	$wc_main = $GLOBALS["WC"]->get_client($id);
+	$response = $GLOBALS["MV"]->createUpdateClient($wc_main, true);
+	
+	$id = -1;
+	if ($response['mvSupplierClient'] == null) {
+		$id = $GLOBALS["MV"]->get_client_by_name("WooCommerce Guest")->MV_ID;
+	} else {
+		$id = $response["mvSupplierClient"]["SupplierClientID"];
+	}
+	
+	$post = get_page_by_title("guest_id", ARRAY_A, "post");
+	if ($post == null) {
+		wp_insert_post(array
+			(
+				'post_title' => "guest_id",
+				'post_content' => (string)$id
+			)
+		);
+	} else {
+		$post["post_content"] = $id;
+		wp_post_update($post);
+	}
 }
 ?>

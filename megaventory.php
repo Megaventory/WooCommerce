@@ -328,6 +328,7 @@ class Megaventory_sync {
 				echo "<br> COMPARING " . $client->email . " : " . $mv_client->email;
 				if ($client->email == $mv_client->email) { //same person
 					$client->MV_ID = $mv_client->MV_ID;
+					$client->contact_name = $mv_client->contact_name;
 					$response = $this->createUpdateClient($client, false);
 				} else { //different person
 					$client->contact_name = $client->contact_name . " - " . $client->email;
