@@ -154,9 +154,6 @@ class Woocommerce_sync {
 			$prod->length = get_post_meta($ID, '_length', true);
 			$prod->breadth = get_post_meta($ID, '_width', true);
 			$prod->height = get_post_meta($ID, '_height', true);
-			$prod->breadth = get_post_meta($ID, '_width', true);
-			$prod->breadth = get_post_meta($ID, '_width', true);
-			$prod->breadth = get_post_meta($ID, '_width', true);
 			$prod->category = wp_get_object_terms($ID, 'product_cat')[0]->name; // primary category
 			$img = wp_get_attachment_image_src(get_post_thumbnail_id($ID));
 			if ($img[0]) {
@@ -337,6 +334,7 @@ class Woocommerce_sync {
 	function user_to_client($user) {
 		$client = new Client();
 		$client->WC_ID = $user->ID;
+		$client->MV_ID = get_user_meta($user->ID, "MV_ID", true);
 		$client->email = $user->user_email;
 		
 		$client->username = $user->user_login;
