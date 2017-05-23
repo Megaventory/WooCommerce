@@ -151,13 +151,24 @@ function synchronize_clients() {
 
 
 function initialize_integration() {
-	
-	$id = wp_create_user("WooCommerce_Guest", "Random Garbage", "WooCommerce@wordpress.com");
-	update_user_meta($id, "first_name", "WooCommerce");
-	update_user_meta($id, "last_name", "Guest");
+	$user_name = "WooCommerce_Guest";
+	$id = username_exists($user_name);
+	if (!$id) {
+		$id = wp_create_user("WooCommerce_Guest", "Random Garbage", "WooCommerce@wordpress.com");
+		update_user_meta($id, "first_name", "WooCommerce");
+		update_user_meta($id, "last_name", "Guest");
+	}
 	
 	$wc_main = $GLOBALS["WC"]->get_client($id);
+	
+	var_dump($wc_main);
 	$response = $GLOBALS["MV"]->createUpdateClient($wc_main, true);
+	var_dump($response);
+	if ($response['InternalErrorCode'] == "SupplierClientAlreadyDeleted") {
+		// client must be undeleted first and then updated
+		$GLOBALS["MV"]->undeleteClient($response["entityID"]);
+		$response["mvSupplierClient"]["SupplierClientID"] = $response["entityID"];
+	}
 	
 	$id = -1;
 	if ($response['mvSupplierClient'] == null) {
