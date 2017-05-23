@@ -178,7 +178,9 @@ function initialize_integration() {
 	}
 	
 	$post = get_page_by_title("guest_id", ARRAY_A, "post");
-	if ($post == null) {
+	var_dump($post);
+	if (!$post) {
+		echo "POST NOT EXISTS";
 		wp_insert_post(array
 			(
 				'post_title' => "guest_id",
@@ -186,6 +188,7 @@ function initialize_integration() {
 			)
 		);
 	} else {
+		echo "POST EXISTS";
 		$post["post_content"] = $id;
 		wp_update_post($post);
 	}
@@ -200,6 +203,8 @@ function get_guest_client() {
 
 function test() {
 	
-	var_dump(get_guest_client());
+	while ($post = get_page_by_title("guest_id", ARRAY_A, "post")) {
+		wp_delete_post($post["ID"]);
+	}
 }
 ?>
