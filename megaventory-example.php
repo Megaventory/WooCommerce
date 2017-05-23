@@ -60,6 +60,13 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 function mp_sync_on_product_save($meta_id, $post_id, $meta_key, $meta_value) {
 	if ($meta_key == '_edit_lock') {
 		if (get_post_type($post_id) == 'product') { 
+			//this is really quick. I will think of a better way to do this later
+			//WC treats categories very trivially, it is hard to synchronize them quickly
+			//and without failures, so this approach might be necessary
+			$wc_categories = $GLOBALS["WC"]->get_categories();
+			$GLOBALS["MV"]->synchronize_categories($wc_categories);
+			
+			
 			$product = $GLOBALS["WC"]->get_product($post_id);
 			$GLOBALS["MV"]->synchronize_product($product);
 		}
@@ -216,8 +223,25 @@ function get_guest_client() {
 
 function test() {
 	
-	while ($post = get_page_by_title("guest_id", ARRAY_A, "post")) {
-		wp_delete_post($post["ID"]);
+	$changes = $GLOBALS["MV"]->pull_product_changes();
+	
+	if (count($changes) <= 0) {
+		return;
 	}
+	
+	$mv_categories = $GLOBALS["MV"]->get_categories();
+	$GLOBALS["WC"]->synchronize_categories($mv_categories);
+	
+	foreach ($changes['mvIntegrationUpdates'] as $change) {
+		if ($change["Entity"] == "product") {
+			if ($change["Action"] == "update" or $change["Action"] == "insert") {
+				$product = $GLOBALS["MV"]->get_product($change["EntityIDs"]);
+			//var_dump($product);
+			}
+		}
+		//var_dump($change);
+	}
+	
+	
 }
 ?>

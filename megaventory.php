@@ -20,6 +20,7 @@ class Megaventory_sync {
 	public $supplierclient_update_call = "SupplierClientUpdate";
 	public $supplierclient_undelete_call = "SupplierClientUndelete";
 	public $salesorder_update_call = "SalesOrderUpdate";
+	public $integration_get_call = "IntegrationUpdateGet";
 	
 	public $username_prefix = "wc_";
 	
@@ -65,30 +66,35 @@ class Megaventory_sync {
 		// interpret json into Product class
 		$products = array();
 		foreach ($jsonprod['mvProducts'] as $prod) {
-			$product = new Product();
-			
-			$product->MV_ID = $prod['ProductID'];
-			$product->type = $prod['ProductType'];
-			$product->SKU = $prod['ProductSKU'];
-			$product->EAN = $prod['ProductEAN'];
-			$product->description = $prod['ProductDescription'];
-			$product->long_description = $prod['ProductLongDescription'];
-			$product->image_url = $prod['ProductImageURL'];
-			
-			$product->regular_price = $prod['ProductSellingPrice'];
-			$product->category = $categories[$prod['ProductCategoryID']];
-			
-			$product->weight = $prod['ProductWeight'];
-			$product->length = $prod['ProductLength'];
-			$product->breadth = $prod['ProductBreadth'];
-			$product->height = $prod['ProductHeight'];
-			
-			$product->stock_on_hand = $this->get_product_stock_on_hand($prod['ProductID']);
-			
+			$product = $this->mv_product_to_product($prod);
 			array_push($products, $product);
 		}
 		
 		return $products;
+	}
+	
+	function mv_product_to_product($prod) {
+		$product = new Product();
+		
+		$product->MV_ID = $prod['ProductID'];
+		$product->type = $prod['ProductType'];
+		$product->SKU = $prod['ProductSKU'];
+		$product->EAN = $prod['ProductEAN'];
+		$product->description = $prod['ProductDescription'];
+		$product->long_description = $prod['ProductLongDescription'];
+		$product->image_url = $prod['ProductImageURL'];
+		
+		$product->regular_price = $prod['ProductSellingPrice'];
+		$product->category = $categories[$prod['ProductCategoryID']];
+		
+		$product->weight = $prod['ProductWeight'];
+		$product->length = $prod['ProductLength'];
+		$product->breadth = $prod['ProductBreadth'];
+		$product->height = $prod['ProductHeight'];
+		
+		$product->stock_on_hand = $this->get_product_stock_on_hand($prod['ProductID']);
+		
+		return $product;	
 	}
 	
 	// get inventory per product ID
@@ -225,6 +231,14 @@ class Megaventory_sync {
 			}
 		}
 		return $prod;
+	}
+	
+	function get_product($id) {
+		$url = $this->create_json_url_filter($this->product_get_call, "ProductID", "Equals", urlencode($id));
+		$data = json_decode(file_get_contents($url), true);
+		var_dump($url);
+		var_dump($data);
+		return $this->mv_product_to_product($data["mvProduct"]);
 	}
 	
 	//update of create simple product
@@ -581,6 +595,13 @@ class Megaventory_sync {
 		print_r (htmlentities($data));
 		echo "<br><br>";
 		
+	}
+	
+	function pull_product_changes() {
+		$url = $this->create_json_url_filter($this->integration_get_call, "Application", "Equals", "woocommerce");
+		$data = json_decode(file_get_contents($url), true);
+		
+		return $data;
 	}
 }
 
