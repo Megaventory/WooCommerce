@@ -21,6 +21,7 @@ class Megaventory_sync {
 	public $supplierclient_undelete_call = "SupplierClientUndelete";
 	public $salesorder_update_call = "SalesOrderUpdate";
 	public $integration_get_call = "IntegrationUpdateGet";
+	public $integration_delete_call = "IntegrationUpdateDelete";
 	
 	public $username_prefix = "wc_";
 	
@@ -212,6 +213,7 @@ class Megaventory_sync {
 			if ($mv_product->SKU == $wc_product->SKU) {
 				$create_new = false;
 				$wc_product->MV_ID = $mv_product->MV_ID;
+				break;
 			}
 		}
 		
@@ -602,6 +604,14 @@ class Megaventory_sync {
 		$data = json_decode(file_get_contents($url), true);
 		
 		return $data;
+	}
+	
+	function remove_integration_update($id) {
+		$url = $this->create_json_url($this->integration_delete_call) . "&IntegrationUpdateIDToDelete=" . urlencode($id);
+		$data = json_decode(file_get_contents($url), true);
+		
+		echo "<br>RESPONSE: ";
+		var_dump($data);
 	}
 }
 

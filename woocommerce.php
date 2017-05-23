@@ -114,6 +114,28 @@ class Woocommerce_sync {
 			
 	}
 	
+	function synchronize_product($product, $wc_products = null) {
+		if ($wc_products == null) {
+			$wc_products = $this->get_products();
+		}
+		
+		$create_new = true;
+		foreach ($wc_products as $wc_product) {
+			if ($product->SKU == $wc_product->SKU) {
+				$create_new = false;
+				$product->WC_ID = $wc_product->WC_ID;
+				break;
+			}
+		}
+		
+		if (!$create_new) {
+			$post = $this->get_product_post_by_SKU($product->SKU);
+			$this->update_simple_product($post->ID, $product);
+		} else {
+			$this->add_simple_product($product);
+		}
+	}
+	
 	//get all products as wordpress posts
 	function get_products_posts() {
 		$args = array('post_type' => 'product', numberposts => -1);

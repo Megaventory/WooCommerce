@@ -236,6 +236,9 @@ function test() {
 		if ($change["Entity"] == "product") {
 			if ($change["Action"] == "update" or $change["Action"] == "insert") {
 				$product = $GLOBALS["MV"]->get_product($change["EntityIDs"]);
+				
+				$GLOBALS["WC"]->synchronize_product($product);
+				$GLOBALS["MV"]->remove_integration_update($change['IntegrationUpdateID']);
 			//var_dump($product);
 			}
 		}
