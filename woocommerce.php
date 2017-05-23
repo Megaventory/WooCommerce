@@ -370,7 +370,11 @@ class Woocommerce_sync {
 	}
 	
 	function get_client($id) {
-		return $this->user_to_client(get_user_by('id', $id));
+		$user = get_user_by('id', $id);
+		if (!$user) {
+			return null;
+		}
+		return $this->user_to_client($user);
 	}
 }
 

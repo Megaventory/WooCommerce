@@ -393,6 +393,12 @@ class Megaventory_sync {
 		return $this->mv_client_to_client($client);
 	}
 	
+	function get_client($id) {
+		$url = $this->create_json_url_filter($this->supplierclient_get_call, "SupplierClientID", "Equals", urlencode($id));
+		$client = json_decode(file_get_contents($url), true)['mvSupplierClients'][0];
+		return $this->mv_client_to_client($client);
+	}
+	
 	function undeleteClient($id) {
 		$url = $this->create_json_url($this->supplierclient_undelete_call);
 		$url .= "&SupplierClientIDToUndelete=" . $id;

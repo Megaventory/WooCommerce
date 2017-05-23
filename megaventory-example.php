@@ -30,12 +30,9 @@ function order_placed($order_id){
 	
 	$id = $order->get_customer_id();
 	$client = $GLOBALS["WC"]->get_client($id);
-	$mv_client = $GLOBALS["MV"]->get_client_by_name($client->username);
-	if ($mv_client != null) {
-		$client->MV_ID = $mv_client->MV_ID;
-		$client->type = $mv_client->type;
-	} else {
-		$client = $GLOBALS["MV"]->get_guest_client();
+	if ($client == null) {
+		echo "CLIENT WAS NUL";
+		$client = get_guest_client();
 	}
 	
 	$GLOBALS["MV"]->place_sales_order($order, $client);
@@ -90,6 +87,13 @@ function test_init(){
 	echo '<input type="hidden" name="initialize" value="true" />';
 	echo '<input type="submit" value="Initialize" />';
 	echo '</form>';
+	
+	echo '<br><br>';
+	
+	echo '<form id="test" method="post">';
+	echo '<input type="hidden" name="test" value="true" />';
+	echo '<input type="submit" value="TEST" />';
+	echo '</form>';
 
 }
 
@@ -104,6 +108,8 @@ if (isset($_POST['sync-mv-wc'])) {
 	add_action('init', 'synchronize_clients');
 } else if (isset($_POST['initialize'])) {
 	add_action('init', 'initialize_integration');
+} else if (isset($_POST['test'])) {
+	add_action('init', 'test');
 }
 
 function synchronize_products_mv_wc() {
@@ -170,7 +176,19 @@ function initialize_integration() {
 		);
 	} else {
 		$post["post_content"] = $id;
-		wp_post_update($post);
+		wp_update_post($post);
 	}
+}
+
+function get_guest_client() {
+	$post = get_page_by_title("guest_id", ARRAY_A, "post");
+	$id = $post['post_content'];
+	$client = $GLOBALS["MV"]->get_client($id);
+	return $client;
+}
+
+function test() {
+	
+	var_dump(get_guest_client());
 }
 ?>
