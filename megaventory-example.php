@@ -51,6 +51,19 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	
 	//configure admin panel
 	add_action('admin_menu', 'plugin_setup_menu');
+	
+	add_action( 'added_post_meta', 'mp_sync_on_product_save', 10, 4 );
+	add_action( 'updated_post_meta', 'mp_sync_on_product_save', 10, 4 );
+}
+
+//product edit or create
+function mp_sync_on_product_save($meta_id, $post_id, $meta_key, $meta_value) {
+	if ($meta_key == '_edit_lock') {
+		if (get_post_type($post_id) == 'product') { 
+			$product = $GLOBALS["WC"]->get_product($post_id);
+			$GLOBALS["MV"]->synchronize_product($product);
+		}
+	}
 }
 
 function plugin_setup_menu(){

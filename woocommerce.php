@@ -140,31 +140,41 @@ class Woocommerce_sync {
 		$prods_posts = $this->get_products_posts();
 		$prods = array();
 		foreach ($prods_posts as $prod_post) {
-			$prod = new Product();
-			$ID = $prod_post->ID;
-			
-			$prod->WC_ID = $prod_post->ID;
-			$prod->description = $prod_post->post_title;
-			$prod->long_description = $prod_post->post_content;
-			$prod->description = $prod_post->post_excerpt;
-			
-			$prod->SKU = get_post_meta($ID, '_sku', true);
-			$prod->regular_price = get_post_meta($ID, '_regular_price', true);
-			$prod->weight = get_post_meta($ID, '_weight', true);
-			$prod->length = get_post_meta($ID, '_length', true);
-			$prod->breadth = get_post_meta($ID, '_width', true);
-			$prod->height = get_post_meta($ID, '_height', true);
-			$prod->category = wp_get_object_terms($ID, 'product_cat')[0]->name; // primary category
-			$img = wp_get_attachment_image_src(get_post_thumbnail_id($ID));
-			if ($img[0]) {
-				$prod->image_url = $img[0];
-			}
-			
+			$prod = $this->product_post_to_product($prod_post);
 			
 			array_push($prods, $prod);
 		}
 		
 		return $prods;
+	}
+	
+	function get_product($id) {
+		$wc_prod = get_post($id);
+		return $this->product_post_to_product($wc_prod);
+	}
+	
+	function product_post_to_product($prod_post) {
+		$prod = new Product();
+		$ID = $prod_post->ID;
+		
+		$prod->WC_ID = $prod_post->ID;
+		$prod->description = $prod_post->post_title;
+		$prod->long_description = $prod_post->post_content;
+		$prod->description = $prod_post->post_excerpt;
+		
+		$prod->SKU = get_post_meta($ID, '_sku', true);
+		$prod->regular_price = get_post_meta($ID, '_regular_price', true);
+		$prod->weight = get_post_meta($ID, '_weight', true);
+		$prod->length = get_post_meta($ID, '_length', true);
+		$prod->breadth = get_post_meta($ID, '_width', true);
+		$prod->height = get_post_meta($ID, '_height', true);
+		$prod->category = wp_get_object_terms($ID, 'product_cat')[0]->name; // primary category
+		$img = wp_get_attachment_image_src(get_post_thumbnail_id($ID));
+		if ($img[0]) {
+			$prod->image_url = $img[0];
+		}
+		
+		return $prod;
 	}
 	
 	function update_simple_product($post_id, $product) {

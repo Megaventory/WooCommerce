@@ -186,6 +186,35 @@ class Megaventory_sync {
 		var_dump($wc_products);
 	}
 	
+	//I will rewrite these later to optimize them (god too many loops)
+	//Checking if product exists and getting its MV_ID should not be a loop, but an API call
+	//although, is looping or networking slower?
+	//when I started with synchronization i did not know It will be done this way
+	//tbh I don't feel like this is super important
+	//but it's still better not to write such code
+	//ill do this later i promise
+	function synchronize_product($wc_product, $mv_categories = null, $mv_products = null) {
+		if ($mv_categories == null) {
+			$mv_categories = $this->get_categories();
+		}
+		if ($mv_products == null) {
+			$mv_products = $this->get_products();
+		}
+		
+		$create_new = true;
+		foreach ($mv_products as $mv_product) {
+			if ($mv_product->SKU == $wc_product->SKU) {
+				$create_new = false;
+				$wc_product->MV_ID = $mv_product->MV_ID;
+			}
+		}
+		
+		$response = $this->update_simple_product($wc_product, $create_new, $mv_categories);
+		echo "<br>RESPONSE: <br>";
+		var_dump($response);
+		echo "<br>";
+	}
+	
 	function get_product_by_sku($SKU) {
 		$prod = null;
 		$prods = $this->get_products();
@@ -244,6 +273,8 @@ class Megaventory_sync {
 		$data = curl_exec($ch);
 		
 		curl_close($ch);
+		
+		return $data;
 	}
 	
 	function get_clients() {
