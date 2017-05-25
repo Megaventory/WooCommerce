@@ -8,7 +8,7 @@ require_once("address.php");
 class Megaventory_sync {
 	public $url = "https://apitest.megaventory.com/json/reply/";
 	public $xml_url = "https://apitest.megaventory.com/xml/reply/";
-	public $API_KEY = "827bc7518941837b@m65192"; // DEV AND DEBUG ONLY
+	public $API_KEY = "b7d0cc59b72af1e5@m65192"; // DEV AND DEBUG ONLY
 	
 	public $product_get_call = "ProductGet";
 	public $product_update_call = "ProductUpdate";
@@ -240,7 +240,7 @@ class Megaventory_sync {
 		$data = json_decode(file_get_contents($url), true);
 		var_dump($url);
 		var_dump($data);
-		return $this->mv_product_to_product($data["mvProduct"]);
+		return $this->mv_product_to_product($data["mvProducts"][0]);
 	}
 	
 	//update of create simple product
