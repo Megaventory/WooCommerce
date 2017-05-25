@@ -11,6 +11,8 @@ require_once( ABSPATH . "wp-includes/pluggable.php" );
 require_once("megaventory.php");
 require_once("woocommerce.php");
 
+define( 'ALTERNATE_WP_CRON', true );
+
 // initialize objects to connect to megaventory and woocommerce
 $GLOBALS["MV"] = new Megaventory_sync();
 $GLOBALS["WC"] = new Woocommerce_sync();
@@ -52,8 +54,9 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	//configure admin panel
 	add_action('admin_menu', 'plugin_setup_menu');
 	
-	add_action( 'added_post_meta', 'mp_sync_on_product_save', 10, 4 );
-	add_action( 'updated_post_meta', 'mp_sync_on_product_save', 10, 4 );
+	//on add / edit product
+	add_action('added_post_meta', 'mp_sync_on_product_save', 10, 4);
+	add_action('updated_post_meta', 'mp_sync_on_product_save', 10, 4);
 }
 
 //product edit or create
@@ -223,6 +226,8 @@ function get_guest_client() {
 
 function test() {
 	
+	//wp_mail( 'mpanasiuk@megaventory.com', 'Automatic email', 'Automatic scheduled email from WordPress.');
+	
 	$changes = $GLOBALS["MV"]->pull_product_changes();
 	
 	if (count($changes) <= 0) {
@@ -247,4 +252,45 @@ function test() {
 	
 	
 }
+
+//////// CRON //////////////////////////////////////////////////////////
+
+// The activation hook
+function isa_activation(){
+    if(!wp_next_scheduled('pull_changes_event')){
+        wp_schedule_event(time(), '5min', 'pull_changes_event');
+    }
+}
+
+register_activation_hook(__FILE__, 'isa_activation');
+
+// The deactivation hook
+function isa_deactivation(){
+    if(wp_next_scheduled('pull_changes_event')){
+        wp_clear_scheduled_hook('pull_changes_event');
+    }
+}
+
+register_deactivation_hook( __FILE__, 'isa_deactivation');
+
+
+// The schedule filter hook
+function schedule($schedules) {
+    $schedules['5min'] = array(
+            'interval'  => 30,
+            'display'   => __('Every 5 Minutes', 'textdomain')
+    );
+    return $schedules;
+}
+
+add_filter('cron_schedules', 'schedule');
+
+
+// The WP Cron event callback function
+function pull_changes() {
+	test();
+}
+
+add_action('pull_changes_event', 'pull_changes');
+
 ?>
