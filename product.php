@@ -154,6 +154,7 @@ class Product {
 		$ID = $wc_prod->ID;
 		
 		$prod->WC_ID = $wc_prod->ID;
+		$prod->MV_ID = get_post_meta($ID, 'MV_ID', true);
 		$prod->description = $wc_prod->post_title;
 		$prod->long_description = $wc_prod->post_content;
 		$prod->description = $wc_prod->post_excerpt;
@@ -243,6 +244,8 @@ class Product {
 		
 		$this->attach_image();
 		
+		update_post_meta($this->WC_ID, "MV_ID", $this->MV_ID);
+		
 		return true;
 		
 	}
@@ -287,6 +290,9 @@ class Product {
 		if (count($data['mvProduct']) <= 0) { //not saved
 			return false;
 		}
+		
+		update_post_meta($this->WC_ID, "MV_ID", $data["mvProduct"]["ProductID"]);
+		$this->MV_ID = $data["mvProduct"]["ProductID"];
 		
 		return $data['mvProduct'];
 	}
@@ -380,14 +386,15 @@ class Product {
 			}
 		}
 		
+		$category_id = array();
 		if ($with_create) {
+			echo $name;
 			$cid = wp_insert_term(
 				$name, // the term 
 				'product_cat', // the taxonomy
 				array()
 			);
-			array_push($category_id, $cid['term_id']);
-			return $category_id;
+			return array($cid['term_id']);
 		}
 		
 		return null;

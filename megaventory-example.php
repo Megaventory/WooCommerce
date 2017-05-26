@@ -138,6 +138,7 @@ if (isset($_POST['sync-mv-wc'])) {
 }
 
 function synchronize_products_mv_wc() {
+	/*
 	// synchronize with delete?
 	$with_delete = isset($_POST['with_delete']);
 	
@@ -148,6 +149,12 @@ function synchronize_products_mv_wc() {
 	// synchronize WC products and categories based on retrieved MV products and categories
 	$GLOBALS["WC"]->synchronize_categories($categories, $with_delete);
 	$GLOBALS["WC"]->synchronize_products($prods, $with_delete); 
+	*/
+	
+	$products = Product::mv_all();
+	foreach ($products as $product) {
+		$product->wc_save();
+	}
 }
 
 function synchronize_products_wc_mv() {
@@ -227,11 +234,7 @@ function get_guest_client() {
 }
 
 function test() {
-	//$client = Client::mv_find(24);
-	//var_dump($client);
-	//$client->contact_name = "watermelon melon";
-	//$client->mv_save();
-	Client::mv_undelete(24);
+	var_dump(Product::wc_all());
 }
 
 function synchronize_stock() {

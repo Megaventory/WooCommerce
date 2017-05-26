@@ -123,11 +123,14 @@ class Client {
 			';
 			
 		$xml_request = wrap_xml(self::$supplierclient_update_call, $xml_request);
-		echo htmlentities($xml_request);
+		//echo htmlentities($xml_request);
 		
 		$data = send_xml($url, $xml_request);
 		
-		var_dump($data);
+		update_user_meta($this->WC_ID, "MV_ID", $data["mvSupplierClient"]["SupplierClientID"]);
+		$this->MV_ID = $data["mvSupplierClient"]["SupplierClientID"];
+		
+		//var_dump($data);
 		return $data;
 	}
 	
