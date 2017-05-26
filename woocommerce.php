@@ -225,7 +225,6 @@ class Woocommerce_sync {
 		));
 		
 		$this->set_product_meta($post_id, $product);
-
 		
 		$this->attach_image($post_id, $product);
 		

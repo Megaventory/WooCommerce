@@ -11,6 +11,8 @@ require_once( ABSPATH . "wp-includes/pluggable.php" );
 require_once("megaventory.php");
 require_once("woocommerce.php");
 
+require_once("product.php");
+
 define( 'ALTERNATE_WP_CRON', true );
 
 // initialize objects to connect to megaventory and woocommerce
@@ -225,32 +227,18 @@ function get_guest_client() {
 }
 
 function test() {
-	$changes = $GLOBALS["MV"]->pull_product_changes();
+	/*
+	$prod = new Product();
+	$prod->SKU = "chair";
+	$prod->description = "chair for sitting down";
+	$prod->image_url = "http://cdn.wpbeginner.com/wp-content/uploads/2016/03/403screenshot.png";
+	$prod->long_description = "LONG DESC";
+	$prod->category = "BHEESE";
+	$prod->wc_save();
+	*/
 	
-	if (count($changes) <= 0) {
-		return;
-	}
-	
-	$mv_categories = $GLOBALS["MV"]->get_categories();
-	$GLOBALS["WC"]->synchronize_categories($mv_categories);
-	
-	foreach ($changes['mvIntegrationUpdates'] as $change) {
-		if ($change["Entity"] == "product") {
-			if ($change["Action"] == "update" or $change["Action"] == "insert") {
-				//get product new info
-				$product = $GLOBALS["MV"]->get_product($change["EntityIDs"]);
-				
-				//save new info
-				$GLOBALS["WC"]->synchronize_product($product);
-				//delete integration update as it was already resolved
-				$GLOBALS["MV"]->remove_integration_update($change['IntegrationUpdateID']);
-			//var_dump($product);
-			}
-		}
-		//var_dump($change);
-	}
-	
-	
+	$prod = Product::wc_find_by_sku("chair");
+	$prod->wc_destroy();
 }
 
 function synchronize_stock() {
@@ -294,7 +282,30 @@ add_filter('cron_schedules', 'schedule');
 
 // The WP Cron event callback function
 function pull_changes() {
-	test();
+	$changes = $GLOBALS["MV"]->pull_product_changes();
+	
+	if (count($changes) <= 0) {
+		return;
+	}
+	
+	$mv_categories = $GLOBALS["MV"]->get_categories();
+	$GLOBALS["WC"]->synchronize_categories($mv_categories);
+	
+	foreach ($changes['mvIntegrationUpdates'] as $change) {
+		if ($change["Entity"] == "product") {
+			if ($change["Action"] == "update" or $change["Action"] == "insert") {
+				//get product new info
+				$product = $GLOBALS["MV"]->get_product($change["EntityIDs"]);
+				
+				//save new info
+				$GLOBALS["WC"]->synchronize_product($product);
+				//delete integration update as it was already resolved
+				$GLOBALS["MV"]->remove_integration_update($change['IntegrationUpdateID']);
+			//var_dump($product);
+			}
+		}
+		//var_dump($change);
+	}
 }
 
 //on event, run pull_changes function
