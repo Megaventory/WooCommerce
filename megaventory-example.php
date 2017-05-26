@@ -227,22 +227,10 @@ function get_guest_client() {
 }
 
 function test() {
-	/*
-	$prod = new Product();
-	$prod->SKU = "chair";
-	$prod->description = "chair for sitting down";
-	$prod->image_url = "http://cdn.wpbeginner.com/wp-content/uploads/2016/03/403screenshot.png";
-	$prod->long_description = "LONG DESC";
-	$prod->category = "BHEESE";
-	$prod->wc_save();
-	*/
-	
-	//$prod = Product::wc_find_by_sku("chair");
-	//$prod->wc_destroy();
-	
-	$prod = Product::mv_find(42);
-	$prod->description = "boy";
-	$prod->mv_save();
+	$client = Client::mv_find(24);
+	var_dump($client);
+	$client->contact_name = "watermelon melon";
+	$client->mv_save();
 	
 }
 
