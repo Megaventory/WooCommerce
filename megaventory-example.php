@@ -225,9 +225,6 @@ function get_guest_client() {
 }
 
 function test() {
-	
-	//wp_mail( 'mpanasiuk@megaventory.com', 'Automatic email', 'Automatic scheduled email from WordPress.');
-	
 	$changes = $GLOBALS["MV"]->pull_product_changes();
 	
 	if (count($changes) <= 0) {
@@ -240,15 +237,23 @@ function test() {
 	foreach ($changes['mvIntegrationUpdates'] as $change) {
 		if ($change["Entity"] == "product") {
 			if ($change["Action"] == "update" or $change["Action"] == "insert") {
+				//get product new info
 				$product = $GLOBALS["MV"]->get_product($change["EntityIDs"]);
 				
+				//save new info
 				$GLOBALS["WC"]->synchronize_product($product);
+				//delete integration update as it was already resolved
 				$GLOBALS["MV"]->remove_integration_update($change['IntegrationUpdateID']);
 			//var_dump($product);
 			}
 		}
 		//var_dump($change);
 	}
+	
+	
+}
+
+function synchronize_stock() {
 	
 	
 }
@@ -274,15 +279,16 @@ function isa_deactivation(){
 register_deactivation_hook( __FILE__, 'isa_deactivation');
 
 
-// The schedule filter hook
+// every 5 mins
 function schedule($schedules) {
     $schedules['5min'] = array(
-            'interval'  => 30,
+            'interval'  => 5 * 60,
             'display'   => __('Every 5 Minutes', 'textdomain')
     );
     return $schedules;
 }
 
+// add 5min to cron schedule
 add_filter('cron_schedules', 'schedule');
 
 
@@ -291,6 +297,7 @@ function pull_changes() {
 	test();
 }
 
+//on event, run pull_changes function
 add_action('pull_changes_event', 'pull_changes');
 
 ?>
