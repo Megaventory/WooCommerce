@@ -27,6 +27,7 @@ class Product {
 	
 	private static $product_get_call = "ProductGet";
 	private static $product_update_call = "ProductUpdate";
+	private static $product_stock_call = "InventoryLocationStockGet";
 	private static $category_get_call = "ProductCategoryGet";
 	private static $category_update_call = "ProductCategoryUpdate";
 	private static $category_delete_call = "ProductCategoryDelete";
@@ -43,7 +44,21 @@ class Product {
 	}
 	
 	public static function mv_all() {
+		$categories = self::mv_get_categories();
 		
+		// get products as json
+		$jsonurl = create_json_url(self::$product_get_call);
+		$jsonprod = file_get_contents($jsonurl);
+		$jsonprod = json_decode($jsonprod, true);
+		
+		// interpret json into Product class
+		$products = array();
+		foreach ($jsonprod['mvProducts'] as $prod) {
+			$product = self::mv_convert($prod, $categories);
+			array_push($products, $product);
+		}
+		
+		return $products;
 	}
 	
 	public static function wc_find($id) {
@@ -56,7 +71,34 @@ class Product {
 	}
 	
 	public static function mv_find($id) {
+		$url = create_json_url_filter(self::$product_get_call, "ProductID", "Equals", urlencode($id));
+		$data = json_decode(file_get_contents($url), true);
+		if (count($data['mvProducts']) <= 0) {
+			return null; //no such ID
+		}
+		return self::mv_convert($data["mvProducts"][0]);
+	}
+	
+	private function pull_stock() {
+		$json_url = create_json_url_filter(self::$product_stock_call, "productid", "Equals", $this->MV_ID);
 		
+		$response = file_get_contents($json_url);
+		$response = json_decode($response, true);
+		
+		// summarise product on hand in all inventories
+		$response = $response['mvProductStockList'];
+		$total_on_hand = 0;
+		
+		if ($response[0]['mvStock'] != null) {
+			foreach ($response[0]['mvStock'] as $inventory) {
+				$total_on_hand += $inventory['StockOnHand'];
+			}
+		} else {
+			$this->stock_on_hand = 0;
+			return;
+		}
+		
+		$this->stock_on_hand = $total_on_hand;
 	}
 	
 	public static function wc_find_by_sku($SKU) {
@@ -70,11 +112,41 @@ class Product {
 	}
 	
 	public static function mv_find_by_sku($SKU) {
-		
+		$url = create_json_url_filter(self::$product_get_call, "ProductSKU", "Equals", urlencode($SKU));
+		$data = json_decode(file_get_contents($url), true);
+		if (count($data['mvProducts']) <= 0) {
+			return null; //no such ID
+		}
+		return self::mv_convert($data["mvProducts"][0]);
 	}
 	
-	private static function mv_convert($mv_prod) {
+	private static function mv_convert($mv_prod, $categories = null) {
+		//passing categories makes things faster and requires less API calls.
+		//always use $categories when using this function in a loop with many users
+		if ($categories == null) {
+			$categories = self::mv_get_categories();
+		}
+		$product = new Product();
 		
+		$product->MV_ID = $mv_prod['ProductID'];
+		$product->type = $mv_prod['ProductType'];
+		$product->SKU = $mv_prod['ProductSKU'];
+		$product->EAN = $mv_prod['ProductEAN'];
+		$product->description = $mv_prod['ProductDescription'];
+		$product->long_description = $mv_prod['ProductLongDescription'];
+		$product->image_url = $mv_prod['ProductImageURL'];
+		
+		$product->regular_price = $mv_prod['ProductSellingPrice'];
+		$product->category = $categories[$mv_prod['ProductCategoryID']];
+		
+		$product->weight = $mv_prod['ProductWeight'];
+		$product->length = $mv_prod['ProductLength'];
+		$product->breadth = $mv_prod['ProductBreadth'];
+		$product->height = $mv_prod['ProductHeight'];
+		
+		$product->pull_stock();
+		
+		return $product;	
 	}
 	
 	private static function wc_convert($wc_prod) {
@@ -164,7 +236,7 @@ class Product {
 		update_post_meta($this->WC_ID, '_sku', $this->SKU);
 		update_post_meta($this->WC_ID, '_price', $this->regular_price);
 		update_post_meta($this->WC_ID, '_manage_stock', "yes");
-		//update_post_meta($post_id, '_stock', (string)$product->stock_on_hand);
+		update_post_meta($this->WC_ID, '_stock', (string)$this->stock_on_hand);
 		
 		
 		//echo "<br>" . $product->stock_on_hand;
@@ -295,9 +367,6 @@ class Product {
 		return $categories;
 	}
 
-	public function test() {
-		return self::mv_get_categories();
-	}
 }
 
 

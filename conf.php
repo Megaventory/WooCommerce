@@ -6,7 +6,6 @@
 	$API_KEY = "b7d0cc59b72af1e5@m65192"; // DEV AND DEBUG ONLY
 	
 	
-	$product_stock_call = "InventoryLocationStockGet";
 	$supplierclient_get_call = "SupplierClientGet";
 	$supplierclient_update_call = "SupplierClientUpdate";
 	$supplierclient_undelete_call = "SupplierClientUndelete";
