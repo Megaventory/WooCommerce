@@ -247,8 +247,48 @@ class Product {
 		
 	}
 	
-	public function mv_save() {
+	public function mv_save($categories = null) {
+		if ($categories == null) {
+			$categories = self::mv_get_categories();
+		}
 		
+		$create_new = $this->MV_ID == null;
+		$action = ($create_new ? "Insert" : "Update");
+		$category_id = array_search($this->category, $categories);
+		
+		//this needs to be split into few small requests, as urls get too long otherwise
+		//$create_url = $this->create_json_url($this->product_update_call);
+		$url = create_xml_url(self::$product_update_call);
+		
+		$xml_request = '
+				<mvProduct>
+					' . ($create_new ? '<ProductType>BuyFromSupplier</ProductType>' : '') . '
+					' . ($create_new ? '' : '<ProductID>' . $this->MV_ID . '</ProductID>') . '
+					<ProductSKU>' . $this->SKU . '</ProductSKU> 
+					<ProductDescription>' . $this->description . '</ProductDescription> 
+					' . ($this->long_description ? '<ProductLongDescription>' . $this->long_description . '</ProductLongDescription>' : '') . '
+					' . ($category_id ? '<ProductCategoryID>' . $category_id . '</ProductCategoryID>' : '') . '
+					' . ($this->regular_price ? '<ProductSellingPrice>' . $this->regular_price . '</ProductSellingPrice>' : '') . '
+					' . ($this->weight ? '<ProductWeight>' . $this->weight . '</ProductWeight>' : '') . '
+					' . ($this->length ? '<ProductLength>' . $this->length . '</ProductLength>' : '') . '
+					' . ($this->breadth ? '<ProductBreadth>' . $this->breadth . '</ProductBreadth>' : '') . '
+					' . ($this->height ? '<ProductHeight>' . $this->height . '</ProductHeight>' : '') . '
+					' . ($this->image_url ? '<ProductImageURL>' . $this->image_url . '</ProductImageURL>' : '') . '
+				</mvProduct>
+				<mvRecordAction>' . $action . '</mvRecordAction>
+				<mvInsertUpdateDeleteSourceApplication>String</mvInsertUpdateDeleteSourceApplication>
+			';
+		$xml_request = wrap_xml(self::$product_update_call, $xml_request);
+		
+		$data = send_xml($url, $xml_request);
+		
+		var_dump($data);
+		
+		if (count($data['mvProduct']) <= 0) { //not saved
+			return false;
+		}
+		
+		return $data['mvProduct'];
 	}
 	
 	public function wc_destroy() {
@@ -355,7 +395,6 @@ class Product {
 	
 	private static function mv_get_categories() {
 		$jsonurl = create_json_url(self::$category_get_call);
-		echo "URL: " . $jsonurl . "<br>";
 		$jsoncat = file_get_contents($jsonurl);
 		$jsoncat = json_decode($jsoncat, true);
 		

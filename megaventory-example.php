@@ -240,7 +240,10 @@ function test() {
 	//$prod = Product::wc_find_by_sku("chair");
 	//$prod->wc_destroy();
 	
-	var_dump(Product::mv_find_by_sku('dvd-sw5'));
+	$prod = Product::mv_find(42);
+	$prod->description = "boy";
+	$prod->mv_save();
+	
 }
 
 function synchronize_stock() {
