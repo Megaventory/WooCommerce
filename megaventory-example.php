@@ -237,8 +237,11 @@ function test() {
 	$prod->wc_save();
 	*/
 	
-	$prod = Product::wc_find_by_sku("chair");
-	$prod->wc_destroy();
+	//$prod = Product::wc_find_by_sku("chair");
+	//$prod->wc_destroy();
+	
+	$prod = new Product();
+	var_dump($prod->test());
 }
 
 function synchronize_stock() {

@@ -25,6 +25,12 @@ class Product {
 	public $version;
 	public $stock_on_hand;
 	
+	private static $product_get_call = "ProductGet";
+	private static $product_update_call = "ProductUpdate";
+	private static $category_get_call = "ProductCategoryGet";
+	private static $category_update_call = "ProductCategoryUpdate";
+	private static $category_delete_call = "ProductCategoryDelete";
+	
 	public static function wc_all() {
 		$args = array('post_type' => 'product', numberposts => -1);
 		$products = get_posts($args);
@@ -241,7 +247,7 @@ class Product {
 		return true;
 	}
 	
-	private function wc_get_category_id_by_name($name, $with_create = false) {
+	private static function wc_get_categories() {
 		$args = array(
 			'number'     => $number,
 			'orderby'    => $orderby,
@@ -249,7 +255,11 @@ class Product {
 			'hide_empty' => $hide_empty,
 			'include'    => $ids
 		);
-		$product_categories = get_terms('product_cat', $args);
+		return get_terms('product_cat', $args);
+	}
+	
+	private function wc_get_category_id_by_name($name, $with_create = false) {
+		$product_categories = self::wc_get_categories();
 		$category_id = array();
 		foreach($product_categories as $item) {
 			if ($item->name == $this->category) {
@@ -270,7 +280,24 @@ class Product {
 		
 		return null;
 	}
+	
+	private static function mv_get_categories() {
+		$jsonurl = create_json_url(self::$category_get_call);
+		echo "URL: " . $jsonurl . "<br>";
+		$jsoncat = file_get_contents($jsonurl);
+		$jsoncat = json_decode($jsoncat, true);
+		
+		$categories = array();
+		foreach ($jsoncat['mvProductCategories'] as $cat) {
+			$categories[$cat['ProductCategoryID']] = $cat['ProductCategoryName'];
+		}
+		
+		return $categories;
+	}
 
+	public function test() {
+		return self::mv_get_categories();
+	}
 }
 
 
