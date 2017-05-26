@@ -227,11 +227,11 @@ function get_guest_client() {
 }
 
 function test() {
-	$client = Client::mv_find(24);
-	var_dump($client);
-	$client->contact_name = "watermelon melon";
-	$client->mv_save();
-	
+	//$client = Client::mv_find(24);
+	//var_dump($client);
+	//$client->contact_name = "watermelon melon";
+	//$client->mv_save();
+	Client::mv_undelete(24);
 }
 
 function synchronize_stock() {

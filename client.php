@@ -131,6 +131,12 @@ class Client {
 		return $data;
 	}
 	
+	public static function mv_undelete($id) {
+		$url = create_json_url(self::$supplierclient_undelete_call);
+		$url .= "&SupplierClientIDToUndelete=" . urlencode($id);
+		file_get_contents($url);
+	}
+	
 	
 }
 
