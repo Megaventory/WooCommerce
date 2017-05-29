@@ -146,17 +146,6 @@ class Product {
 		
 		$product->pull_stock();
 		
-		echo "<br> PROD:";
-		var_dump($mv_prod);
-		echo "<br> categories: ";
-		var_dump($categories);
-		echo "<br> ID: ";
-		var_dump($mv_prod['ProductCategoryID']);
-		echo "<br> name: ";
-		var_dump($categories[$mv_prod['ProductCategoryID']]);
-		echo "<br> ENDLICH: ";
-		var_dump($product->category);
-		
 		return $product;	
 	}
 	
@@ -198,8 +187,6 @@ class Product {
 			}
 		}	
 		
-		echo "<br> WC SAVING";
-		var_dump($this);
 		//prevent null on empty
 		if ($this->long_description == null) {
 			$this->long_description = "";
@@ -235,7 +222,6 @@ class Product {
 		//meta
 		
 		//set category
-		echo "<br> THIS CAT ON SAVE: " . $this->category;
 		if ($this->category != null) {
 			$category_id = $this->wc_get_category_id_by_name($this->category, true);
 			if ($category_id) {
@@ -410,17 +396,12 @@ class Product {
 		
 		$category_id = array();
 		if ($with_create) {
-			echo $name;
 			$cid = wp_insert_term(
 				$name, // the term 
 				'product_cat', // the taxonomy
 				array()
 			);
-			if ( is_wp_error( $cid ) ) {
-				echo $cid->get_error_message();
-			} else {
 			return array($cid['term_id']);
-		}
 		}
 		
 		return null;

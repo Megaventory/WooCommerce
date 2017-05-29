@@ -72,8 +72,13 @@ function mp_sync_on_product_save($meta_id, $post_id, $meta_key, $meta_value) {
 			$GLOBALS["MV"]->synchronize_categories($wc_categories);
 			
 			
-			$product = $GLOBALS["WC"]->get_product($post_id);
-			$GLOBALS["MV"]->synchronize_product($product);
+			//$product = $GLOBALS["WC"]->get_product($post_id);
+			//$GLOBALS["MV"]->synchronize_product($product);
+			
+			$product = Product::wc_find($post_id);
+			$response = $product->mv_save();
+			echo "<br> RESPONSE: <br>";
+			var_dump($response);
 		}
 	}
 }
