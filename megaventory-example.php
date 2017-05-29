@@ -8,12 +8,14 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 require_once( ABSPATH . "wp-includes/pluggable.php" );
-require_once("megaventory.php");
-require_once("woocommerce.php");
 
-// initialize objects to connect to megaventory and woocommerce
-$GLOBALS["MV"] = new Megaventory_sync();
-$GLOBALS["WC"] = new Woocommerce_sync();
+require_once("api.php");
+require_once("product.php");
+require_once("client.php");
+
+
+define( 'ALTERNATE_WP_CRON', true );
+
 
 // this function will be called everytime an order is finalized
 function order_placed($order_id){
@@ -29,13 +31,13 @@ function order_placed($order_id){
 	echo "<br><br> customerID: " . $order->get_customer_id();
 	
 	$id = $order->get_customer_id();
-	$client = $GLOBALS["WC"]->get_client($id);
+	$client = Client::wc_find($id);
 	if ($client == null) {
 		echo "CLIENT WAS NUL";
-		$client = get_guest_client();
+		$client = get_guest_mv_client();
 	}
 	
-	$GLOBALS["MV"]->place_sales_order($order, $client);
+	place_sales_order($order, $client);
 	
 	var_dump($client);
 }
@@ -51,6 +53,39 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	
 	//configure admin panel
 	add_action('admin_menu', 'plugin_setup_menu');
+	
+	//on add / edit product
+	//add_action('save_post', 'mp_sync_on_product_save', 10, 3);
+}
+
+function my_project_updated_send_email( $post_id ) {
+
+	// If this is just a revision, don't send the email.
+	if ( wp_is_post_revision( $post_id ) )
+		return;
+
+	$post_title = get_the_title( $post_id );
+	$post_url = get_permalink( $post_id );
+	$subject = 'A post has been updated';
+
+	$message = "A post has been updated on your website:\n\n";
+	$message .= $post_title . ": " . $post_url;
+
+	// Send email to admin.
+	wp_mail( 'mpanasiuk@megaventory.com', $subject, $message );
+	echo "BOY";
+}
+//add_action( 'save_post', 'my_project_updated_send_email' );
+
+//product edit or create
+function mp_sync_on_product_save($post_id, $post, $update) {
+	echo "POST ID: " . $post_id . "<br>";
+	wp_mail( 'mpanasiuk@megaventory.com', "We out here doing bad shit nigga", $post_id );
+	if (get_post_type($post_id) == 'product') { 
+		
+		$product = Product::wc_find($post_id);
+		$response = $product->mv_save();
+	}
 }
 
 function plugin_setup_menu(){
@@ -113,40 +148,57 @@ if (isset($_POST['sync-mv-wc'])) {
 }
 
 function synchronize_products_mv_wc() {
-	// synchronize with delete?
+	
+	$mv_products = Product::mv_all();
+	
 	$with_delete = isset($_POST['with_delete']);
+	if ($with_delete) {
+		$wc_products = Product::wc_all();
+		
+		//if product is in wc_products, but not in mv_products, it can be deleted
+		foreach ($wc_products as $wc_product) {
+			$delete = true;
+			foreach ($mv_products as $mv_product) {
+				if ($wc_product->SKU == $mv_product->SKU) { //not to be deleted
+					$delete = false;
+					continue;
+				}
+			}
+			if ($delete) {
+				$wc_product->wc_destroy();
+			}
+		}
+	}
 	
-	// get MV prpducts and categories
-	$prods = $GLOBALS["MV"]->get_products();
-	$categories = $GLOBALS["MV"]->get_categories();
+	//save new values
+	foreach ($mv_products as $mv_product) {
+		$mv_product->wc_save();
+	}
 	
-	// synchronize WC products and categories based on retrieved MV products and categories
-	$GLOBALS["WC"]->synchronize_categories($categories, $with_delete);
-	$GLOBALS["WC"]->synchronize_products($prods, $with_delete); 
+	
 }
 
 function synchronize_products_wc_mv() {
 	// synchronize with delete?
 	$with_delete = isset($_POST['with_delete']);
 	
-	// get WC products and categories();
-	$prods = $GLOBALS["WC"]->get_products();
-	$categories = $GLOBALS["WC"]->get_categories();
+	$wc_products = Product::wc_all();
 	
-	$GLOBALS["MV"]->synchronize_categories($categories, $with_delete);
-	$GLOBALS["MV"]->synchronize_products($prods, $with_delete);
+	foreach ($wc_products as $wc_product) {
+		$wc_product->mv_save();
+	}
 }
 
 function synchronize_clients() {
 	// synchronize with delete?
 	$with_delete = isset($_POST['with_delete']);
+	//do delete later - discuss with kostis SupplierClientDeleteAction enum
 	
-	$clients = $GLOBALS["WC"]->get_clients();
+	$wc_clients = Client::wc_all();
 	
-	//echo "CLIENTS";
-	//var_dump($clients);
-	
-	$GLOBALS["MV"]->synchronize_clients($clients, $with_delete);
+	foreach ($wc_clients as $wc_client) {
+		$wc_client->mv_save();
+	}
 }
 
 
@@ -159,20 +211,20 @@ function initialize_integration() {
 		update_user_meta($id, "last_name", "Guest");
 	}
 	
-	$wc_main = $GLOBALS["WC"]->get_client($id);
+	$wc_main = Client::wc_find($id);
 	
 	var_dump($wc_main);
-	$response = $GLOBALS["MV"]->createUpdateClient($wc_main, true);
+	$response = $wc_main->mv_save();
 	var_dump($response);
 	if ($response['InternalErrorCode'] == "SupplierClientAlreadyDeleted") {
 		// client must be undeleted first and then updated
-		$GLOBALS["MV"]->undeleteClient($response["entityID"]);
+		Client::mv_undelete($response["entityID"]);
 		$response["mvSupplierClient"]["SupplierClientID"] = $response["entityID"];
 	}
 	
 	$id = -1;
 	if ($response['mvSupplierClient'] == null) {
-		$id = $GLOBALS["MV"]->get_client_by_name("WooCommerce Guest")->MV_ID;
+		$id = Client::mv_find_by_name("WooCommerce Guest")->MV_ID;
 	} else {
 		$id = $response["mvSupplierClient"]["SupplierClientID"];
 	}
@@ -194,17 +246,86 @@ function initialize_integration() {
 	}
 }
 
-function get_guest_client() {
+function get_guest_mv_client() {
 	$post = get_page_by_title("guest_id", ARRAY_A, "post");
 	$id = $post['post_content'];
-	$client = $GLOBALS["MV"]->get_client($id);
+	$client = Client::mv_find($id);
 	return $client;
 }
 
 function test() {
+	var_dump(Client::wc_all());
+	echo "<br>-----------------------<br>";
+	var_dump(Client::wc_find(1));
+}
+
+function synchronize_stock() {
 	
-	while ($post = get_page_by_title("guest_id", ARRAY_A, "post")) {
-		wp_delete_post($post["ID"]);
+	
+}
+
+//////// CRON //////////////////////////////////////////////////////////
+
+// The activation hook
+function isa_activation(){
+    if(!wp_next_scheduled('pull_changes_event')){
+        wp_schedule_event(time(), '5min', 'pull_changes_event');
+    }
+}
+
+register_activation_hook(__FILE__, 'isa_activation');
+
+// The deactivation hook
+function isa_deactivation(){
+    if(wp_next_scheduled('pull_changes_event')){
+        wp_clear_scheduled_hook('pull_changes_event');
+    }
+}
+
+register_deactivation_hook( __FILE__, 'isa_deactivation');
+
+
+// every 5 mins
+function schedule($schedules) {
+    $schedules['5min'] = array(
+            'interval'  => 30, //30 secs for debug //5 * 60, //5min
+            'display'   => __('Every 5 Minutes', 'textdomain')
+    );
+    return $schedules;
+}
+
+// add 5min to cron schedule
+add_filter('cron_schedules', 'schedule');
+
+
+// The WP Cron event callback function
+function pull_changes() {
+	$changes = pull_product_changes();
+	
+	if (count($changes) <= 0) {
+		return;
+	}
+	
+	$mv_categories = Product::mv_get_categories(); //is this needed?
+	
+	foreach ($changes['mvIntegrationUpdates'] as $change) {
+		var_dump($change);
+		if ($change["Entity"] == "product") {
+			if ($change["Action"] == "update" or $change["Action"] == "insert") {
+				//get product new info
+				$product = Product::mv_find($change['EntityIDs']);
+				
+				//save new info
+				$product->wc_save();
+				
+				//delete integration update as it was already resolved
+				remove_integration_update($change['IntegrationUpdateID']);
+			}
+		}
 	}
 }
+
+//on event, run pull_changes function
+//add_action('pull_changes_event', 'pull_changes'); //PREVENT INFINITE LOOP IN DEBUG, TALK TO KOSTIS ABOUT THIS!!!!
+
 ?>
