@@ -85,15 +85,6 @@ function mp_sync_on_product_save($post_id, $post, $update) {
 	echo "POST ID: " . $post_id . "<br>";
 	wp_mail( 'mpanasiuk@megaventory.com', "We out here doing bad shit nigga", $post_id );
 	if (get_post_type($post_id) == 'product') { 
-		//this is really quick. I will think of a better way to do this later
-		//WC treats categories very trivially, it is hard to synchronize them quickly
-		//and without failures, so this approach might be necessary
-		$wc_categories = $GLOBALS["WC"]->get_categories();
-		$GLOBALS["MV"]->synchronize_categories($wc_categories);
-		
-		
-		//$product = $GLOBALS["WC"]->get_product($post_id);
-		//$GLOBALS["MV"]->synchronize_product($product);
 		
 		$product = Product::wc_find($post_id);
 		$response = $product->mv_save();
@@ -194,13 +185,6 @@ function synchronize_products_wc_mv() {
 	// synchronize with delete?
 	$with_delete = isset($_POST['with_delete']);
 	
-	// get WC products and categories();
-	//$prods = $GLOBALS["WC"]->get_products();
-	//$categories = $GLOBALS["WC"]->get_categories();
-	
-	//$GLOBALS["MV"]->synchronize_categories($categories, $with_delete);
-	//$GLOBALS["MV"]->synchronize_products($prods, $with_delete);
-	
 	$wc_products = Product::wc_all();
 	
 	foreach ($wc_products as $wc_product) {
@@ -212,12 +196,18 @@ function synchronize_clients() {
 	// synchronize with delete?
 	$with_delete = isset($_POST['with_delete']);
 	
-	$clients = $GLOBALS["WC"]->get_clients();
+	//$clients = $GLOBALS["WC"]->get_clients();
 	
 	//echo "CLIENTS";
 	//var_dump($clients);
 	
-	$GLOBALS["MV"]->synchronize_clients($clients, $with_delete);
+	//$GLOBALS["MV"]->synchronize_clients($clients, $with_delete);
+	
+	$wc_clients = Client::wc_all();
+	
+	foreach ($wc_clients as $wc_client) {
+		$wc_client->mv_save();
+	}
 }
 
 

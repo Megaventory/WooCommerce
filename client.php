@@ -22,6 +22,7 @@ class Client {
 	private static $supplierclient_get_call = "SupplierClientGet";
 	private static $supplierclient_update_call = "SupplierClientUpdate";
 	private static $supplierclient_undelete_call = "SupplierClientUndelete";
+	private static $supplierclient_delete_call = "SupplierClientDelete";
 
 	public static function wc_all() {
 		$clients = array();
@@ -45,6 +46,15 @@ class Client {
 	
 	public static function mv_find($id) {
 		$url = create_json_url_filter(self::$supplierclient_get_call, "SupplierClientID", "Equals", urlencode($id));
+		$client = json_decode(file_get_contents($url), true);
+		if (count($client['mvSupplierClients']) <= 0) {
+			return null;
+		}
+		return self::mv_convert($client['mvSupplierClients'][0]);
+	}
+	
+	public static function mv_find_by_name($name) {
+		$url = create_json_url_filter(self::$supplierclient_get_call, "SupplierClientName", "Equals", urlencode($name));
 		$client = json_decode(file_get_contents($url), true);
 		if (count($client['mvSupplierClients']) <= 0) {
 			return null;
@@ -107,6 +117,60 @@ class Client {
 	
 	public function mv_save() {
 		$url = create_xml_url(self::$supplierclient_update_call);
+		$xml_request = $this->generate_update_xml();
+		echo "<br>SENDING: <br>";
+		echo htmlentities($xml_request);
+		
+		$data = send_xml($url, $xml_request);
+		
+		
+		//what if client was deleted or name already exists
+		$undeleted = false;
+		if ($data['InternalErrorCode'] == "SupplierClientAlreadyDeleted") {
+			// client must be undeleted first and then updated
+			self::mv_undelete($data["entityID"]);
+			
+			// if undelete, this name will exist. next if statement has to decide what to do next
+			$data['InternalErrorCode'] = "SupplierClientNameAlreadyExists";
+			$undeleted = true;
+		} 
+		
+		if ($data['InternalErrorCode'] == "SupplierClientNameAlreadyExists") {
+			$mv_client = self::mv_find_by_name($client->contact_name);
+			//$client->MV_ID = $mv_client->MV_ID;
+			echo "<br> COMPARING " . $this->email . " : " . $mv_client->email;
+			if ($this->email == $mv_client->email) { //same person
+				$this->MV_ID = $mv_client->MV_ID;
+				$this->contact_name = $mv_client->contact_name;
+				
+				$xml_request = $this->generate_update_xml();
+				echo "<br>SENDING: <br>";
+				echo htmlentities($xml_request);
+				$data = send_xml($url, $xml_request);
+			} else { //different person
+				$client->contact_name = $client->contact_name . " - " . $client->email;
+				$xml_request = $this->generate_update_xml();
+				echo "<br>SENDING: <br>";
+				echo htmlentities($xml_request);
+				$data = send_xml($url, $xml_request);
+				
+				if ($undeleted) {
+					//in the end, it seems that this client was undeleted for no reason
+					//however, he needs to be undeleted in order to gain information
+					$mv_client->mv_destroy();
+				}
+			}
+		}
+		
+		update_user_meta($this->WC_ID, "MV_ID", $data["mvSupplierClient"]["SupplierClientID"]);
+		$this->MV_ID = $data["mvSupplierClient"]["SupplierClientID"];
+		
+		echo "<br> RESPONSE: <br>";
+		var_dump($data);
+		return $data;
+	}
+	
+	private function generate_update_xml() {
 		$create_new = $this->MV_ID == null;
 		$action = ($create_new ? "Insert" : "Update");
 		
@@ -125,21 +189,19 @@ class Client {
 			';
 			
 		$xml_request = wrap_xml(self::$supplierclient_update_call, $xml_request);
-		//echo htmlentities($xml_request);
-		
-		$data = send_xml($url, $xml_request);
-		
-		update_user_meta($this->WC_ID, "MV_ID", $data["mvSupplierClient"]["SupplierClientID"]);
-		$this->MV_ID = $data["mvSupplierClient"]["SupplierClientID"];
-		
-		//var_dump($data);
-		return $data;
 	}
 	
 	public static function mv_undelete($id) {
 		$url = create_json_url(self::$supplierclient_undelete_call);
 		$url .= "&SupplierClientIDToUndelete=" . urlencode($id);
 		file_get_contents($url);
+	}
+	
+	public function mv_destroy() {
+		//for laterz
+		//$url = create_json_url(self::$supplierclient_delete_call);
+		//$url .= "&SupplierClientIDToDelete=" . urlencode($this->MV_ID);
+		//file_get_contents($url);
 	}
 	
 	
