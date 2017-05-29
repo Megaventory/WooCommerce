@@ -35,9 +35,11 @@
 		
 		curl_close($ch);
 		
+		echo $data;
 		$data = simplexml_load_string(html_entity_decode($data), "SimpleXMLElement", LIBXML_NOCDATA);
 		$data = json_encode($data);
 		$data = json_decode($data, TRUE);
+		
 		
 		return $data;
 	}

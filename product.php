@@ -27,6 +27,7 @@ class Product {
 	
 	private static $product_get_call = "ProductGet";
 	private static $product_update_call = "ProductUpdate";
+	private static $product_undelete_call = "ProductUndelete";
 	private static $product_stock_call = "InventoryLocationStockGet";
 	private static $category_get_call = "ProductCategoryGet";
 	private static $category_update_call = "ProductCategoryUpdate";
@@ -263,8 +264,6 @@ class Product {
 			$categories = self::mv_get_categories();
 		}
 		
-		$create_new = $this->MV_ID == null;
-		$action = ($create_new ? "Insert" : "Update");
 		echo "UPDATING CATEGORY: " . $this->category . "<br>";
 		if ($this->category != null) {
 			$category_id = array_search($this->category, $categories);
@@ -279,6 +278,39 @@ class Product {
 		//this needs to be split into few small requests, as urls get too long otherwise
 		//$create_url = $this->create_json_url($this->product_update_call);
 		$url = create_xml_url(self::$product_update_call);
+		
+		$xml_request = $this->generate_update_xml($category_id);
+		
+		$data = send_xml($url, $xml_request);
+		
+		var_dump($data);
+		
+		if ($data['InternalErrorCode'] == "ProductSKUAlreadyDeleted") {
+			$this->MV_ID = $data['entityID'];
+			$undelete_url = create_json_url(self::$product_undelete_call);
+			$undelete_url = $undelete_url . "&ProductIDToUndelete=" . urlencode($this->MV_ID);
+			file_get_contents($undelete_url);
+			
+			//try again
+			$xml_request = $this->generate_update_xml($category_id);
+			echo "YO BOY BOBOBOBOBOBOY "; var_dump(htmlentities($xml_request));
+			$data = send_xml($url, $xml_request);
+		}
+		
+		if (count($data['mvProduct']) <= 0) { //not saved
+			return false;
+		}
+		
+		update_post_meta($this->WC_ID, "MV_ID", $data["mvProduct"]["ProductID"]);
+		$this->MV_ID = $data["mvProduct"]["ProductID"];
+		
+		return $data['mvProduct'];
+	}
+	
+	private function generate_update_xml($category_id = null) {
+		//find category_id outside this function
+		$create_new = $this->MV_ID == null;
+		$action = ($create_new ? "Insert" : "Update");
 		
 		$xml_request = '
 				<mvProduct>
@@ -296,22 +328,10 @@ class Product {
 					' . ($this->image_url ? '<ProductImageURL>' . $this->image_url . '</ProductImageURL>' : '') . '
 				</mvProduct>
 				<mvRecordAction>' . $action . '</mvRecordAction>
-				<mvInsertUpdateDeleteSourceApplication>String</mvInsertUpdateDeleteSourceApplication>
 			';
 		$xml_request = wrap_xml(self::$product_update_call, $xml_request);
 		
-		$data = send_xml($url, $xml_request);
-		
-		var_dump($data);
-		
-		if (count($data['mvProduct']) <= 0) { //not saved
-			return false;
-		}
-		
-		update_post_meta($this->WC_ID, "MV_ID", $data["mvProduct"]["ProductID"]);
-		$this->MV_ID = $data["mvProduct"]["ProductID"];
-		
-		return $data['mvProduct'];
+		return $xml_request;
 	}
 	
 	public function wc_destroy() {
