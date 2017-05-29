@@ -58,7 +58,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	add_action('admin_menu', 'plugin_setup_menu');
 	
 	//on add / edit product
-	add_action('save_post', 'mp_sync_on_product_save', 10, 3);
+	//add_action('save_post', 'mp_sync_on_product_save', 10, 3);
 }
 
 function my_project_updated_send_email( $post_id ) {
@@ -160,20 +160,8 @@ if (isset($_POST['sync-mv-wc'])) {
 }
 
 function synchronize_products_mv_wc() {
-	/*
-	// synchronize with delete?
-	
-	// get MV prpducts and categories
-	$prods = $GLOBALS["MV"]->get_products();
-	$categories = $GLOBALS["MV"]->get_categories();
-	
-	// synchronize WC products and categories based on retrieved MV products and categories
-	$GLOBALS["WC"]->synchronize_categories($categories, $with_delete);
-	$GLOBALS["WC"]->synchronize_products($prods, $with_delete); 
-	*/
 	
 	$mv_products = Product::mv_all();
-	
 	
 	$with_delete = isset($_POST['with_delete']);
 	if ($with_delete) {
@@ -207,11 +195,17 @@ function synchronize_products_wc_mv() {
 	$with_delete = isset($_POST['with_delete']);
 	
 	// get WC products and categories();
-	$prods = $GLOBALS["WC"]->get_products();
-	$categories = $GLOBALS["WC"]->get_categories();
+	//$prods = $GLOBALS["WC"]->get_products();
+	//$categories = $GLOBALS["WC"]->get_categories();
 	
-	$GLOBALS["MV"]->synchronize_categories($categories, $with_delete);
-	$GLOBALS["MV"]->synchronize_products($prods, $with_delete);
+	//$GLOBALS["MV"]->synchronize_categories($categories, $with_delete);
+	//$GLOBALS["MV"]->synchronize_products($prods, $with_delete);
+	
+	$wc_products = Product::wc_all();
+	
+	foreach ($wc_products as $wc_product) {
+		$wc_product->mv_save();
+	}
 }
 
 function synchronize_clients() {
@@ -279,7 +273,11 @@ function get_guest_client() {
 }
 
 function test() {
-	pull_changes();
+	//pull_changes();
+	echo "RESPONSE: ";
+	
+	var_dump(Product::mv_create_category("TEST CATEGORY"));
+	var_dump(Product::mv_create_category("TEST CATEGORY8"));
 }
 
 function synchronize_stock() {

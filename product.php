@@ -31,6 +31,7 @@ class Product {
 	private static $category_get_call = "ProductCategoryGet";
 	private static $category_update_call = "ProductCategoryUpdate";
 	private static $category_delete_call = "ProductCategoryDelete";
+	private static $category_undelete_call = "ProductCategoryUndelete";
 	
 	public static function wc_all() {
 		$args = array('post_type' => 'product', numberposts => -1);
@@ -264,7 +265,16 @@ class Product {
 		
 		$create_new = $this->MV_ID == null;
 		$action = ($create_new ? "Insert" : "Update");
-		$category_id = array_search($this->category, $categories);
+		echo "UPDATING CATEGORY: " . $this->category . "<br>";
+		if ($this->category != null) {
+			$category_id = array_search($this->category, $categories);
+			var_dump($category_id);
+			echo " cat_ID<br>";
+			if (!$category_id) { //need to create new category
+				echo "lest create cat: " . $this->category . "<br>;";
+				$category_id = self::mv_create_category($this->category);
+			}
+		}
 		
 		//this needs to be split into few small requests, as urls get too long otherwise
 		//$create_url = $this->create_json_url($this->product_update_call);
@@ -420,6 +430,31 @@ class Product {
 		return $categories;
 	}
 
+	public static function mv_create_category($name) {
+		echo "finally creating: " . $name . "<br>";
+		$create_url = create_json_url(self::$category_update_call);
+		$url = $create_url . "&mvProductCategory={ProductCategoryName:" . urlencode($name) . "}";
+		$response = json_decode(file_get_contents($url), true);
+		
+		if ($response['InternalErrorCode'] == "CategoryWasDeleted") { //needs to be undeleted
+			$id = $response['entityID'];
+			echo "UNDELETING" . $id . "<br>";
+			$undelete_url = create_json_url(self::$category_undelete_call);
+			$url = $undelete_url . "&ProductCategoryIDToUndelete=" . urlencode($id);
+			$response = json_decode(file_get_contents($url), true);
+			if ($response['result']) {
+				$response['mvProductCategory'] = array();
+				$response['mvProductCategory']['ProductCategoryID'] = $id;
+			}
+		}
+		
+		echo "response: ";
+		var_dump($response);
+		
+		echo "returning: " . $response['mvProductCategory']['ProductCategoryID'] . "<br>";
+		
+		return (array_key_exists('mvProductCategory', $response)) ? $response['mvProductCategory']['ProductCategoryID'] : null;
+	}
 }
 
 
