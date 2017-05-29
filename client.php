@@ -1,5 +1,7 @@
 <?php
 
+require_once("api.php");
+
 // This class works as a model for a client
 // clients are only transfered from wc to mv
 class Client {

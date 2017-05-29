@@ -1,6 +1,6 @@
 <?php
 
-require_once("conf.php");
+require_once("api.php");
 
 // This class works as a model for a product
 // It holds all important attributes of a MV/WC product

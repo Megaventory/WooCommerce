@@ -11,6 +11,7 @@ require_once( ABSPATH . "wp-includes/pluggable.php" );
 require_once("megaventory.php");
 require_once("woocommerce.php");
 
+require_once("api.php");
 require_once("product.php");
 
 define( 'ALTERNATE_WP_CRON', true );
@@ -57,29 +58,45 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	add_action('admin_menu', 'plugin_setup_menu');
 	
 	//on add / edit product
-	add_action('added_post_meta', 'mp_sync_on_product_save', 10, 4);
-	add_action('updated_post_meta', 'mp_sync_on_product_save', 10, 4);
+	add_action('save_post', 'mp_sync_on_product_save', 10, 3);
 }
 
+function my_project_updated_send_email( $post_id ) {
+
+	// If this is just a revision, don't send the email.
+	if ( wp_is_post_revision( $post_id ) )
+		return;
+
+	$post_title = get_the_title( $post_id );
+	$post_url = get_permalink( $post_id );
+	$subject = 'A post has been updated';
+
+	$message = "A post has been updated on your website:\n\n";
+	$message .= $post_title . ": " . $post_url;
+
+	// Send email to admin.
+	wp_mail( 'mpanasiuk@megaventory.com', $subject, $message );
+	echo "BOY";
+}
+//add_action( 'save_post', 'my_project_updated_send_email' );
+
 //product edit or create
-function mp_sync_on_product_save($meta_id, $post_id, $meta_key, $meta_value) {
-	if ($meta_key == '_edit_lock') {
-		if (get_post_type($post_id) == 'product') { 
-			//this is really quick. I will think of a better way to do this later
-			//WC treats categories very trivially, it is hard to synchronize them quickly
-			//and without failures, so this approach might be necessary
-			$wc_categories = $GLOBALS["WC"]->get_categories();
-			$GLOBALS["MV"]->synchronize_categories($wc_categories);
-			
-			
-			//$product = $GLOBALS["WC"]->get_product($post_id);
-			//$GLOBALS["MV"]->synchronize_product($product);
-			
-			$product = Product::wc_find($post_id);
-			$response = $product->mv_save();
-			echo "<br> RESPONSE: <br>";
-			var_dump($response);
-		}
+function mp_sync_on_product_save($post_id, $post, $update) {
+	echo "POST ID: " . $post_id . "<br>";
+	wp_mail( 'mpanasiuk@megaventory.com', "We out here doing bad shit nigga", $post_id );
+	if (get_post_type($post_id) == 'product') { 
+		//this is really quick. I will think of a better way to do this later
+		//WC treats categories very trivially, it is hard to synchronize them quickly
+		//and without failures, so this approach might be necessary
+		$wc_categories = $GLOBALS["WC"]->get_categories();
+		$GLOBALS["MV"]->synchronize_categories($wc_categories);
+		
+		
+		//$product = $GLOBALS["WC"]->get_product($post_id);
+		//$GLOBALS["MV"]->synchronize_product($product);
+		
+		$product = Product::wc_find($post_id);
+		$response = $product->mv_save();
 	}
 }
 
@@ -145,7 +162,6 @@ if (isset($_POST['sync-mv-wc'])) {
 function synchronize_products_mv_wc() {
 	/*
 	// synchronize with delete?
-	$with_delete = isset($_POST['with_delete']);
 	
 	// get MV prpducts and categories
 	$prods = $GLOBALS["MV"]->get_products();
@@ -156,10 +172,34 @@ function synchronize_products_mv_wc() {
 	$GLOBALS["WC"]->synchronize_products($prods, $with_delete); 
 	*/
 	
-	$products = Product::mv_all();
-	foreach ($products as $product) {
-		$product->wc_save();
+	$mv_products = Product::mv_all();
+	
+	
+	$with_delete = isset($_POST['with_delete']);
+	if ($with_delete) {
+		$wc_products = Product::wc_all();
+		
+		//if product is in wc_products, but not in mv_products, it can be deleted
+		foreach ($wc_products as $wc_product) {
+			$delete = true;
+			foreach ($mv_products as $mv_product) {
+				if ($wc_product->SKU == $mv_product->SKU) { //not to be deleted
+					$delete = false;
+					continue;
+				}
+			}
+			if ($delete) {
+				$wc_product->wc_destroy();
+			}
+		}
 	}
+	
+	//save new values
+	foreach ($mv_products as $mv_product) {
+		$mv_product->wc_save();
+	}
+	
+	
 }
 
 function synchronize_products_wc_mv() {
@@ -239,7 +279,7 @@ function get_guest_client() {
 }
 
 function test() {
-	var_dump(Product::wc_all());
+	pull_changes();
 }
 
 function synchronize_stock() {
@@ -271,7 +311,7 @@ register_deactivation_hook( __FILE__, 'isa_deactivation');
 // every 5 mins
 function schedule($schedules) {
     $schedules['5min'] = array(
-            'interval'  => 5 * 60,
+            'interval'  => 30, //30 secs for debug //5 * 60, //5min
             'display'   => __('Every 5 Minutes', 'textdomain')
     );
     return $schedules;
@@ -293,23 +333,26 @@ function pull_changes() {
 	$GLOBALS["WC"]->synchronize_categories($mv_categories);
 	
 	foreach ($changes['mvIntegrationUpdates'] as $change) {
+		var_dump($change);
 		if ($change["Entity"] == "product") {
 			if ($change["Action"] == "update" or $change["Action"] == "insert") {
 				//get product new info
-				$product = $GLOBALS["MV"]->get_product($change["EntityIDs"]);
+				//$product = $GLOBALS["MV"]->get_product($change["EntityIDs"]);
+				$product = Product::mv_find($change['EntityIDs']);
 				
 				//save new info
-				$GLOBALS["WC"]->synchronize_product($product);
+				//$GLOBALS["WC"]->synchronize_product($product);
+				$product->wc_save();
+				
 				//delete integration update as it was already resolved
-				$GLOBALS["MV"]->remove_integration_update($change['IntegrationUpdateID']);
-			//var_dump($product);
+				remove_integration_update($change['IntegrationUpdateID']);
+				var_dump($product);
 			}
 		}
-		//var_dump($change);
 	}
 }
 
 //on event, run pull_changes function
-add_action('pull_changes_event', 'pull_changes');
+//add_action('pull_changes_event', 'pull_changes'); //PREVENT INFINITE LOOP IN DEBUG, TALK TO KOSTIS ABOUT THIS!!!!
 
 ?>
