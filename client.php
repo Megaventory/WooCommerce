@@ -136,7 +136,8 @@ class Client {
 		} 
 		
 		if ($data['InternalErrorCode'] == "SupplierClientNameAlreadyExists") {
-			$mv_client = self::mv_find_by_name($client->contact_name);
+			$mv_client = self::mv_find($data['entityID']);
+			echo "MVCLIENT: "; var_dump($mv_client);
 			//$client->MV_ID = $mv_client->MV_ID;
 			echo "<br> COMPARING " . $this->email . " : " . $mv_client->email;
 			if ($this->email == $mv_client->email) { //same person
@@ -148,7 +149,7 @@ class Client {
 				echo htmlentities($xml_request);
 				$data = send_xml($url, $xml_request);
 			} else { //different person
-				$client->contact_name = $client->contact_name . " - " . $client->email;
+				$this->contact_name = $this->contact_name . " - " . $this->email;
 				$xml_request = $this->generate_update_xml();
 				echo "<br>SENDING: <br>";
 				echo htmlentities($xml_request);
@@ -162,8 +163,10 @@ class Client {
 			}
 		}
 		
-		update_user_meta($this->WC_ID, "MV_ID", $data["mvSupplierClient"]["SupplierClientID"]);
-		$this->MV_ID = $data["mvSupplierClient"]["SupplierClientID"];
+		if (count($data['mvSupplierClient']) > 0) { //client exists in mv, can update id
+			update_user_meta($this->WC_ID, "MV_ID", $data["mvSupplierClient"]["SupplierClientID"]);
+			$this->MV_ID = $data["mvSupplierClient"]["SupplierClientID"];
+		}
 		
 		echo "<br> RESPONSE: <br>";
 		var_dump($data);
@@ -189,6 +192,8 @@ class Client {
 			';
 			
 		$xml_request = wrap_xml(self::$supplierclient_update_call, $xml_request);
+		
+		return $xml_request;
 	}
 	
 	public static function mv_undelete($id) {

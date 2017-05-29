@@ -34,13 +34,13 @@ function order_placed($order_id){
 	echo "<br><br> customerID: " . $order->get_customer_id();
 	
 	$id = $order->get_customer_id();
-	$client = $GLOBALS["WC"]->get_client($id);
+	$client = Client::wc_find($id);
 	if ($client == null) {
 		echo "CLIENT WAS NUL";
-		$client = get_guest_client();
+		$client = get_guest_mv_client();
 	}
 	
-	$GLOBALS["MV"]->place_sales_order($order, $client);
+	place_sales_order($order, $client);
 	
 	var_dump($client);
 }
@@ -257,7 +257,9 @@ function get_guest_mv_client() {
 }
 
 function test() {
-	var_dump(get_guest_mv_client());
+	var_dump(Client::wc_all());
+	echo "<br>-----------------------<br>";
+	var_dump(Client::wc_find(1));
 }
 
 function synchronize_stock() {
