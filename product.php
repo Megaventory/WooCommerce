@@ -82,7 +82,7 @@ class Product {
 		return self::mv_convert($data["mvProducts"][0]);
 	}
 	
-	private function pull_stock() {
+	public function pull_stock() {
 		$json_url = create_json_url_filter(self::$product_stock_call, "productid", "Equals", $this->MV_ID);
 		
 		$response = file_get_contents($json_url);
@@ -238,7 +238,6 @@ class Product {
 
 		//set other information
 		update_post_meta($this->WC_ID, '_visibility', 'visible');
-		update_post_meta($this->WC_ID, '_stock_status', ($this->stock_on_hand > 0 ? "instock" : "outofstock"));
 		update_post_meta($this->WC_ID, '_regular_price', $this->regular_price);
 		update_post_meta($this->WC_ID, '_weight', $this->weight);
 		update_post_meta($this->WC_ID, '_length', $this->length);
@@ -248,6 +247,7 @@ class Product {
 		update_post_meta($this->WC_ID, '_price', $this->regular_price);
 		update_post_meta($this->WC_ID, '_manage_stock', "yes");
 		update_post_meta($this->WC_ID, '_stock', (string)$this->stock_on_hand);
+		update_post_meta($this->WC_ID, '_stock_status', ($this->stock_on_hand > 0 ? "instock" : "outofstock"));
 		
 		
 		//echo "<br>" . $product->stock_on_hand;
@@ -475,6 +475,14 @@ class Product {
 		echo "returning: " . $response['mvProductCategory']['ProductCategoryID'] . "<br>";
 		
 		return (array_key_exists('mvProductCategory', $response)) ? $response['mvProductCategory']['ProductCategoryID'] : null;
+	}
+	
+		
+	public function sync_stock() {
+		if ($this->MV_ID == null) return; //this should not happen
+		$this->pull_stock();
+		update_post_meta($this->WC_ID, '_stock', (string)$this->stock_on_hand);
+		update_post_meta($this->WC_ID, '_stock_status', ($this->stock_on_hand > 0 ? "instock" : "outofstock"));
 	}
 }
 

@@ -210,7 +210,6 @@ class Client {
 		//file_get_contents($url);
 	}
 	
-	
 }
 
 ?>

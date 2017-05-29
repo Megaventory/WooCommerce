@@ -254,9 +254,15 @@ function get_guest_mv_client() {
 }
 
 function test() {
-	var_dump(Client::wc_all());
-	echo "<br>-----------------------<br>";
-	var_dump(Client::wc_find(1));
+	$products = Product::wc_all();
+	
+	foreach ($products as $prod) {
+		echo "<br>---------------------<br>";
+		echo $prod->SKU;
+		echo "<br>";
+		$prod->sync_stock();
+		echo $prod->stock_on_hand;
+	}
 }
 
 function synchronize_stock() {
