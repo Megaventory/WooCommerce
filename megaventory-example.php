@@ -16,6 +16,7 @@ require_once("client.php");
 
 define( 'ALTERNATE_WP_CRON', true );
 
+$save_product_lock = false;
 
 // this function will be called everytime an order is finalized
 function order_placed($order_id){
@@ -55,34 +56,15 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	add_action('admin_menu', 'plugin_setup_menu');
 	
 	//on add / edit product
-	//add_action('save_post', 'mp_sync_on_product_save', 10, 3);
+	add_action('save_post', 'mp_sync_on_product_save', 10, 3);
 }
-
-function my_project_updated_send_email( $post_id ) {
-
-	// If this is just a revision, don't send the email.
-	if ( wp_is_post_revision( $post_id ) )
-		return;
-
-	$post_title = get_the_title( $post_id );
-	$post_url = get_permalink( $post_id );
-	$subject = 'A post has been updated';
-
-	$message = "A post has been updated on your website:\n\n";
-	$message .= $post_title . ": " . $post_url;
-
-	// Send email to admin.
-	wp_mail( 'mpanasiuk@megaventory.com', $subject, $message );
-	echo "BOY";
-}
-//add_action( 'save_post', 'my_project_updated_send_email' );
 
 //product edit or create
 function mp_sync_on_product_save($post_id, $post, $update) {
-	echo "POST ID: " . $post_id . "<br>";
-	wp_mail( 'mpanasiuk@megaventory.com', "We out here doing bad shit nigga", $post_id );
+	global $save_product_lock;
 	if (get_post_type($post_id) == 'product') { 
-		
+		if ($save_product_lock) return; //locked, don't do this
+		wp_mail('mpanasiuk@megaventory.com', "We out here doing bad shit", $post_id);
 		$product = Product::wc_find($post_id);
 		$response = $product->mv_save();
 	}
@@ -148,7 +130,8 @@ if (isset($_POST['sync-mv-wc'])) {
 }
 
 function synchronize_products_mv_wc() {
-	
+	global $save_product_lock;
+	$save_product_lock = true;
 	$mv_products = Product::mv_all();
 	
 	$with_delete = isset($_POST['with_delete']);
@@ -176,6 +159,7 @@ function synchronize_products_mv_wc() {
 	}
 	
 	
+	$save_product_lock = false;
 }
 
 function synchronize_products_wc_mv() {
@@ -254,20 +238,14 @@ function get_guest_mv_client() {
 }
 
 function test() {
-	$products = Product::wc_all();
-	
-	foreach ($products as $prod) {
-		echo "<br>---------------------<br>";
-		echo $prod->SKU;
-		echo "<br>";
-		$prod->sync_stock();
-		echo $prod->stock_on_hand;
-	}
 }
 
 function synchronize_stock() {
+	$products = Product::wc_all();
 	
-	
+	foreach ($products as $prod) {
+		$prod->sync_stock();
+	}
 }
 
 //////// CRON //////////////////////////////////////////////////////////
