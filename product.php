@@ -437,7 +437,7 @@ class Product {
 		return null;
 	}
 	
-	private static function mv_get_categories() {
+	public static function mv_get_categories() {
 		$jsonurl = create_json_url(self::$category_get_call);
 		$jsoncat = file_get_contents($jsonurl);
 		$jsoncat = json_decode($jsoncat, true);

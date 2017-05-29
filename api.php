@@ -64,4 +64,12 @@
 		var_dump($data);
 	}
 	
+	function pull_product_changes() {
+		global $integration_get_call;
+		$url = create_json_url_filter($integration_get_call, "Application", "Equals", "woocommerce");
+		$data = json_decode(file_get_contents($url), true);
+		
+		return $data;
+	}
+	
 ?>

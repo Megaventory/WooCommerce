@@ -195,13 +195,7 @@ function synchronize_products_wc_mv() {
 function synchronize_clients() {
 	// synchronize with delete?
 	$with_delete = isset($_POST['with_delete']);
-	
-	//$clients = $GLOBALS["WC"]->get_clients();
-	
-	//echo "CLIENTS";
-	//var_dump($clients);
-	
-	//$GLOBALS["MV"]->synchronize_clients($clients, $with_delete);
+	//do delete later - discuss with kostis SupplierClientDeleteAction enum
 	
 	$wc_clients = Client::wc_all();
 	
@@ -255,19 +249,15 @@ function initialize_integration() {
 	}
 }
 
-function get_guest_client() {
+function get_guest_mv_client() {
 	$post = get_page_by_title("guest_id", ARRAY_A, "post");
 	$id = $post['post_content'];
-	$client = $GLOBALS["MV"]->get_client($id);
+	$client = Client::mv_find($id);
 	return $client;
 }
 
 function test() {
-	//pull_changes();
-	echo "RESPONSE: ";
-	
-	var_dump(Product::mv_create_category("TEST CATEGORY"));
-	var_dump(Product::mv_create_category("TEST CATEGORY8"));
+	var_dump(get_guest_mv_client());
 }
 
 function synchronize_stock() {
@@ -311,30 +301,26 @@ add_filter('cron_schedules', 'schedule');
 
 // The WP Cron event callback function
 function pull_changes() {
-	$changes = $GLOBALS["MV"]->pull_product_changes();
+	$changes = pull_product_changes();
 	
 	if (count($changes) <= 0) {
 		return;
 	}
 	
-	$mv_categories = $GLOBALS["MV"]->get_categories();
-	$GLOBALS["WC"]->synchronize_categories($mv_categories);
+	$mv_categories = Product::mv_get_categories(); //is this needed?
 	
 	foreach ($changes['mvIntegrationUpdates'] as $change) {
 		var_dump($change);
 		if ($change["Entity"] == "product") {
 			if ($change["Action"] == "update" or $change["Action"] == "insert") {
 				//get product new info
-				//$product = $GLOBALS["MV"]->get_product($change["EntityIDs"]);
 				$product = Product::mv_find($change['EntityIDs']);
 				
 				//save new info
-				//$GLOBALS["WC"]->synchronize_product($product);
 				$product->wc_save();
 				
 				//delete integration update as it was already resolved
 				remove_integration_update($change['IntegrationUpdateID']);
-				var_dump($product);
 			}
 		}
 	}
