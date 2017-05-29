@@ -8,17 +8,14 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 require_once( ABSPATH . "wp-includes/pluggable.php" );
-require_once("megaventory.php");
-require_once("woocommerce.php");
 
 require_once("api.php");
 require_once("product.php");
+require_once("client.php");
+
 
 define( 'ALTERNATE_WP_CRON', true );
 
-// initialize objects to connect to megaventory and woocommerce
-$GLOBALS["MV"] = new Megaventory_sync();
-$GLOBALS["WC"] = new Woocommerce_sync();
 
 // this function will be called everytime an order is finalized
 function order_placed($order_id){
@@ -214,20 +211,20 @@ function initialize_integration() {
 		update_user_meta($id, "last_name", "Guest");
 	}
 	
-	$wc_main = $GLOBALS["WC"]->get_client($id);
+	$wc_main = Client::wc_find($id);
 	
 	var_dump($wc_main);
-	$response = $GLOBALS["MV"]->createUpdateClient($wc_main, true);
+	$response = $wc_main->mv_save();
 	var_dump($response);
 	if ($response['InternalErrorCode'] == "SupplierClientAlreadyDeleted") {
 		// client must be undeleted first and then updated
-		$GLOBALS["MV"]->undeleteClient($response["entityID"]);
+		Client::mv_undelete($response["entityID"]);
 		$response["mvSupplierClient"]["SupplierClientID"] = $response["entityID"];
 	}
 	
 	$id = -1;
 	if ($response['mvSupplierClient'] == null) {
-		$id = $GLOBALS["MV"]->get_client_by_name("WooCommerce Guest")->MV_ID;
+		$id = Client::mv_find_by_name("WooCommerce Guest")->MV_ID;
 	} else {
 		$id = $response["mvSupplierClient"]["SupplierClientID"];
 	}

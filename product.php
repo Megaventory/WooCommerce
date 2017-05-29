@@ -1,6 +1,7 @@
 <?php
 
 require_once("api.php");
+require_once("address.php");
 
 // This class works as a model for a product
 // It holds all important attributes of a MV/WC product

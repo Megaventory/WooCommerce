@@ -1,5 +1,6 @@
 <?php
 
+	require_once("address.php");
 
 	$url = "https://apitest.megaventory.com/json/reply/";
 	$xml_url = "https://apitest.megaventory.com/xml/reply/";
