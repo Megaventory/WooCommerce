@@ -25,11 +25,13 @@ class Product {
 	public $height;
 	public $version;
 	public $stock_on_hand;
+	public $mv_qty;
 	
 	private static $product_get_call = "ProductGet";
 	private static $product_update_call = "ProductUpdate";
 	private static $product_undelete_call = "ProductUndelete";
 	private static $product_stock_call = "InventoryLocationStockGet";
+	private static $inventory_get_call = "InventoryLocationGet";
 	private static $category_get_call = "ProductCategoryGet";
 	private static $category_update_call = "ProductCategoryUpdate";
 	private static $category_delete_call = "ProductCategoryDelete";
@@ -91,17 +93,50 @@ class Product {
 		// summarise product on hand in all inventories
 		$response = $response['mvProductStockList'];
 		$total_on_hand = 0;
+		$mv_qty = array();
 		
 		if ($response[0]['mvStock'] != null) {
 			foreach ($response[0]['mvStock'] as $inventory) {
-				$total_on_hand += $inventory['StockOnHand'];
+				$inventory_name = self::get_inventory_name($inventory['InventoryLocationID'], true);
+				$total = $inventory['StockPhysical'];
+				$on_hand = $inventory['StockOnHand'];
+				$non_shipped = $inventory['StockNonShipped'];
+				$non_allocated = $inventory['StockNonAllocatedWOs'];
+				$non_received = $inventory['StockNonReceivedPOs'];
+				
+				$string = "" . $inventory_name;
+				$string .= ";" . $total;
+				$string .= ";" . $on_hand;
+				$string .= ";" . $non_shipped;
+				$string .= ";" . $non_allocated;
+				$string .= ";" . $non_received;
+				
+				array_push($mv_qty, $string);
+				$total_on_hand += $on_hand;
 			}
 		} else {
 			$this->stock_on_hand = 0;
+			$this->mv_qty = array("no stock");
 			return;
 		}
 		
 		$this->stock_on_hand = $total_on_hand;
+		$this->mv_qty = $mv_qty;
+	}
+	
+	public static function get_inventory_name($id, $abbrev = false) {
+		$url = create_json_url_filter(self::$inventory_get_call, "InventoryLocationID", "Equals", urlencode($id));
+		$data = json_decode(file_get_contents($url), true);
+		
+		if (count($data['mvInventoryLocations']) <= 0) { //not found
+			return null;
+		}
+		
+		if ($abbrev) {
+			return $data['mvInventoryLocations'][0]['InventoryLocationAbbreviation'];
+		} else {
+			return $data['mvInventoryLocations'][0]['InventoryLocationName'];
+		}
 	}
 	
 	public static function wc_find_by_sku($SKU) {
@@ -173,6 +208,9 @@ class Product {
 		if ($img[0]) {
 			$prod->image_url = $img[0];
 		}
+		
+		$prod->stock_on_hand = (int)get_post_meta($ID, '_stock', true);
+		$prod->mv_qty = get_post_meta($ID, '_mv_qty', true);
 		
 		return $prod;
 	}
@@ -483,6 +521,7 @@ class Product {
 	public function sync_stock() {
 		if ($this->MV_ID == null) return; //this should not happen
 		$this->pull_stock();
+		update_post_meta($this->WC_ID, '_mv_qty', $this->mv_qty);
 		update_post_meta($this->WC_ID, '_stock', (string)$this->stock_on_hand);
 		update_post_meta($this->WC_ID, '_stock_status', ($this->stock_on_hand > 0 ? "instock" : "outofstock"));
 	}

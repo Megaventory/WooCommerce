@@ -97,7 +97,26 @@ function add_mv_column($columns){
 
 function column($column, $postid) {
     if ($column == 'mv_stock') {
-        echo '<p>Main&nbsp;&nbsp;200&nbsp;&nbsp;<span class="qty-on-hand">(0)</span>&nbsp;&nbsp;<span class="qty-non-shipped">0</span>&nbsp;&nbsp;<span class="qty-non-allocated">0</span>&nbsp;&nbsp;<span class="qty-non-received">0</span></p>';
+        //echo '<p>Main&nbsp;&nbsp;200&nbsp;&nbsp;<span class="qty-on-hand">(0)</span>&nbsp;&nbsp;<span class="qty-non-shipped">0</span>&nbsp;&nbsp;<span class="qty-non-allocated">0</span>&nbsp;&nbsp;<span class="qty-non-received">0</span></p>';
+		$prod = Product::wc_find($postid);
+		
+		foreach ($prod->mv_qty as $qty) {
+			$formatted_string = '<div class="qty-row">';
+			$formatted_string .= '<ul>';
+			
+			$qty = explode(";", $qty);
+			$formatted_string .= '<li><span>' . $qty[0] . '</span></li>';
+			$formatted_string .= '<li><span>' . $qty[1] . '</span></li>';
+			$formatted_string .= '<li><span class="qty-on-hand">(' . $qty[2] . ')</span></li>';
+			$formatted_string .= '<li><span class="qty-non-shipped">' . $qty[3] . '</span></li>';
+			$formatted_string .= '<li><span class="qty-non-allocated">' . $qty[4] . '</span></li>';
+			$formatted_string .= '<li><span class="qty-non-received">' . $qty[5] . '</span></li>';
+			
+			$formatted_string .= '</ul>';
+			$formatted_string .= '</div>';
+			
+			echo $formatted_string;
+		}
     }
 }
 
@@ -280,7 +299,15 @@ function get_guest_mv_client() {
 }
 
 function test() {
+	//pull_stock();
 	pull_stock();
+	foreach (Product::wc_all() as $prod) {
+		var_dump($prod->mv_qty);
+		echo "<br>" . $prod->SKU;
+		echo "<br>" . $prod->MV_ID;
+		echo "<br>--------------------------------------<br>";
+	}
+		
 }
 
 function pull_stock() {
