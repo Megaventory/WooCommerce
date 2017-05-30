@@ -329,6 +329,7 @@ class Product {
 					' . ($this->image_url ? '<ProductImageURL>' . $this->image_url . '</ProductImageURL>' : '') . '
 				</mvProduct>
 				<mvRecordAction>' . $action . '</mvRecordAction>
+				<mvInsertUpdateDeleteSourceApplication>woocommerce</mvInsertUpdateDeleteSourceApplication>
 			';
 		$xml_request = wrap_xml(self::$product_update_call, $xml_request);
 		
@@ -409,7 +410,8 @@ class Product {
 			'orderby'    => $orderby,
 			'order'      => $order,
 			'hide_empty' => $hide_empty,
-			'include'    => $ids
+			'include'    => $ids,
+			'hierarchical' => 1,
 		);
 		return get_terms('product_cat', $args);
 	}

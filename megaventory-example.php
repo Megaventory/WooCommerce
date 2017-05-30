@@ -3,19 +3,22 @@
 Plugin Name: Megaventory Example
 */
 
+////////////////////////////////////////////////////
 // initialize plugin, etc. these must be here
 if (!defined('ABSPATH')) { 
     exit; // Exit if accessed directly
 }
-require_once( ABSPATH . "wp-includes/pluggable.php" );
+require_once(ABSPATH . "wp-includes/pluggable.php");
+////////////////////////////////////////////////////
 
 require_once("api.php");
 require_once("product.php");
 require_once("client.php");
 
+//normal cro would not work
+define('ALTERNATE_WP_CRON', true);
 
-define( 'ALTERNATE_WP_CRON', true );
-
+//when lock is true, edited product will not update mv products
 $save_product_lock = false;
 
 // this function will be called everytime an order is finalized
@@ -57,6 +60,47 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	
 	//on add / edit product
 	add_action('save_post', 'mp_sync_on_product_save', 10, 3);
+	
+	//custom product columns
+	add_filter('manage_edit-product_columns', 'add_mv_column', 15);
+	add_action('manage_product_posts_custom_column', 'column', 10, 2);
+	
+	//styles
+	add_action('init', 'register_style');
+	add_action('admin_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
+	//add_action('wp_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
+	
+
+
+}
+
+function register_style() {
+	wp_register_style('mv_style', plugins_url('/style/style.css', __FILE__), false, '1.0.0', 'all');
+}
+
+function enqueue_style(){
+   wp_enqueue_style('mv_style');
+}
+
+function add_mv_column($columns){
+	//mv stock must be after normal stock
+	$temp = array();
+	foreach ($columns as $key => $value) {
+		$temp[$key] = $value;
+		if ($key == "is_in_stock") {
+			//add now
+			$temp['mv_stock'] = __( 'Megaventory Qty'); 
+		}
+	}
+	$columns = $temp;
+
+	return $columns;
+}
+
+function column($column, $postid) {
+    if ($column == 'mv_stock') {
+        echo '<p>Main&nbsp;&nbsp;200&nbsp;0&nbsp;0&nbsp;0</p>';
+    }
 }
 
 //product edit or create
@@ -238,10 +282,16 @@ function get_guest_mv_client() {
 }
 
 function test() {
+	$clients = Client::mv_all();
+	var_dump($clients[0]);
+	$clients[0]->mv_destroy();
 }
 
-function synchronize_stock() {
+function pull_stock() {
 	$products = Product::wc_all();
+	var_dump($products);
+	
+	echo "<br>--------------------------------------<br>";
 	
 	foreach ($products as $prod) {
 		$prod->sync_stock();
@@ -255,6 +305,9 @@ function isa_activation(){
     if(!wp_next_scheduled('pull_changes_event')){
         wp_schedule_event(time(), '5min', 'pull_changes_event');
     }
+    if(!wp_next_scheduled('pull_stock_event')){
+        wp_schedule_event(time(), '5min', 'pull_stock_event');
+    }
 }
 
 register_activation_hook(__FILE__, 'isa_activation');
@@ -263,6 +316,9 @@ register_activation_hook(__FILE__, 'isa_activation');
 function isa_deactivation(){
     if(wp_next_scheduled('pull_changes_event')){
         wp_clear_scheduled_hook('pull_changes_event');
+    }
+    if(wp_next_scheduled('pull_stock_event')){
+        wp_clear_scheduled_hook('pull_stock_event');
     }
 }
 
@@ -295,21 +351,24 @@ function pull_changes() {
 	foreach ($changes['mvIntegrationUpdates'] as $change) {
 		var_dump($change);
 		if ($change["Entity"] == "product") {
+			global $save_product_lock;
+			$save_product_lock = true;
 			if ($change["Action"] == "update" or $change["Action"] == "insert") {
 				//get product new info
 				$product = Product::mv_find($change['EntityIDs']);
-				
 				//save new info
 				$product->wc_save();
 				
 				//delete integration update as it was already resolved
 				remove_integration_update($change['IntegrationUpdateID']);
 			}
+			$save_product_lock = false;
 		}
 	}
 }
 
 //on event, run pull_changes function
-//add_action('pull_changes_event', 'pull_changes'); //PREVENT INFINITE LOOP IN DEBUG, TALK TO KOSTIS ABOUT THIS!!!!
+add_action('pull_changes_event', 'pull_changes'); //PREVENT INFINITE LOOP IN DEBUG, TALK TO KOSTIS ABOUT THIS!!!!
+add_action('pull_stock_event', 'pull_stock'); //PREVENT INFINITE LOOP IN DEBUG, TALK TO KOSTIS ABOUT THIS!!!!
 
 ?>
