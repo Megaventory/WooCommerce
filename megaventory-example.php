@@ -70,8 +70,6 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	add_action('admin_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
 	//add_action('wp_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
 	
-
-
 }
 
 function register_style() {
@@ -99,7 +97,7 @@ function add_mv_column($columns){
 
 function column($column, $postid) {
     if ($column == 'mv_stock') {
-        echo '<p>Main&nbsp;&nbsp;200&nbsp;0&nbsp;0&nbsp;0</p>';
+        echo '<p>Main&nbsp;&nbsp;200&nbsp;&nbsp;<span class="qty-on-hand">(0)</span>&nbsp;&nbsp;<span class="qty-non-shipped">0</span>&nbsp;&nbsp;<span class="qty-non-allocated">0</span>&nbsp;&nbsp;<span class="qty-non-received">0</span></p>';
     }
 }
 
@@ -282,9 +280,7 @@ function get_guest_mv_client() {
 }
 
 function test() {
-	$clients = Client::mv_all();
-	var_dump($clients[0]);
-	$clients[0]->mv_destroy();
+	pull_stock();
 }
 
 function pull_stock() {

@@ -2,3 +2,19 @@
 	width: 15%;
 	color: red;
 }
+
+.qty-on-hand {
+	color: LightGrey;
+}
+
+.qty-non-shipped {
+	color: Red;
+}
+
+.qty-non-allocated{ 
+	color: DarkRed;
+}
+
+.qty-non-received {
+	color: Green;
+}
