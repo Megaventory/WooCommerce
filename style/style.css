@@ -1,5 +1,13 @@
+.column-name.column-primary {
+	width: 15%!IMPORTANT;
+}
+
+.column-product_tag {
+	width: 5% !IMPORTANT;
+}
+
 .column-mv_stock {
-	width: 15%;
+	width: 12%;
 	color: red;
 }
 
@@ -11,7 +19,7 @@
 	color: Red;
 }
 
-.qty-non-allocated{ 
+.qty-non-allocated {
 	color: DarkRed;
 }
 
@@ -19,20 +27,11 @@
 	color: Green;
 }
 
+
 .qty-row {
 	width: 100%;
 }
 
-.qty-row ul {
-	padding-bottom: 10px;
+.qty-row  td {
+	padding: 0px;
 }
-
-.qty-row ul li {
-	width: 80%;
-	/* padding-right: 10px; */
-	display: table-cell;
-	
-	float: left;
-}
-
-

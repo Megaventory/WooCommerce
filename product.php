@@ -116,7 +116,7 @@ class Product {
 			}
 		} else {
 			$this->stock_on_hand = 0;
-			$this->mv_qty = array("no stock");
+			$this->mv_qty = "no stock";
 			return;
 		}
 		
