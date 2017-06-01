@@ -87,7 +87,7 @@ function add_mv_column($columns){
 		$temp[$key] = $value;
 		if ($key == "is_in_stock") {
 			//add now
-			$temp['mv_stock'] = __( 'Megaventory Qty');
+			$temp['mv_stock'] = __('Megaventory Qty');
 		}
 	}
 	$columns = $temp;
@@ -115,11 +115,11 @@ function column($column, $postid) {
 			
 			$qty = explode(";", $qty);
 			$formatted_string .= '<td colspan="2"><span>' . $qty[0] . '</span></td>';
-			$formatted_string .= '<td><span>' . $qty[1] . '</span></td>';
-			$formatted_string .= '<td><span class="qty-on-hand">(' . $qty[2] . ')</span></td>';
-			$formatted_string .= '<td><span class="qty-non-shipped">' . $qty[3] . '</span></td>';
-			$formatted_string .= '<td><span class="qty-non-allocated">' . $qty[4] . '</span></td>';
-			$formatted_string .= '<td><span class="qty-non-received">' . $qty[5] . '</span></td>';
+			$formatted_string .= '<td class="mv-tooltip"><span class="tooltiptext">Total</span><span>' . $qty[1] . '</span></td>';
+			$formatted_string .= '<td class="mv-tooltip"><span class="tooltiptext">On Hand</span><span class="qty-on-hand">(' . $qty[2] . ')</span></td>';
+			$formatted_string .= '<td class="mv-tooltip"><span class="tooltiptext">Non-shipped</span><span class="qty-non-shipped">' . $qty[3] . '</span></td>';
+			$formatted_string .= '<td class="mv-tooltip"><span class="tooltiptext">Non-allocated</span><span class="qty-non-allocated">' . $qty[4] . '</span></td>';
+			$formatted_string .= '<td class="mv-tooltip"><span class="tooltiptext">Non-received</span<span class="qty-non-received">' . $qty[5] . '</span></td>';
 
 			$formatted_string .= '</tr>';
 
@@ -134,7 +134,7 @@ function mp_sync_on_product_save($post_id, $post, $update) {
 	global $save_product_lock;
 	if (get_post_type($post_id) == 'product') {
 		if ($save_product_lock) return; //locked, don't do this
-		wp_mail('mpanasiuk@megaventory.com', "We out here doing bad shit", $post_id);
+		wp_mail('mpanasiuk@megaventory.com', "producct save", $post_id);
 		$product = Product::wc_find($post_id);
 		$response = $product->mv_save();
 	}
@@ -308,15 +308,31 @@ function get_guest_mv_client() {
 }
 
 function test() {
-	//pull_stock();
-	pull_stock();
-	foreach (Product::wc_all() as $prod) {
-		var_dump($prod->mv_qty);
-		echo "<br>" . $prod->SKU;
-		echo "<br>" . $prod->MV_ID;
-		echo "<br>--------------------------------------<br>";
-	}
+	global $document_status, $translate_order_status;
+	echo '<div style="text-align:center;">';
+	$changes = pull_product_changes();
 
+	$mv_categories = Product::mv_get_categories(); //is this needed?
+
+	foreach ($changes['mvIntegrationUpdates'] as $change) {
+		if ($change['Entity'] != 'document') continue;
+		echo '<br>-----------------------------------<br>';
+		var_dump($change);
+		echo '<br>---<br>';
+		$jsondata = json_decode($change['JsonData'], true);
+		if ($jsondata['DocumentTypeAbbreviation'] != "SO") continue;
+		var_dump($jsondata);
+		echo '<br>--<br>';
+		var_dump($jsondata['DocumentReferenceNo']);
+		echo '<br>-<br>';
+		$status = $document_status[$jsondata['DocumentStatus']];
+		$order = new WC_Order($jsondata['DocumentReferenceNo']);
+		var_dump($order);
+		$order->set_status($translate_order_status[$status]);
+		$order->save();
+	}
+	
+	echo '</div>';
 }
 
 function pull_stock() {
@@ -381,26 +397,47 @@ function pull_changes() {
 	$mv_categories = Product::mv_get_categories(); //is this needed?
 
 	foreach ($changes['mvIntegrationUpdates'] as $change) {
-		var_dump($change);
+		
+		wp_mail('mpanasiuk@megaventory.com', "We out here ", var_export($change, true));
 		if ($change["Entity"] == "product") {
 			global $save_product_lock;
 			$save_product_lock = true;
+			
 			if ($change["Action"] == "update" or $change["Action"] == "insert") {
 				//get product new info
 				$product = Product::mv_find($change['EntityIDs']);
 				//save new info
-				$product->wc_save();
-
-				//delete integration update as it was already resolved
-				remove_integration_update($change['IntegrationUpdateID']);
+				$product->wc_save(); 
+				
+			} else if ($change["Action"] == "delete") {
+				$product = Product::mv_find($change['EntityIDs']); // use normal find, change some code or whatever
+				$product->wc_destroy();
 			}
+			
+			//delete integration update as it was already resolved
+			remove_integration_update($change['IntegrationUpdateID']);
+			
 			$save_product_lock = false;
+		} elseif ($change["Entity"] == "stock") {
+			$id = json_decode($change['JsonData'], true)[0]['productID'];
+			$product = Product::mv_find($id);
+			$product->sync_stock();
+			$data = remove_integration_update($change['IntegrationUpdateID']);
+		} elseif ($change['Entity'] == 'document') {
+			global $document_status, $translate_order_status;
+			$jsondata = json_decode($change['JsonData'], true);
+			if ($jsondata['DocumentTypeAbbreviation'] != "SO") continue; // only salesorder
+			$status = $document_status[$jsondata['DocumentStatus']];
+			$order = new WC_Order($jsondata['DocumentReferenceNo']);
+			$order->set_status($translate_order_status[$status]);
+			$order->save();
+			$data = remove_integration_update($change['IntegrationUpdateID']);
 		}
 	}
 }
 
 //on event, run pull_changes function
-add_action('pull_changes_event', 'pull_changes'); //PREVENT INFINITE LOOP IN DEBUG, TALK TO KOSTIS ABOUT THIS!!!!
-add_action('pull_stock_event', 'pull_stock'); //PREVENT INFINITE LOOP IN DEBUG, TALK TO KOSTIS ABOUT THIS!!!!
+add_action('pull_changes_event', 'pull_changes'); 
+//add_action('pull_stock_event', 'pull_stock');
 
 ?>

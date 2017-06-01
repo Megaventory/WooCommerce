@@ -75,6 +75,18 @@ class Product {
 		}
 	}
 	
+	public static function wc_find_by_mv_id($id) {
+		$prods = self::wc_all();
+		$prod = null;
+		foreach ($prods as $p) {
+			if ($p->MV_ID == $id) {
+				$prod = $p;
+				break;
+			}
+		}
+		return $prod;
+	}
+	
 	public static function mv_find($id) {
 		$url = create_json_url_filter(self::$product_get_call, "ProductID", "Equals", urlencode($id));
 		$data = json_decode(file_get_contents($url), true);
@@ -239,7 +251,7 @@ class Product {
 			throw new Exception('SKU can\'t be empty');
 		}
 		
-		if ($this->WC_ID == null) {
+		if ($this->WC_ID == null) { // look out. instead of always creating new, find one with same SKU and use that instead!
 			//create product
 			$post_id = wp_insert_post(array(
 				'post_title' => $this->description,
@@ -250,7 +262,7 @@ class Product {
 			));
 			
 			$this->WC_ID = $post_id;
-		} else {
+		} else { 
 			$post = array(
 				'ID' => $this->WC_ID,
 				'post_title' => $this->description,
@@ -262,8 +274,9 @@ class Product {
 		
 		//meta
 		
-		//set category
-		if ($this->category != null) {
+		//set category to mv category only if product has no categories
+		//otherwise, dont do anything
+		if ($this->category != null and count(wp_get_object_terms($this->WC_ID, 'product_cat')) <= 0) {
 			$category_id = $this->wc_get_category_id_by_name($this->category, true);
 			if ($category_id) {
 				echo "setting category";
@@ -520,6 +533,14 @@ class Product {
 		
 	public function sync_stock() {
 		if ($this->MV_ID == null) return; //this should not happen
+		
+		foreach (self::wc_all() as $wc_product) {
+			if ($this->SKU == $wc_product->SKU) {
+				$this->WC_ID = $wc_product->WC_ID;
+				break;
+			}
+		}	
+		
 		$this->pull_stock();
 		update_post_meta($this->WC_ID, '_mv_qty', $this->mv_qty);
 		update_post_meta($this->WC_ID, '_stock', (string)$this->stock_on_hand);

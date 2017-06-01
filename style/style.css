@@ -7,7 +7,7 @@
 }
 
 .column-mv_stock {
-	width: 12%;
+	width: 15%;
 	color: red;
 }
 
@@ -30,8 +30,37 @@
 
 .qty-row {
 	width: 100%;
+	text-align: center;
+}
+
+.qty-row td:first-child {
+	text-align: left;
 }
 
 .qty-row  td {
 	padding: 0px;
+}
+
+/* Tooltip container */
+.mv-tooltip {
+}
+
+/* Tooltip text */
+.mv-tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    padding: 5px 0;
+    border-radius: 6px;
+ 
+    /* Position the tooltip text - see examples below! */
+    position: absolute;
+    z-index: 1;
+}
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.mv-tooltip:hover .tooltiptext {
+    visibility: visible;
 }
