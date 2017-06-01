@@ -36,6 +36,17 @@ class Client {
 		
 		return $clients;
 	}
+	
+	public static function mv_all() {
+		$url = create_json_url(self::$supplierclient_get_call);
+		$clients = json_decode(file_get_contents($url), true)['mvSupplierClients'];
+		$temp = array();
+		
+		foreach ($clients as $client) {
+			array_push($temp, self::mv_convert($client));
+		}
+		return $temp;
+	}
 
 	public static function wc_find($id) {
 		$user = get_user_by('ID', $id);
@@ -94,7 +105,7 @@ class Client {
 		$client->shipping_address = format_address($billing_address);
 		
 		$client->phone = get_user_meta($wc_client->ID, 'billing_phone', true);
-		$client->type = "Client";
+		//$client->type = "Client";
 		
 		return $client;
 	}
@@ -181,7 +192,7 @@ class Client {
 		$xml_request = '
 				<mvSupplierClient>
 					' . ($create_new ? '' : '<SupplierClientID>' . $this->MV_ID . '</SupplierClientID>') . '
-					' . ($this->type ? '<SupplierClientType>' . $this->type . '</SupplierClientType>' : '') . '
+					<SupplierClientType>' . ($this->type ? $this->type : 'Client') . '</SupplierClientType>
 					<SupplierClientName>' . $this->contact_name . '</SupplierClientName>
 					' . ($this->billing_address ? '<SupplierClientBillingAddress>' . $this->billing_address . '</SupplierClientBillingAddress>' : '') . '
 					' . ($this->shipping_address ? '<SupplierClientShippingAddress1>' . $this->shipping_address . '</SupplierClientShippingAddress1>' : '') . '
@@ -204,12 +215,18 @@ class Client {
 	}
 	
 	public function mv_destroy() {
-		//for laterz
+		//if (strtolower($this->type) != "client") { //only pure clients are safe to delete, they hold no products
+		//	return false;
+		//}
+		
 		//$url = create_json_url(self::$supplierclient_delete_call);
 		//$url .= "&SupplierClientIDToDelete=" . urlencode($this->MV_ID);
-		//file_get_contents($url);
+		//$url .= "&SupplierClientDeleteAction=DeleteRelatedProducts";
+		file_get_contents($url);
+		//echo $url;
+		
+		//return true;
 	}
-	
 	
 }
 

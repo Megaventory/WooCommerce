@@ -25,11 +25,13 @@ class Product {
 	public $height;
 	public $version;
 	public $stock_on_hand;
+	public $mv_qty;
 	
 	private static $product_get_call = "ProductGet";
 	private static $product_update_call = "ProductUpdate";
 	private static $product_undelete_call = "ProductUndelete";
 	private static $product_stock_call = "InventoryLocationStockGet";
+	private static $inventory_get_call = "InventoryLocationGet";
 	private static $category_get_call = "ProductCategoryGet";
 	private static $category_update_call = "ProductCategoryUpdate";
 	private static $category_delete_call = "ProductCategoryDelete";
@@ -73,6 +75,18 @@ class Product {
 		}
 	}
 	
+	public static function wc_find_by_mv_id($id) {
+		$prods = self::wc_all();
+		$prod = null;
+		foreach ($prods as $p) {
+			if ($p->MV_ID == $id) {
+				$prod = $p;
+				break;
+			}
+		}
+		return $prod;
+	}
+	
 	public static function mv_find($id) {
 		$url = create_json_url_filter(self::$product_get_call, "ProductID", "Equals", urlencode($id));
 		$data = json_decode(file_get_contents($url), true);
@@ -82,7 +96,7 @@ class Product {
 		return self::mv_convert($data["mvProducts"][0]);
 	}
 	
-	private function pull_stock() {
+	public function pull_stock() {
 		$json_url = create_json_url_filter(self::$product_stock_call, "productid", "Equals", $this->MV_ID);
 		
 		$response = file_get_contents($json_url);
@@ -91,17 +105,50 @@ class Product {
 		// summarise product on hand in all inventories
 		$response = $response['mvProductStockList'];
 		$total_on_hand = 0;
+		$mv_qty = array();
 		
 		if ($response[0]['mvStock'] != null) {
 			foreach ($response[0]['mvStock'] as $inventory) {
-				$total_on_hand += $inventory['StockOnHand'];
+				$inventory_name = self::get_inventory_name($inventory['InventoryLocationID'], true);
+				$total = $inventory['StockPhysical'];
+				$on_hand = $inventory['StockOnHand'];
+				$non_shipped = $inventory['StockNonShipped'];
+				$non_allocated = $inventory['StockNonAllocatedWOs'];
+				$non_received = $inventory['StockNonReceivedPOs'];
+				
+				$string = "" . $inventory_name;
+				$string .= ";" . $total;
+				$string .= ";" . $on_hand;
+				$string .= ";" . $non_shipped;
+				$string .= ";" . $non_allocated;
+				$string .= ";" . $non_received;
+				
+				array_push($mv_qty, $string);
+				$total_on_hand += $on_hand;
 			}
 		} else {
 			$this->stock_on_hand = 0;
+			$this->mv_qty = "no stock";
 			return;
 		}
 		
 		$this->stock_on_hand = $total_on_hand;
+		$this->mv_qty = $mv_qty;
+	}
+	
+	public static function get_inventory_name($id, $abbrev = false) {
+		$url = create_json_url_filter(self::$inventory_get_call, "InventoryLocationID", "Equals", urlencode($id));
+		$data = json_decode(file_get_contents($url), true);
+		
+		if (count($data['mvInventoryLocations']) <= 0) { //not found
+			return null;
+		}
+		
+		if ($abbrev) {
+			return $data['mvInventoryLocations'][0]['InventoryLocationAbbreviation'];
+		} else {
+			return $data['mvInventoryLocations'][0]['InventoryLocationName'];
+		}
 	}
 	
 	public static function wc_find_by_sku($SKU) {
@@ -174,6 +221,9 @@ class Product {
 			$prod->image_url = $img[0];
 		}
 		
+		$prod->stock_on_hand = (int)get_post_meta($ID, '_stock', true);
+		$prod->mv_qty = get_post_meta($ID, '_mv_qty', true);
+		
 		return $prod;
 	}
 	
@@ -201,7 +251,7 @@ class Product {
 			throw new Exception('SKU can\'t be empty');
 		}
 		
-		if ($this->WC_ID == null) {
+		if ($this->WC_ID == null) { // look out. instead of always creating new, find one with same SKU and use that instead!
 			//create product
 			$post_id = wp_insert_post(array(
 				'post_title' => $this->description,
@@ -212,7 +262,7 @@ class Product {
 			));
 			
 			$this->WC_ID = $post_id;
-		} else {
+		} else { 
 			$post = array(
 				'ID' => $this->WC_ID,
 				'post_title' => $this->description,
@@ -224,8 +274,9 @@ class Product {
 		
 		//meta
 		
-		//set category
-		if ($this->category != null) {
+		//set category to mv category only if product has no categories
+		//otherwise, dont do anything
+		if ($this->category != null and count(wp_get_object_terms($this->WC_ID, 'product_cat')) <= 0) {
 			$category_id = $this->wc_get_category_id_by_name($this->category, true);
 			if ($category_id) {
 				echo "setting category";
@@ -238,7 +289,6 @@ class Product {
 
 		//set other information
 		update_post_meta($this->WC_ID, '_visibility', 'visible');
-		update_post_meta($this->WC_ID, '_stock_status', ($this->stock_on_hand > 0 ? "instock" : "outofstock"));
 		update_post_meta($this->WC_ID, '_regular_price', $this->regular_price);
 		update_post_meta($this->WC_ID, '_weight', $this->weight);
 		update_post_meta($this->WC_ID, '_length', $this->length);
@@ -248,6 +298,7 @@ class Product {
 		update_post_meta($this->WC_ID, '_price', $this->regular_price);
 		update_post_meta($this->WC_ID, '_manage_stock', "yes");
 		update_post_meta($this->WC_ID, '_stock', (string)$this->stock_on_hand);
+		update_post_meta($this->WC_ID, '_stock_status', ($this->stock_on_hand > 0 ? "instock" : "outofstock"));
 		
 		
 		//echo "<br>" . $product->stock_on_hand;
@@ -329,6 +380,7 @@ class Product {
 					' . ($this->image_url ? '<ProductImageURL>' . $this->image_url . '</ProductImageURL>' : '') . '
 				</mvProduct>
 				<mvRecordAction>' . $action . '</mvRecordAction>
+				<mvInsertUpdateDeleteSourceApplication>woocommerce</mvInsertUpdateDeleteSourceApplication>
 			';
 		$xml_request = wrap_xml(self::$product_update_call, $xml_request);
 		
@@ -409,7 +461,8 @@ class Product {
 			'orderby'    => $orderby,
 			'order'      => $order,
 			'hide_empty' => $hide_empty,
-			'include'    => $ids
+			'include'    => $ids,
+			'hierarchical' => 1,
 		);
 		return get_terms('product_cat', $args);
 	}
@@ -475,6 +528,23 @@ class Product {
 		echo "returning: " . $response['mvProductCategory']['ProductCategoryID'] . "<br>";
 		
 		return (array_key_exists('mvProductCategory', $response)) ? $response['mvProductCategory']['ProductCategoryID'] : null;
+	}
+	
+		
+	public function sync_stock() {
+		if ($this->MV_ID == null) return; //this should not happen
+		
+		foreach (self::wc_all() as $wc_product) {
+			if ($this->SKU == $wc_product->SKU) {
+				$this->WC_ID = $wc_product->WC_ID;
+				break;
+			}
+		}	
+		
+		$this->pull_stock();
+		update_post_meta($this->WC_ID, '_mv_qty', $this->mv_qty);
+		update_post_meta($this->WC_ID, '_stock', (string)$this->stock_on_hand);
+		update_post_meta($this->WC_ID, '_stock_status', ($this->stock_on_hand > 0 ? "instock" : "outofstock"));
 	}
 }
 

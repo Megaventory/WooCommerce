@@ -3,42 +3,46 @@
 Plugin Name: Megaventory Example
 */
 
+////////////////////////////////////////////////////
 // initialize plugin, etc. these must be here
-if (!defined('ABSPATH')) { 
+if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
-require_once( ABSPATH . "wp-includes/pluggable.php" );
+require_once(ABSPATH . "wp-includes/pluggable.php");
+////////////////////////////////////////////////////
 
 require_once("api.php");
 require_once("product.php");
 require_once("client.php");
 
+//normal cro would not work
+define('ALTERNATE_WP_CRON', true);
 
-define( 'ALTERNATE_WP_CRON', true );
-
+//when lock is true, edited product will not update mv products
+$save_product_lock = false;
 
 // this function will be called everytime an order is finalized
 function order_placed($order_id){
     $order = wc_get_order($order_id);
     var_dump($order);
     echo "<br><br>";
-    
+
     foreach ($order->get_items() as $value) {
 		echo $value;
 		$product = new WC_Product($value['product_id']);
 		echo $product->get_sku();
 	}
 	echo "<br><br> customerID: " . $order->get_customer_id();
-	
+
 	$id = $order->get_customer_id();
 	$client = Client::wc_find($id);
 	if ($client == null) {
 		echo "CLIENT WAS NUL";
 		$client = get_guest_mv_client();
 	}
-	
+
 	place_sales_order($order, $client);
-	
+
 	var_dump($client);
 }
 
@@ -47,42 +51,90 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	$hook_to = 'woocommerce_thankyou';
 	$what_to_hook = 'order_placed';
 	$prioriy = 111;
-	$num_of_arg = 1;  
-	// hook order placed  
+	$num_of_arg = 1;
+	// hook order placed
 	add_action($hook_to, $what_to_hook, $prioriy, $num_of_arg);
-	
+
 	//configure admin panel
 	add_action('admin_menu', 'plugin_setup_menu');
-	
+
 	//on add / edit product
-	//add_action('save_post', 'mp_sync_on_product_save', 10, 3);
+	add_action('save_post', 'mp_sync_on_product_save', 10, 3);
+
+	//custom product columns
+	add_filter('manage_edit-product_columns', 'add_mv_column', 15);
+	add_action('manage_product_posts_custom_column', 'column', 10, 2);
+
+	//styles
+	add_action('init', 'register_style');
+	add_action('admin_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
+	//add_action('wp_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
+
 }
 
-function my_project_updated_send_email( $post_id ) {
-
-	// If this is just a revision, don't send the email.
-	if ( wp_is_post_revision( $post_id ) )
-		return;
-
-	$post_title = get_the_title( $post_id );
-	$post_url = get_permalink( $post_id );
-	$subject = 'A post has been updated';
-
-	$message = "A post has been updated on your website:\n\n";
-	$message .= $post_title . ": " . $post_url;
-
-	// Send email to admin.
-	wp_mail( 'mpanasiuk@megaventory.com', $subject, $message );
-	echo "BOY";
+function register_style() {
+	wp_register_style('mv_style', plugins_url('/style/style.css', __FILE__), false, '1.0.0', 'all');
 }
-//add_action( 'save_post', 'my_project_updated_send_email' );
+
+function enqueue_style(){
+   wp_enqueue_style('mv_style');
+}
+
+function add_mv_column($columns){
+	//mv stock must be after normal stock
+	$temp = array();
+	foreach ($columns as $key => $value) {
+		$temp[$key] = $value;
+		if ($key == "is_in_stock") {
+			//add now
+			$temp['mv_stock'] = __('Megaventory Qty');
+		}
+	}
+	$columns = $temp;
+
+	return $columns;
+}
+
+function column($column, $postid) {
+    if ($column == 'mv_stock') {
+        //echo '<p>Main&nbsp;&nbsp;200&nbsp;&nbsp;<span class="qty-on-hand">(0)</span>&nbsp;&nbsp;<span class="qty-non-shipped">0</span>&nbsp;&nbsp;<span class="qty-non-allocated">0</span>&nbsp;&nbsp;<span class="qty-non-received">0</span></p>';
+		$prod = Product::wc_find($postid);
+    
+		//no stock
+		if (!is_array($prod->mv_qty)) {
+			echo "No stock";
+			return;
+		}
+		
+		$i = 0;
+
+		//build stock table
+		echo '<table class="qty-row">';
+		foreach ($prod->mv_qty as $qty) {
+			$formatted_string = '<tr>';
+			
+			$qty = explode(";", $qty);
+			$formatted_string .= '<td colspan="2"><span>' . $qty[0] . '</span></td>';
+			$formatted_string .= '<td class="mv-tooltip"><span class="tooltiptext">Total</span><span>' . $qty[1] . '</span></td>';
+			$formatted_string .= '<td class="mv-tooltip"><span class="tooltiptext">On Hand</span><span class="qty-on-hand">(' . $qty[2] . ')</span></td>';
+			$formatted_string .= '<td class="mv-tooltip"><span class="tooltiptext">Non-shipped</span><span class="qty-non-shipped">' . $qty[3] . '</span></td>';
+			$formatted_string .= '<td class="mv-tooltip"><span class="tooltiptext">Non-allocated</span><span class="qty-non-allocated">' . $qty[4] . '</span></td>';
+			$formatted_string .= '<td class="mv-tooltip"><span class="tooltiptext">Non-received</span<span class="qty-non-received">' . $qty[5] . '</span></td>';
+
+			$formatted_string .= '</tr>';
+
+			echo $formatted_string;
+		}
+		echo '</table>';
+    }
+}
 
 //product edit or create
 function mp_sync_on_product_save($post_id, $post, $update) {
-	echo "POST ID: " . $post_id . "<br>";
-	wp_mail( 'mpanasiuk@megaventory.com', "We out here doing bad shit nigga", $post_id );
-	if (get_post_type($post_id) == 'product') { 
-		
+	global $save_product_lock;
+	if (get_post_type($post_id) == 'product') {
+		if ($save_product_lock) return; //locked, don't do this
+		wp_mail('mpanasiuk@megaventory.com', "producct save", $post_id);
 		$product = Product::wc_find($post_id);
 		$response = $product->mv_save();
 	}
@@ -91,7 +143,7 @@ function mp_sync_on_product_save($post_id, $post, $update) {
 function plugin_setup_menu(){
 	add_menu_page('Test Plugin Page', 'Test Plugin', 'manage_options', 'test-plugin', 'test_init');
 }
- 
+
 // admin panel
 function test_init(){
 	echo '<form id="sync-mv-wc" method="post">';
@@ -99,32 +151,32 @@ function test_init(){
 	echo '<input type="hidden" name="sync-mv-wc" value="true" />';
 	echo '<input type="submit" value="Synchronize Products From MV to WC" />';
 	echo '</form>';
-	
+
 	echo '<br><br>';
-	
+
 	echo '<form id="sync-wc-mv" method="post">';
 	echo '<input type="checkbox" name="with_delete" /> with delete';
 	echo '<input type="hidden" name="sync-wc-mv" value="true" />';
 	echo '<input type="submit" value="Synchronize Products From WC to MV" />';
 	echo '</form>';
-	
+
 	echo '<br><br>';
-	
+
 	echo '<form id="sync-clients" method="post">';
 	//echo '<input type="checkbox" name="with_delete" /> with delete';
 	echo '<input type="hidden" name="sync-clients" value="true" />';
 	echo '<input type="submit" value="Synchronize Clients" />';
 	echo '</form>';
-	
+
 	echo '<br><br>';
-	
+
 	echo '<form id="initialize" method="post">';
 	echo '<input type="hidden" name="initialize" value="true" />';
 	echo '<input type="submit" value="Initialize" />';
 	echo '</form>';
-	
+
 	echo '<br><br>';
-	
+
 	echo '<form id="test" method="post">';
 	echo '<input type="hidden" name="test" value="true" />';
 	echo '<input type="submit" value="TEST" />';
@@ -148,13 +200,14 @@ if (isset($_POST['sync-mv-wc'])) {
 }
 
 function synchronize_products_mv_wc() {
-	
+	global $save_product_lock;
+	$save_product_lock = true;
 	$mv_products = Product::mv_all();
-	
+
 	$with_delete = isset($_POST['with_delete']);
 	if ($with_delete) {
 		$wc_products = Product::wc_all();
-		
+
 		//if product is in wc_products, but not in mv_products, it can be deleted
 		foreach ($wc_products as $wc_product) {
 			$delete = true;
@@ -169,21 +222,22 @@ function synchronize_products_mv_wc() {
 			}
 		}
 	}
-	
+
 	//save new values
 	foreach ($mv_products as $mv_product) {
 		$mv_product->wc_save();
 	}
-	
-	
+
+
+	$save_product_lock = false;
 }
 
 function synchronize_products_wc_mv() {
 	// synchronize with delete?
 	$with_delete = isset($_POST['with_delete']);
-	
+
 	$wc_products = Product::wc_all();
-	
+
 	foreach ($wc_products as $wc_product) {
 		$wc_product->mv_save();
 	}
@@ -193,9 +247,9 @@ function synchronize_clients() {
 	// synchronize with delete?
 	$with_delete = isset($_POST['with_delete']);
 	//do delete later - discuss with kostis SupplierClientDeleteAction enum
-	
+
 	$wc_clients = Client::wc_all();
-	
+
 	foreach ($wc_clients as $wc_client) {
 		$wc_client->mv_save();
 	}
@@ -210,9 +264,9 @@ function initialize_integration() {
 		update_user_meta($id, "first_name", "WooCommerce");
 		update_user_meta($id, "last_name", "Guest");
 	}
-	
+
 	$wc_main = Client::wc_find($id);
-	
+
 	var_dump($wc_main);
 	$response = $wc_main->mv_save();
 	var_dump($response);
@@ -221,14 +275,14 @@ function initialize_integration() {
 		Client::mv_undelete($response["entityID"]);
 		$response["mvSupplierClient"]["SupplierClientID"] = $response["entityID"];
 	}
-	
+
 	$id = -1;
 	if ($response['mvSupplierClient'] == null) {
 		$id = Client::mv_find_by_name("WooCommerce Guest")->MV_ID;
 	} else {
 		$id = $response["mvSupplierClient"]["SupplierClientID"];
 	}
-	
+
 	$post = get_page_by_title("guest_id", ARRAY_A, "post");
 	var_dump($post);
 	if (!$post) {
@@ -254,14 +308,42 @@ function get_guest_mv_client() {
 }
 
 function test() {
-	var_dump(Client::wc_all());
-	echo "<br>-----------------------<br>";
-	var_dump(Client::wc_find(1));
+	global $document_status, $translate_order_status;
+	echo '<div style="text-align:center;">';
+	$changes = pull_product_changes();
+
+	$mv_categories = Product::mv_get_categories(); //is this needed?
+
+	foreach ($changes['mvIntegrationUpdates'] as $change) {
+		if ($change['Entity'] != 'document') continue;
+		echo '<br>-----------------------------------<br>';
+		var_dump($change);
+		echo '<br>---<br>';
+		$jsondata = json_decode($change['JsonData'], true);
+		if ($jsondata['DocumentTypeAbbreviation'] != "SO") continue;
+		var_dump($jsondata);
+		echo '<br>--<br>';
+		var_dump($jsondata['DocumentReferenceNo']);
+		echo '<br>-<br>';
+		$status = $document_status[$jsondata['DocumentStatus']];
+		$order = new WC_Order($jsondata['DocumentReferenceNo']);
+		var_dump($order);
+		$order->set_status($translate_order_status[$status]);
+		$order->save();
+	}
+	
+	echo '</div>';
 }
 
-function synchronize_stock() {
-	
-	
+function pull_stock() {
+	$products = Product::wc_all();
+	var_dump($products);
+
+	echo "<br>--------------------------------------<br>";
+
+	foreach ($products as $prod) {
+		$prod->sync_stock();
+	}
 }
 
 //////// CRON //////////////////////////////////////////////////////////
@@ -271,6 +353,9 @@ function isa_activation(){
     if(!wp_next_scheduled('pull_changes_event')){
         wp_schedule_event(time(), '5min', 'pull_changes_event');
     }
+    if(!wp_next_scheduled('pull_stock_event')){
+        wp_schedule_event(time(), '5min', 'pull_stock_event');
+    }
 }
 
 register_activation_hook(__FILE__, 'isa_activation');
@@ -279,6 +364,9 @@ register_activation_hook(__FILE__, 'isa_activation');
 function isa_deactivation(){
     if(wp_next_scheduled('pull_changes_event')){
         wp_clear_scheduled_hook('pull_changes_event');
+    }
+    if(wp_next_scheduled('pull_stock_event')){
+        wp_clear_scheduled_hook('pull_stock_event');
     }
 }
 
@@ -301,31 +389,55 @@ add_filter('cron_schedules', 'schedule');
 // The WP Cron event callback function
 function pull_changes() {
 	$changes = pull_product_changes();
-	
+
 	if (count($changes) <= 0) {
 		return;
 	}
-	
+
 	$mv_categories = Product::mv_get_categories(); //is this needed?
-	
+
 	foreach ($changes['mvIntegrationUpdates'] as $change) {
-		var_dump($change);
+		
+		wp_mail('mpanasiuk@megaventory.com', "We out here ", var_export($change, true));
 		if ($change["Entity"] == "product") {
+			global $save_product_lock;
+			$save_product_lock = true;
+			
 			if ($change["Action"] == "update" or $change["Action"] == "insert") {
 				//get product new info
 				$product = Product::mv_find($change['EntityIDs']);
-				
 				//save new info
-				$product->wc_save();
+				$product->wc_save(); 
 				
-				//delete integration update as it was already resolved
-				remove_integration_update($change['IntegrationUpdateID']);
+			} else if ($change["Action"] == "delete") {
+				$product = Product::mv_find($change['EntityIDs']); // use normal find, change some code or whatever
+				$product->wc_destroy();
 			}
+			
+			//delete integration update as it was already resolved
+			remove_integration_update($change['IntegrationUpdateID']);
+			
+			$save_product_lock = false;
+		} elseif ($change["Entity"] == "stock") {
+			$id = json_decode($change['JsonData'], true)[0]['productID'];
+			$product = Product::mv_find($id);
+			$product->sync_stock();
+			$data = remove_integration_update($change['IntegrationUpdateID']);
+		} elseif ($change['Entity'] == 'document') {
+			global $document_status, $translate_order_status;
+			$jsondata = json_decode($change['JsonData'], true);
+			if ($jsondata['DocumentTypeAbbreviation'] != "SO") continue; // only salesorder
+			$status = $document_status[$jsondata['DocumentStatus']];
+			$order = new WC_Order($jsondata['DocumentReferenceNo']);
+			$order->set_status($translate_order_status[$status]);
+			$order->save();
+			$data = remove_integration_update($change['IntegrationUpdateID']);
 		}
 	}
 }
 
 //on event, run pull_changes function
-//add_action('pull_changes_event', 'pull_changes'); //PREVENT INFINITE LOOP IN DEBUG, TALK TO KOSTIS ABOUT THIS!!!!
+add_action('pull_changes_event', 'pull_changes'); 
+//add_action('pull_stock_event', 'pull_stock');
 
 ?>

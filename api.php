@@ -10,6 +10,40 @@
 	$integration_get_call = "IntegrationUpdateGet";
 	$integration_delete_call = "IntegrationUpdateDelete";
 	
+	$translate_order_status = array
+	(
+		'Verfied' => 'on-hold',
+		'FullyShipped' => 'processing',
+		'Closed' => 'completed'
+	
+	);
+	
+	$document_status = array
+	(
+		0 => 'ValidStatus',
+		10 => 'Pending',
+		20 => 'ApprovalInProcess',
+		30 => 'Verified',
+		35 => 'Picked',
+		36 => 'Packed',
+		40 => 'PartiallyShipped',
+		41 => 'PartiallyShippedInvoiced',
+		42 => 'FullyShipped',
+		43 => 'PartiallyReceived',
+		44 => 'PartiallyReceivedInvoiced',
+		45 => 'FullyReceived',
+		46 => 'PartiallyInvoiced',
+		47 => 'FullyInvoiced',
+		48 => 'PartiallyPaid',
+		49 => 'FullyPaid',
+		50 => 'Closed',
+		70 => 'ClosedWO',
+		99 => 'Cancelled'
+	);
+
+	//$today = DaysOfWeek::Sunday;
+		
+	
 	// create URL using the API key and call
 	function create_json_url($call) {
 		global $url, $API_KEY;
@@ -121,6 +155,7 @@
 			  <APIKEY>' . $API_KEY . '</APIKEY>
 			  <mvSalesOrder>
 				<SalesOrderReferenceNo>' . $order->get_order_number() . '</SalesOrderReferenceNo>
+				<SalesOrderReferenceApplication>' . 'woocommerce' . '</SalesOrderReferenceApplication>
 				<SalesOrderCurrencyCode>EUR</SalesOrderCurrencyCode>
 				<SalesOrderClientID>' . $client->MV_ID . '</SalesOrderClientID>
 				<SalesOrderBillingAddress>' . $shipping_address . '</SalesOrderBillingAddress>
@@ -141,7 +176,7 @@
 		
 		$data = send_xml($url, $xml_request);
 		
-		print_r (htmlentities($data));
+		var_dump($data);
 		echo "<br><br>";
 	}
 	
