@@ -50,6 +50,19 @@ class Product {
 		return $temp;
 	}
 	
+	public static function wc_all_with_variable() {
+		$products = self::wc_all();
+		$temp = array();
+		foreach ($products as $prod) {
+			array_push($temp, $prod);
+			$vars = $prod->wc_get_variations();
+			if (count($vars) > 0) {
+				$temp = array_merge($temp, $vars);
+			}
+		}
+		return $temp;
+	}
+	
 	public static function mv_all() {
 		$categories = self::mv_get_categories();
 		
@@ -196,6 +209,8 @@ class Product {
 		$product->breadth = $mv_prod['ProductBreadth'];
 		$product->height = $mv_prod['ProductHeight'];
 		
+		$product->version = $mv_prod['ProductVersion'];
+		
 		$product->pull_stock();
 		
 		return $product;	
@@ -287,7 +302,7 @@ class Product {
 	public function wc_save($wc_products = null) {
 		wp_mail("mpanasiuk@megaventory.com", "SAVING", "");
 		if ($wc_products == null) {
-			$wc_products = self::wc_all();
+			$wc_products = ($this->version == null) ? self::wc_all() : self::wc_all_with_variable();
 		}
 		
 		foreach ($wc_products as $wc_product) {
@@ -356,6 +371,10 @@ class Product {
 		update_post_meta($this->WC_ID, '_manage_stock', "yes");
 		update_post_meta($this->WC_ID, '_stock', (string)$this->stock_on_hand);
 		update_post_meta($this->WC_ID, '_stock_status', ($this->stock_on_hand > 0 ? "instock" : "outofstock"));
+		
+		if ($this->version != null) {
+			update_post_meta($this->WC_ID, '_variation_description', $this->description);
+		}
 		
 		
 		//echo "<br>" . $product->stock_on_hand;

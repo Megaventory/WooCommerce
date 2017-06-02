@@ -309,34 +309,15 @@ function get_guest_mv_client() {
 
 function test() {
 	echo '<div style="margin:auto;width:50%">';
-	/*
-	$prod = Product::wc_find(2163);
-	var_dump($prod);
-	
-	echo "<br>-----------------------------<br>";
-	$var = new WC_Product_Variable($prod->WC_ID);
-	var_dump($var->get_children());
-	$prod2 = get_post($var->get_children()[0]);
-	echo "<br>-----------------------------<br>";
-	var_dump($prod2);
-	echo "<br>-----------------------------<br>";
-	var_dump(get_post_meta($prod2->ID));
-	echo "<br>-----------------------------<br>";
-	$a = new WC_Product_Variation($prod2->ID);
-	var_dump($a->get_sku());
-	echo "<br>-----------------------------<br>";
-	var_dump($a);
-	*/
-	
-	foreach (Product::wc_all() as $prod) {
+
+	foreach (Product::wc_all_with_variable() as $prod) {
 		echo "<br>-------------------<br>";
-		if ($prod->type == "variable") {
-			echo $prod->name;
-			
-			var_dump($prod->wc_get_variations()[0]);
-			$prod->mv_save();
+		echo $prod->SKU;
+		if ($prod->SKU == "shoe-013") {
+			var_dump(get_post($prod->WC_ID));
+			echo "<br><br>";
+			var_dump(new WC_Product_Variation($prod->WC_ID));
 		}
-		
 	}
 	echo '</div>';
 }
