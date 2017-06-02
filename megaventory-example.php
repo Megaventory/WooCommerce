@@ -308,30 +308,36 @@ function get_guest_mv_client() {
 }
 
 function test() {
-	global $document_status, $translate_order_status;
-	echo '<div style="text-align:center;">';
-	$changes = pull_product_changes();
-
-	$mv_categories = Product::mv_get_categories(); //is this needed?
-
-	foreach ($changes['mvIntegrationUpdates'] as $change) {
-		if ($change['Entity'] != 'document') continue;
-		echo '<br>-----------------------------------<br>';
-		var_dump($change);
-		echo '<br>---<br>';
-		$jsondata = json_decode($change['JsonData'], true);
-		if ($jsondata['DocumentTypeAbbreviation'] != "SO") continue;
-		var_dump($jsondata);
-		echo '<br>--<br>';
-		var_dump($jsondata['DocumentReferenceNo']);
-		echo '<br>-<br>';
-		$status = $document_status[$jsondata['DocumentStatus']];
-		$order = new WC_Order($jsondata['DocumentReferenceNo']);
-		var_dump($order);
-		$order->set_status($translate_order_status[$status]);
-		$order->save();
-	}
+	echo '<div style="margin:auto;width:50%">';
+	/*
+	$prod = Product::wc_find(2163);
+	var_dump($prod);
 	
+	echo "<br>-----------------------------<br>";
+	$var = new WC_Product_Variable($prod->WC_ID);
+	var_dump($var->get_children());
+	$prod2 = get_post($var->get_children()[0]);
+	echo "<br>-----------------------------<br>";
+	var_dump($prod2);
+	echo "<br>-----------------------------<br>";
+	var_dump(get_post_meta($prod2->ID));
+	echo "<br>-----------------------------<br>";
+	$a = new WC_Product_Variation($prod2->ID);
+	var_dump($a->get_sku());
+	echo "<br>-----------------------------<br>";
+	var_dump($a);
+	*/
+	
+	foreach (Product::wc_all() as $prod) {
+		echo "<br>-------------------<br>";
+		if ($prod->type == "variable") {
+			echo $prod->name;
+			
+			var_dump($prod->wc_get_variations()[0]);
+			$prod->mv_save();
+		}
+		
+	}
 	echo '</div>';
 }
 
@@ -403,9 +409,12 @@ function pull_changes() {
 			global $save_product_lock;
 			$save_product_lock = true;
 			
+			wp_mail("mpanasiuk@megaventory.com", "S Y N C C", var_export($change, true));
+			
 			if ($change["Action"] == "update" or $change["Action"] == "insert") {
 				//get product new info
 				$product = Product::mv_find($change['EntityIDs']);
+				wp_mail("mpanasiuk@megaventory.com", "S Y N C C 2", var_export($product, true));
 				//save new info
 				$product->wc_save(); 
 				

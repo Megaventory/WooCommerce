@@ -27,6 +27,8 @@ class Product {
 	public $stock_on_hand;
 	public $mv_qty;
 	
+	public $variations;
+	
 	private static $product_get_call = "ProductGet";
 	private static $product_update_call = "ProductUpdate";
 	private static $product_undelete_call = "ProductUndelete";
@@ -224,11 +226,66 @@ class Product {
 		$prod->stock_on_hand = (int)get_post_meta($ID, '_stock', true);
 		$prod->mv_qty = get_post_meta($ID, '_mv_qty', true);
 		
+		
+		$var = new WC_Product_Variable($prod->WC_ID);
+		$children = $var->get_children();
+		if (count($children) <= 0) {
+			$prod->type = "simple";
+		} else {
+			$prod->type = "variable";
+			$prod->variations = $children;
+		}
+		
+		return $prod;
+	}
+	
+	public function wc_get_variations() {
+		if (count($this->variations) <= 0) return array();
+		
+		$prods = array();
+		
+		foreach ($this->variations as $var_prod_id) {
+			$prod = self::wc_variable_convert($var_prod_id, $this);
+			array_push($prods, $prod);
+		}
+		
+		return $prods;
+	}
+	
+	private static function wc_variable_convert($var_prod_id, $parent) {
+		//inherit parent values if no values are present
+		$var_prod = new WC_Product_Variation($var_prod_id);
+		$prod = new Product();
+		
+		$prod->WC_ID = $var_prod_id;
+		$prod->MV_ID = get_post_meta($var_prod_id, "MV_ID", true);
+		$prod->SKU = $var_prod->get_sku();
+		$prod->description = $var_prod->get_description() ? $var_prod->get_description() : $parent->description;
+		$prod->type = "variable-child";
+		$prod->regular_price = $var_prod->get_price() ? $var_prod->get_price() : $parent->regular_price;
+		
+		$prod->weight = $var_prod->get_weight() ? $var_prod->get_weight() : $parent->weight;
+		$prod->height = $var_prod->get_height() ? $var_prod->get_height() : $parent->height;
+		$prod->length = $var_prod->get_length() ? $var_prod->get_length() : $parent->length;
+		$prod->breadth = $var_prod->get_width() ? $var_prod->get_width() : $parent->breadth;
+		
+		//version is | name - var1, var2, var3
+		//mv vestion should be | var1, var2, var3
+		$version = $var_prod->get_name();
+		$version = str_replace(" ", "", $version); //remove whitespaces
+		$version = explode("-", $version)[1]; //disregard name
+		//$version = explode(",", $version);
+		//$version = implode("/", $version);
+		$version = str_replace(",", "/", $version);
+		
+		$prod->version = $version;
+		
 		return $prod;
 	}
 	
 	//only simple now
 	public function wc_save($wc_products = null) {
+		wp_mail("mpanasiuk@megaventory.com", "SAVING", "");
 		if ($wc_products == null) {
 			$wc_products = self::wc_all();
 		}
@@ -307,8 +364,9 @@ class Product {
 		
 		update_post_meta($this->WC_ID, "MV_ID", $this->MV_ID);
 		
-		return true;
+		wp_mail("mpanasiuk@megaventory.com", "AMEN", "");
 		
+		return true;
 	}
 	
 	public function mv_save($categories = null) {
@@ -335,6 +393,10 @@ class Product {
 		
 		$data = send_xml($url, $xml_request);
 		
+		var_dump($this);
+		echo "<br>- - - - - - - - - - - - - - -      - - - - - - - -<br>";
+		var_dump(htmlentities($xml_request));
+		echo "<br>- - - - - - - - - - - - - - -      - - - - - - - -<br>";
 		var_dump($data);
 		
 		if ($data['InternalErrorCode'] == "ProductSKUAlreadyDeleted") {
@@ -349,12 +411,24 @@ class Product {
 			$data = send_xml($url, $xml_request);
 		}
 		
+		wp_mail('mpanasiuk@megaventory.com', "producct save", var_export($xml_request, true));
+		wp_mail('mpanasiuk@megaventory.com', "producct save", var_export($data, true));
 		if (count($data['mvProduct']) <= 0) { //not saved
 			return false;
 		}
 		
 		update_post_meta($this->WC_ID, "MV_ID", $data["mvProduct"]["ProductID"]);
 		$this->MV_ID = $data["mvProduct"]["ProductID"];
+		
+		//save variable children?
+		if (count($this->variations) > 0) {
+			foreach ($this->variations as $id) {
+				$prod = self::wc_variable_convert($id, $this);
+				echo "<br>//////////////////////////////////////////////////////<br>";
+				var_dump($prod->mv_save());
+			}
+		}
+		
 		
 		return $data['mvProduct'];
 	}
@@ -370,6 +444,7 @@ class Product {
 					' . ($create_new ? '' : '<ProductID>' . $this->MV_ID . '</ProductID>') . '
 					<ProductSKU>' . $this->SKU . '</ProductSKU> 
 					<ProductDescription>' . $this->description . '</ProductDescription> 
+					' . ($this->version ? '<ProductVersion>' . $this->version . '</ProductVersion>' : '') . '
 					' . ($this->long_description ? '<ProductLongDescription>' . $this->long_description . '</ProductLongDescription>' : '') . '
 					' . ($category_id ? '<ProductCategoryID>' . $category_id . '</ProductCategoryID>' : '') . '
 					' . ($this->regular_price ? '<ProductSellingPrice>' . $this->regular_price . '</ProductSellingPrice>' : '') . '
@@ -543,6 +618,7 @@ class Product {
 		
 		$this->pull_stock();
 		update_post_meta($this->WC_ID, '_mv_qty', $this->mv_qty);
+		update_post_meta($this->WC_ID, '_manage_stock', "yes");
 		update_post_meta($this->WC_ID, '_stock', (string)$this->stock_on_hand);
 		update_post_meta($this->WC_ID, '_stock_status', ($this->stock_on_hand > 0 ? "instock" : "outofstock"));
 	}
