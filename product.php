@@ -90,18 +90,6 @@ class Product {
 		}
 	}
 	
-	public static function wc_find_by_mv_id($id) {
-		$prods = self::wc_all();
-		$prod = null;
-		foreach ($prods as $p) {
-			if ($p->MV_ID == $id) {
-				$prod = $p;
-				break;
-			}
-		}
-		return $prod;
-	}
-	
 	public static function mv_find($id) {
 		$url = create_json_url_filter(self::$product_get_call, "ProductID", "Equals", urlencode($id));
 		$data = json_decode(file_get_contents($url), true);
@@ -167,7 +155,7 @@ class Product {
 	}
 	
 	public static function wc_find_by_sku($SKU) {
-		$prods = self::wc_all();
+		$prods = self::wc_all_with_variable();
 		foreach ($prods as $prod) {
 			if ($prod->SKU == $SKU) {
 				return $prod;
@@ -284,6 +272,8 @@ class Product {
 		$prod->length = $var_prod->get_length() ? $var_prod->get_length() : $parent->length;
 		$prod->breadth = $var_prod->get_width() ? $var_prod->get_width() : $parent->breadth;
 		
+		$prod->category = $parent->category;
+		
 		//version is | name - var1, var2, var3
 		//mv vestion should be | var1, var2, var3
 		$version = $var_prod->get_name();
@@ -323,24 +313,30 @@ class Product {
 			throw new Exception('SKU can\'t be empty');
 		}
 		
+	
+		//dont update variables title!
 		if ($this->WC_ID == null) { // look out. instead of always creating new, find one with same SKU and use that instead!
 			//create product
-			$post_id = wp_insert_post(array(
-				'post_title' => $this->description,
+			$args = array
+			(
 				'post_content' => $this->long_description,
 				'post_excerpt' => $this->description,
 				'post_status' => 'publish',
 				'post_type' => "product",
-			));
+			);
+			if ($this->version == null) $args['post_title'] = $this->description;
+			$post_id = wp_insert_post($args);
 			
 			$this->WC_ID = $post_id;
 		} else { 
+			//never update product title. only on create
 			$post = array(
 				'ID' => $this->WC_ID,
-				'post_title' => $this->description,
+				//'post_title' => $this->description,
 				'post_content' => $this->long_description,
 				'post_excerpt' => $this->description,
 			);
+			//if ($this->version == null) $post['post_title'] = $this->description;
 			wp_update_post($post);
 		}
 		
@@ -482,6 +478,16 @@ class Product {
 	}
 	
 	public function wc_destroy() {
+		if ($this->WC_ID == null) {
+			$all = ($this->version == null) ? self::wc_all() : self::wc_all_with_variable();
+			foreach ($all as $prod) {
+				if ($prod->SKU == $this->SKU) {
+					$this->WC_ID = $prod->SKU;
+					break;
+				}
+			}
+		}
+		wp_mail("mpanasiuk@megaventory.com", "TEMAT", var_export($this, true));
 		wp_delete_post($this->WC_ID);
 	}
 	

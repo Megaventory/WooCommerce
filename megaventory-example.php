@@ -400,8 +400,12 @@ function pull_changes() {
 				$product->wc_save(); 
 				
 			} else if ($change["Action"] == "delete") {
-				$product = Product::mv_find($change['EntityIDs']); // use normal find, change some code or whatever
-				$product->wc_destroy();
+				//already deleted from mv
+				$data = json_decode($change['JsonData'], true);
+				wp_mail("mpanasiuk@megaventory.com", "JSONDATA", var_export($data, true));
+				$product = Product::wc_find_by_SKU($data['ProductSKU']);
+				wp_mail("mpanasiuk@megaventory.com", "PROD", var_export($product, true));
+				if ($product != null) $product->wc_destroy();
 			}
 			
 			//delete integration update as it was already resolved
