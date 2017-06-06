@@ -18,6 +18,7 @@ class MVWC_Error {
 		$this->problem = $args['problem'];
 		$this->full_msg = $args['full_msg'];
 		$this->error_code = $args['error_code'];
+		$this->type = $args['type'];
 		
 		$this->save();
 	}
@@ -38,7 +39,8 @@ class MVWC_Error {
 			"mv_id" => $this->entity_mv_id,
 			"problem" => $this->problem,
 			"message" => $this->full_msg,
-			"code" => $this->error_code
+			"code" => $this->error_code,
+			"type" => $this->type
 		));
 		
 		wp_mail("mpanasiuk@megaventory.com", "return", var_export($return, true));

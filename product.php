@@ -408,14 +408,15 @@ class Product {
 		return true;
 	}
 		
-	private function log_error($problem, $full_msg, $code) {
+	private function log_error($problem, $full_msg, $code, $type = "error") {
 		$args = array
 		(
 			'entity_id' => array('wc' => $this->WC_ID, 'mv' => $this->MV_ID), 
-			'entity_name' => $this->name,
+			'entity_name' => ($this->name == null) ? $this->description : $this->null,
 			'problem' => $problem,
 			'full_msg' => $full_msg,
-			'error_code' => $code
+			'error_code' => $code,
+			'type' => $type
 		);
 		$this->errors->log_error($args);
 	}
@@ -465,6 +466,7 @@ class Product {
 		wp_mail('mpanasiuk@megaventory.com', "producct save", var_export($xml_request, true));
 		wp_mail('mpanasiuk@megaventory.com', "producct save", var_export($data, true));
 		if (count($data['mvProduct']) <= 0) { //not saved
+			$this->log_error('Product not saved to MV', $data['InternalErrorCode'], -1);
 			return false;
 		}
 		

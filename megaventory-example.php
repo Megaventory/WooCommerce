@@ -321,11 +321,13 @@ function test() {
 	}
 	*/
 	
-	$prod = new Product();
-	$saved = $prod->wc_save();
+	$client = new Client();
+	$client->contact_name = "BOI";
+	
+	$saved = $client->mv_save();
 	if (!$saved) {
 		echo "save error<br>";
-		var_dump($prod->errors()->full_messages());
+		var_dump($client->errors()->full_messages());
 	}
 	
 	echo '</div>';
@@ -465,6 +467,7 @@ function create_plugin_database_table() {
 		  name varchar(40),
 		  problem text NOT NULL,
 		  message text,
+		  type varchar(20),
 		  code int,
 		  PRIMARY KEY  (id)
 		) $charset_collate;";

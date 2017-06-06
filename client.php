@@ -33,7 +33,20 @@ class Client {
 	}
 	
 	public function errors() {
-		return $errors;
+		return $this->errors;
+	}
+	
+	private function log_error($problem, $full_msg, $code, $type = "error") {
+		$args = array
+		(
+			'entity_id' => array('wc' => $this->WC_ID, 'mv' => $this->MV_ID), 
+			'entity_name' => $this->name,
+			'problem' => $problem,
+			'full_msg' => $full_msg,
+			'error_code' => $code,
+			'type' => $type
+		);
+		$this->errors->log_error($args);
 	}
 	
 	public static function wc_all() {
@@ -189,6 +202,10 @@ class Client {
 		if (count($data['mvSupplierClient']) > 0) { //client exists in mv, can update id
 			update_user_meta($this->WC_ID, "MV_ID", $data["mvSupplierClient"]["SupplierClientID"]);
 			$this->MV_ID = $data["mvSupplierClient"]["SupplierClientID"];
+		} else {
+			//failed to save
+			$this->log_error('Client not saved to MV', $data['InternalErrorCode'], -1);
+			return false;
 		}
 		
 		echo "<br> RESPONSE: <br>";
