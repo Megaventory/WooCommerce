@@ -70,12 +70,14 @@
 		
 		curl_close($ch);
 		
-		echo $data;
+		echo "<br> normal data: " . htmlentities($data);
+		$data = str_replace("d2p1:", "", $data); // required bc ASP.NET creates those d2p1 tags gods knows why
 		
-		$data = simplexml_load_string(html_entity_decode($data), "SimpleXMLElement", LIBXML_NOCDATA);
-		$data = json_encode($data);
+		$data = simplexml_load_string(html_entity_decode($data));//, "SimpleXMLElement", LIBXML_NOCDATA);
+		
+		//var_dump($data);
+		$data = json_encode($data, JSON_PRETTY_PRINT, 1000);
 		$data = json_decode($data, TRUE);
-		
 		
 		return $data;
 	}
@@ -163,7 +165,7 @@
 				<SalesOrderComments>' . $order->get_customer_note() . '</SalesOrderComments>
 				<SalesOrderTags>WooCommerce</SalesOrderTags>
 				<SalesOrderDetails>
-					' . $products_xml . '
+				' . $products_xml . '
 				</SalesOrderDetails>
 				<SalesOrderStatus>Pending</SalesOrderStatus>
 			  </mvSalesOrder>
@@ -176,8 +178,45 @@
 		
 		$data = send_xml($url, $xml_request);
 		
+		echo "<br> interpreted data<br>";
 		var_dump($data);
 		echo "<br><br>";
+		echo "aaaaaa:<br>";
+		var_dump($data->ResponseStatus);
+		
+		return $data;
 	}
+	
+	//if someone dealt with php and xml and still claims that php is not an utter piece of junk
+	//he should be prevented from ever programming again
+	function xml2js($xmlnode) {
+		$root = (func_num_args() > 1 ? false : true);
+		$jsnode = array();
+
+		if (!$root) {
+			if (count($xmlnode->attributes()) > 0){
+				$jsnode["$"] = array();
+				foreach($xmlnode->attributes() as $key => $value)
+					$jsnode["$"][$key] = (string)$value;
+			}
+
+			$textcontent = trim((string)$xmlnode);
+			if (count($textcontent) > 0)
+				$jsnode["_"] = $textcontent;
+
+			foreach ($xmlnode->children() as $childxmlnode) {
+				$childname = $childxmlnode->getName();
+				if (!array_key_exists($childname, $jsnode))
+					$jsnode[$childname] = array();
+				array_push($jsnode[$childname], xml2js($childxmlnode, true));
+			}
+			return $jsnode;
+		} else {
+			$nodename = $xmlnode->getName();
+			$jsnode[$nodename] = array();
+			array_push($jsnode[$nodename], xml2js($xmlnode, true));
+			return json_encode($jsnode);
+		}
+	}  
 	
 ?>

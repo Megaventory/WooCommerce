@@ -13,7 +13,7 @@ class MVWC_Error {
 	
 	function __construct($args) {
 		$this->entity_wc_id = $args['entity_id']['wc'];
-		$this->entity_wc_id = $args['entity_id']['mv'];
+		$this->entity_mv_id = $args['entity_id']['mv'];
 		$this->entity_name = $args['entity_name'];
 		$this->problem = $args['problem'];
 		$this->full_msg = $args['full_msg'];

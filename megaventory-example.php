@@ -12,6 +12,7 @@ require_once(ABSPATH . "wp-includes/pluggable.php");
 ////////////////////////////////////////////////////
 
 require_once("api.php");
+require_once("error.php");
 require_once("product.php");
 require_once("client.php");
 
@@ -40,8 +41,22 @@ function order_placed($order_id){
 		echo "CLIENT WAS NUL";
 		$client = get_guest_mv_client();
 	}
-
-	place_sales_order($order, $client);
+	
+	$returned = place_sales_order($order, $client);
+	
+	if ($returned['mvSalesOrder'] == null) {
+		//error happened
+		$args = array
+		(
+			'type' => 'error',
+			'entity_name' => 'oder by: ' . $order->get_billing_first_name() . " " . $order->get_billing_last_name(),
+			'entity_id' => array('wc' => $order->get_order_number()),
+			'problem' => 'Order not placed in MV',
+			'full_msg' => $returned['ResponseStatus']['Message'],
+			'error_code' => $returned['ResponseStatus']['ErrorCode']
+		);
+		$e = new MVWC_Error($args);
+	}
 
 	var_dump($client);
 }
