@@ -309,7 +309,7 @@ function get_guest_mv_client() {
 
 function test() {
 	echo '<div style="margin:auto;width:50%">';
-
+	/*
 	foreach (Product::wc_all_with_variable() as $prod) {
 		echo "<br>-------------------<br>";
 		echo $prod->SKU;
@@ -319,6 +319,15 @@ function test() {
 			var_dump(new WC_Product_Variation($prod->WC_ID));
 		}
 	}
+	*/
+	
+	$prod = new Product();
+	$saved = $prod->wc_save();
+	if (!$saved) {
+		echo "save error<br>";
+		var_dump($prod->errors()->full_messages());
+	}
+	
 	echo '</div>';
 }
 
@@ -433,5 +442,51 @@ function pull_changes() {
 //on event, run pull_changes function
 add_action('pull_changes_event', 'pull_changes'); 
 //add_action('pull_stock_event', 'pull_stock');
+
+//////////////////////////////////////// DB ////////////////////////////
+
+function create_plugin_database_table() {
+    global $table_prefix, $wpdb;
+
+    $tblname = 'pin';
+    $wp_track_table = $table_prefix . "$tblname ";
+
+    #Check to see if the table exists already, if not, then create it
+
+    if($wpdb->get_var("show tables like '$wp_track_table'") != $wp_track_table) {
+		$table_name = $wpdb->prefix . "mvwc_errors"; 
+		$charset_collate = $wpdb->get_charset_collate();
+
+		$sql = "CREATE TABLE $table_name (
+		  id mediumint(9) NOT NULL AUTO_INCREMENT,
+		  created_at datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+		  wc_id int,
+		  mv_id int,
+		  name varchar(40),
+		  problem text NOT NULL,
+		  message text,
+		  code int,
+		  PRIMARY KEY  (id)
+		) $charset_collate;";
+
+		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+		$return = dbDelta($sql);
+    }
+	
+	wp_mail("mpanasiuk@megaventory.com", "activating broom", var_export($return, true)); 
+}
+
+register_activation_hook(__FILE__, 'create_plugin_database_table');
+ 
+function remove_db_table() {
+    global $table_prefix, $wpdb;
+	
+	$table_name = $wpdb->prefix . "mvwc_errors"; 
+	
+	$sql = "DROP TABLE $table_name";
+	$wpdb->query($sql);
+}
+ 
+register_deactivation_hook(__FILE__, 'remove_db_table');
 
 ?>

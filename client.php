@@ -2,6 +2,7 @@
 
 require_once("api.php");
 require_once("address.php");
+require_once("error.php");
 
 // This class works as a model for a client
 // clients are only transfered from wc to mv
@@ -19,12 +20,22 @@ class Client {
 	public $email;
 	public $company;
 	public $type;
+	
+	public $errors;
 
 	private static $supplierclient_get_call = "SupplierClientGet";
 	private static $supplierclient_update_call = "SupplierClientUpdate";
 	private static $supplierclient_undelete_call = "SupplierClientUndelete";
 	private static $supplierclient_delete_call = "SupplierClientDelete";
 
+	function __construct() {
+		$this->errors = new MVWC_Errors();
+	}
+	
+	public function errors() {
+		return $errors;
+	}
+	
 	public static function wc_all() {
 		$clients = array();
 		

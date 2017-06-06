@@ -2,6 +2,7 @@
 
 require_once("api.php");
 require_once("address.php");
+require_once("error.php");
 
 // This class works as a model for a product
 // It holds all important attributes of a MV/WC product
@@ -29,6 +30,8 @@ class Product {
 	
 	public $variations;
 	
+	public $errors;
+	
 	private static $product_get_call = "ProductGet";
 	private static $product_update_call = "ProductUpdate";
 	private static $product_undelete_call = "ProductUndelete";
@@ -38,6 +41,14 @@ class Product {
 	private static $category_update_call = "ProductCategoryUpdate";
 	private static $category_delete_call = "ProductCategoryDelete";
 	private static $category_undelete_call = "ProductCategoryUndelete";
+	
+	function __construct() {
+		$this->errors = new MVWC_Errors();
+	}
+	
+	public function errors() {
+		return $this->errors;
+	}
 	
 	public static function wc_all() {
 		$args = array('post_type' => 'product', numberposts => -1);
@@ -295,22 +306,27 @@ class Product {
 			$wc_products = ($this->version == null) ? self::wc_all() : self::wc_all_with_variable();
 		}
 		
-		foreach ($wc_products as $wc_product) {
-			if ($this->SKU == $wc_product->SKU) {
-				$this->WC_ID = $wc_product->WC_ID;
-				break;
-			}
-		}	
+		if ($this->WC_ID == null) {
+			foreach ($wc_products as $wc_product) {
+				if ($this->SKU == $wc_product->SKU) {
+					$this->WC_ID = $wc_product->WC_ID;
+					break;
+				}
+			}	
+		}
 		
 		//prevent null on empty
 		if ($this->long_description == null) {
 			$this->long_description = "";
 		}
 		if ($this->description == null) {
-			throw new Exception('Short description can\'t be empty');
+			//throw new Exception('Short description can\'t be empty');
+			$this->log_error('Product not saved to WC', 'Short description cannot be empty', -1);
+			return false;
 		}
 		if ($this->SKU == null) {
-			throw new Exception('SKU can\'t be empty');
+			$this->log_error('Product not saved to WC', 'SKU cannot be empty', -1);
+			return false;
 		}
 		
 	
@@ -326,6 +342,10 @@ class Product {
 			);
 			if ($this->version == null) $args['post_title'] = $this->description;
 			$post_id = wp_insert_post($args);
+			if (is_wp_error($post_id)) {
+				$this->log_error('Product not saved to WC', $post_id->get_error_message(), $post_id->get_error_code());
+				return false;
+			}
 			
 			$this->WC_ID = $post_id;
 		} else { 
@@ -337,7 +357,11 @@ class Product {
 				'post_excerpt' => $this->description,
 			);
 			//if ($this->version == null) $post['post_title'] = $this->description;
-			wp_update_post($post);
+			$return = wp_update_post($post);
+			if (is_wp_error($return)) {
+				$this->log_error('Product not saved to WC', $return->get_error_message(), $return->get_error_code());
+				return false;
+			}
 		}
 		
 		//meta
@@ -382,6 +406,18 @@ class Product {
 		wp_mail("mpanasiuk@megaventory.com", "AMEN", "");
 		
 		return true;
+	}
+		
+	private function log_error($problem, $full_msg, $code) {
+		$args = array
+		(
+			'entity_id' => array('wc' => $this->WC_ID, 'mv' => $this->MV_ID), 
+			'entity_name' => $this->name,
+			'problem' => $problem,
+			'full_msg' => $full_msg,
+			'error_code' => $code
+		);
+		$this->errors->log_error($args);
 	}
 	
 	public function mv_save($categories = null) {
