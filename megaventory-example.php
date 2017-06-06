@@ -132,10 +132,12 @@ function column($column, $postid) {
 //product edit or create
 function mp_sync_on_product_save($post_id, $post, $update) {
 	global $save_product_lock;
+	
 	if (get_post_type($post_id) == 'product') {
 		if ($save_product_lock) return; //locked, don't do this
-		wp_mail('mpanasiuk@megaventory.com', "producct save", $post_id);
+		wp_mail('mpanasiuk@megaventory.com', "producctAAAAAAAAAAAA save", var_export($post_id, true));
 		$product = Product::wc_find($post_id);
+		if ($product->SKU == null) return; //no details yet provided
 		$response = $product->mv_save();
 	}
 }
@@ -321,13 +323,12 @@ function test() {
 	}
 	*/
 	
-	$client = new Client();
-	$client->contact_name = "BOI";
-	
-	$saved = $client->mv_save();
-	if (!$saved) {
-		echo "save error<br>";
-		var_dump($client->errors()->full_messages());
+	$prods = Product::wc_all();
+	foreach ($prods as $prod) {
+		echo "<br>--------------------------<br>";
+		echo $prod->SKU . "<br>";
+		echo "TYPE<br>";
+		echo $prod->type;
 	}
 	
 	echo '</div>';

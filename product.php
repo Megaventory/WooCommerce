@@ -242,12 +242,15 @@ class Product {
 		
 		
 		$var = new WC_Product_Variable($prod->WC_ID);
-		$children = $var->get_children();
-		if (count($children) <= 0) {
-			$prod->type = "simple";
-		} else {
+		$t = (wp_get_object_terms($prod->WC_ID, 'product_type')[0]->name);
+		if ($t == "grouped") {
+			$prod->type = "grouped";
+		} else if ($t == "variable") {
 			$prod->type = "variable";
+			$children = $var->get_children();
 			$prod->variations = $children;
+		} else {
+			$prod->type = "simple";
 		}
 		
 		return $prod;
@@ -422,6 +425,11 @@ class Product {
 	}
 	
 	public function mv_save($categories = null) {
+		if ($this->type == "grouped") {
+			$this->log_error('Product not saved to MV', 'Grouped products cannot be saved to MV', -1, 'warning');
+			return false;
+		}
+		
 		if ($categories == null) {
 			$categories = self::mv_get_categories();
 		}
