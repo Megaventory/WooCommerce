@@ -165,6 +165,7 @@ function plugin_setup_menu(){
 
 // admin panel
 function test_init(){
+	/*
 	echo '<form id="sync-mv-wc" method="post">';
 	echo '<input type="checkbox" name="with_delete" /> with delete';
 	echo '<input type="hidden" name="sync-mv-wc" value="true" />';
@@ -172,7 +173,8 @@ function test_init(){
 	echo '</form>';
 
 	echo '<br><br>';
-
+	*/
+	
 	echo '<form id="sync-wc-mv" method="post">';
 	echo '<input type="checkbox" name="with_delete" /> with delete';
 	echo '<input type="hidden" name="sync-wc-mv" value="true" />';
@@ -195,13 +197,67 @@ function test_init(){
 	echo '</form>';
 
 	echo '<br><br>';
+	
+	echo '<form id="api_key_form" method="post">';
+	echo '<label for="api_key">Megaventory API key: </label>';
+	echo '<input type="text" name="api_key" value="' . get_api_key() . '"/>';
+	echo '<input type="submit" value="set key"/>';
+	echo '</form>';
+	
+	echo '<br><br>';
 
 	echo '<form id="test" method="post">';
 	echo '<input type="hidden" name="test" value="true" />';
 	echo '<input type="submit" value="TEST" />';
 	echo '</form>';
-
+	
+	global $wpdb;
+	$table_name = $wpdb->prefix . "mvwc_errors"; 
+	$errors = $wpdb->get_results("SELECT * FROM $table_name;");
+	
+	//var_dump($errors);
+	
+	usort($errors, "error_cmp");
+	$errors = array_reverse($errors);
+	
+	$table = '
+		<table>
+			<tr>
+				<th>ID</th>
+				<th>Entity MV_ID</th>
+				<th>Entity WC_ID</th>
+				<th>Created at</th>
+				<th>Error type</th>
+				<th>Entity name</th>
+				<th>Problem</th>
+				<th>Full message</th>
+				<th>Error code</th>
+			</tr>';
+			foreach ($errors as $error) {
+				$str = '<tr>';
+				
+				$str .= '<td>' . $error->id . '</td>';
+				$str .= '<td>' . $error->mv_id . '</td>';
+				$str .= '<td>' . $error->wc_id . '</td>';
+				$str .= '<td>' . $error->created_at . '</td>';
+				$str .= '<td>' . $error->type . '</td>';
+				$str .= '<td>' . $error->name . '</td>';
+				$str .= '<td>' . $error->problem . '</td>';
+				$str .= '<td>' . $error->message . '</td>';
+				$str .= '<td>' . $error->code . '</td>';
+				
+				$str .= '</tr>';
+				$table .= $str;
+			}
+	$table .= '</table>';
+	echo $table;
 }
+
+function error_cmp($a, $b)
+{
+    return strcmp($a->created_at, $b->created_at);
+}
+
 
 // sync button clicked
 // code will only run correctly on 'init' hook
@@ -216,6 +272,25 @@ if (isset($_POST['sync-mv-wc'])) {
 	add_action('init', 'initialize_integration');
 } else if (isset($_POST['test'])) {
 	add_action('init', 'test');
+} else if (isset($_POST['api_key'])) {
+	add_action('init', 'set_api_key');
+}
+
+function set_api_key() {
+	$key = $_POST['api_key'];
+	
+	$post = get_page_by_title("mv_api_key", ARRAY_A, "post");
+	if (!$post) {
+		wp_insert_post(array
+			(
+				'post_title' => "mv_api_key",
+				'post_content' => (string)$key
+			)
+		);
+	} else {
+		$post["post_content"] = $key;
+		wp_update_post($post);
+	}
 }
 
 function synchronize_products_mv_wc() {
@@ -344,6 +419,7 @@ function test() {
 	}
 	*/
 	echo "<br>--------<br>";
+	echo get_api_key();
 	echo "<br>--------<br>";
 	
 	echo '</div>';

@@ -1,10 +1,19 @@
 <?php
 
 	require_once("address.php");
+	
+	function get_api_key() {
+		$post = get_page_by_title("mv_api_key", ARRAY_A, "post");
+		if (!$post) {
+			return null;
+		}
+		return $post["post_content"];
+	}
 
 	$url = "https://apitest.megaventory.com/json/reply/";
 	$xml_url = "https://apitest.megaventory.com/xml/reply/";
-	$API_KEY = "b7d0cc59b72af1e5@m65192"; // DEV AND DEBUG ONLY
+	$API_KEY = get_api_key();
+	//$API_KEY = "b7d0cc59b72af1e5@m65192"; // DEV AND DEBUG ONLY
 	
 	$salesorder_update_call = "SalesOrderUpdate";
 	$integration_get_call = "IntegrationUpdateGet";
