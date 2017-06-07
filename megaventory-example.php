@@ -16,7 +16,7 @@ require_once("error.php");
 require_once("product.php");
 require_once("client.php");
 
-//normal cro would not work
+//normal cron would not work
 define('ALTERNATE_WP_CRON', true);
 
 //when lock is true, edited product will not update mv products
@@ -84,6 +84,8 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	add_action('init', 'register_style');
 	add_action('admin_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
 	//add_action('wp_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
+	
+	
 
 }
 
@@ -315,6 +317,10 @@ function initialize_integration() {
 		$post["post_content"] = $id;
 		wp_update_post($post);
 	}
+	
+	//currency
+	$cur = get_default_currency();
+	update_option("woocommerce_currency", $cur, "yes");
 }
 
 function get_guest_mv_client() {
@@ -337,14 +343,8 @@ function test() {
 		}
 	}
 	*/
-	
-	$prods = Product::wc_all();
-	foreach ($prods as $prod) {
-		echo "<br>--------------------------<br>";
-		echo $prod->SKU . "<br>";
-		echo "TYPE<br>";
-		echo $prod->type;
-	}
+	echo "<br>--------<br>";
+	echo "<br>--------<br>";
 	
 	echo '</div>';
 }

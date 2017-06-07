@@ -9,15 +9,23 @@
 	$salesorder_update_call = "SalesOrderUpdate";
 	$integration_get_call = "IntegrationUpdateGet";
 	$integration_delete_call = "IntegrationUpdateDelete";
+	$currency_get_call = "CurrencyGet";
 	
+	//mv status => wc status
 	$translate_order_status = array
 	(
-		'Verfied' => 'on-hold',
+		'Pending' => 'on-hold',
+		'Verified' => 'processing',
+		'PartiallyShipped' => 'processing',
 		'FullyShipped' => 'processing',
-		'Closed' => 'completed'
+		'Closed' => 'completed',
+		//Received is only for purchase orders
+		'FullyInvoiced' => 'completed',
+		'Cancelled' => 'cancelled'
 	
 	);
 	
+	//mv status code to string. only a few of them are actually used
 	$document_status = array
 	(
 		0 => 'ValidStatus',
@@ -158,7 +166,6 @@
 			  <mvSalesOrder>
 				<SalesOrderReferenceNo>' . $order->get_order_number() . '</SalesOrderReferenceNo>
 				<SalesOrderReferenceApplication>' . 'woocommerce' . '</SalesOrderReferenceApplication>
-				<SalesOrderCurrencyCode>EUR</SalesOrderCurrencyCode>
 				<SalesOrderClientID>' . $client->MV_ID . '</SalesOrderClientID>
 				<SalesOrderBillingAddress>' . $shipping_address . '</SalesOrderBillingAddress>
 				<SalesOrderShippingAddress>' . $billing_address . '</SalesOrderShippingAddress>
@@ -218,5 +225,13 @@
 			return json_encode($jsnode);
 		}
 	}  
+	
+	function get_default_currency() {
+		global $currency_get_call;
+		$url = create_json_url_filter($currency_get_call, "CurrencyIsDefault", "Equals", "true");
+		
+		$data = file_get_contents($url);
+		return json_decode($data, true)['mvCurrencies'][0]['CurrencyCode'];
+	}
 	
 ?>
