@@ -3,11 +3,7 @@
 	require_once("address.php");
 	
 	function get_api_key() {
-		$post = get_page_by_title("mv_api_key", ARRAY_A, "post");
-		if (!$post) {
-			return null;
-		}
-		return $post["post_content"];
+		return get_option("mv_api_key");
 	}
 	
 	function get_guest_mv_client() {

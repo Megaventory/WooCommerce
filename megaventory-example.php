@@ -238,22 +238,9 @@ if (isset($_POST['sync-mv-wc'])) {
 	add_action('init', 'set_api_key');
 }
 
-//later, rewrite that as option ///////////////////////////////////////////////////////////////////////////!REVISIT//////////////////
 function set_api_key() {
-	$key = $_POST['api_key'];
-	
-	$post = get_page_by_title("mv_api_key", ARRAY_A, "post");
-	if (!$post) {
-		wp_insert_post(array
-			(
-				'post_title' => "mv_api_key",
-				'post_content' => (string)$key
-			)
-		);
-	} else {
-		$post["post_content"] = $key;
-		wp_update_post($post);
-	}
+	$key = $_POST['api_key'];	
+	update_option("mv_api_key", (string)$key);
 }
 
 ////////////////////// SYNC //////////////////////////////////////////
