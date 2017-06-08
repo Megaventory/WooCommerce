@@ -411,7 +411,7 @@ class Product {
 		return true;
 	}
 		
-	private function log_error($problem, $full_msg, $code, $type = "error") {
+	public function log_error($problem, $full_msg, $code, $type = "error") {
 		$args = array
 		(
 			'entity_id' => array('wc' => $this->WC_ID, 'mv' => $this->MV_ID), 

@@ -16,61 +16,64 @@ require_once("api.php");
 require_once("error.php");
 require_once("product.php");
 require_once("client.php");
+require_once("error.php");
 
 //normal cron would not work
 define('ALTERNATE_WP_CRON', true);
 
 //when lock is true, edited product will not update mv products
 $save_product_lock = false;
+$execute_lock = false; //this lock prevents all sync fro
 
 //////////////// PLUGIN INITIALIZATION //////////////////////////////////////////////////
 
 // main. This code is executed only if woocommerce is an installed and activated plugin.
 if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
-	$hook_to = 'woocommerce_thankyou';
-	$what_to_hook = 'order_placed';
-	$prioriy = 111;
-	$num_of_arg = 1;
-	// hook order placed
-	add_action($hook_to, $what_to_hook, $prioriy, $num_of_arg);
-
 	//configure admin panel
 	add_action('admin_menu', 'plugin_setup_menu');
 
-	//on add / edit product
-	add_action('save_post', 'mp_sync_on_product_save', 10, 3);
-
-	//custom product columns
+	//custom product columns (display stock in product table)
 	add_filter('manage_edit-product_columns', 'add_mv_column', 15);
 	add_action('manage_product_posts_custom_column', 'column', 10, 2);
 
 	//styles
 	add_action('init', 'register_style');
 	add_action('admin_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
-	//add_action('wp_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
+	//add_action('wp_enqueue_scripts', 'enqueue_style'); //for outside admin if needed, uncomment
 	
+	//if main currency of wc and mv are different, halt all sync!
 	$correct_currency = get_default_currency() == get_option("woocommerce_currency");
 	if (!$correct_currency) {
-		add_action('admin_notices', 'sample_admin_notice__error');
+		add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
 	}
 	
+	$can_execute = $correct_currency;
+	if ($can_execute) {
+		//placed order
+		add_action('woocommerce_thankyou', 'order_placed', 111, 1);
+
+		//on add / edit product
+		add_action('save_post', 'sync_on_product_save', 10, 3);
+	} else {
+		$execute_lock = true;
+	}
 }
 
+//link style.css
 function register_style() {
 	wp_register_style('mv_style', plugins_url('/style/style.css', __FILE__), false, '1.0.0', 'all');
 }
-
 function enqueue_style(){
-   wp_enqueue_style('mv_style');
+	wp_enqueue_style('mv_style');
 }
 
+//add mv stock column in product table
 function add_mv_column($columns){
 	//mv stock must be after normal stock
 	$temp = array();
 	foreach ($columns as $key => $value) {
 		$temp[$key] = $value;
 		if ($key == "is_in_stock") {
-			//add now
 			$temp['mv_stock'] = __('Megaventory Qty');
 		}
 	}
@@ -79,10 +82,11 @@ function add_mv_column($columns){
 	return $columns;
 }
 
+//MV stock column in products table
 function column($column, $postid) {
     if ($column == 'mv_stock') {
-        //echo '<p>Main&nbsp;&nbsp;200&nbsp;&nbsp;<span class="qty-on-hand">(0)</span>&nbsp;&nbsp;<span class="qty-non-shipped">0</span>&nbsp;&nbsp;<span class="qty-non-allocated">0</span>&nbsp;&nbsp;<span class="qty-non-received">0</span></p>';
-		$prod = Product::wc_find($postid);
+		//get product by id
+        $prod = Product::wc_find($postid);
     
 		//no stock
 		if (!is_array($prod->mv_qty)) {
@@ -90,13 +94,11 @@ function column($column, $postid) {
 			return;
 		}
 		
-		$i = 0;
-
 		//build stock table
 		echo '<table class="qty-row">';
 		foreach ($prod->mv_qty as $qty) {
 			$formatted_string = '<tr>';
-			
+			//$qty[inventory name, total, on-hand, non-shipped, non-allocated, non-received]
 			$qty = explode(";", $qty);
 			$formatted_string .= '<td colspan="2"><span>' . $qty[0] . '</span></td>';
 			$formatted_string .= '<td class="mv-tooltip"><span class="tooltiptext">Total</span><span>' . $qty[1] . '</span></td>';
@@ -114,6 +116,7 @@ function column($column, $postid) {
 }
 
 function plugin_setup_menu(){
+	//plugin tab
 	add_menu_page('Test Plugin Page', 'Test Plugin', 'manage_options', 'test-plugin', 'test_init');
 }
 
@@ -167,6 +170,8 @@ function test_init(){
 	echo '<input type="submit" value="TEST" />';
 	echo '</form>';
 	
+	
+	/////// ERROR TABLE ///////
 	global $wpdb;
 	$table_name = $wpdb->prefix . "mvwc_errors"; 
 	$errors = $wpdb->get_results("SELECT * FROM $table_name;");
@@ -209,6 +214,7 @@ function test_init(){
 	echo $table;
 }
 
+//error comparator - sort by date
 function error_cmp($a, $b)
 {
     return strcmp($a->created_at, $b->created_at);
@@ -232,6 +238,7 @@ if (isset($_POST['sync-mv-wc'])) {
 	add_action('init', 'set_api_key');
 }
 
+//later, rewrite that as option ///////////////////////////////////////////////////////////////////////////!REVISIT//////////////////
 function set_api_key() {
 	$key = $_POST['api_key'];
 	
@@ -252,18 +259,19 @@ function set_api_key() {
 ////////////////////// SYNC //////////////////////////////////////////
 
 //product edit or create
-function mp_sync_on_product_save($post_id, $post, $update) {
+function sync_on_product_save($post_id, $post, $update) {
 	global $save_product_lock;
 	
 	if (get_post_type($post_id) == 'product') {
 		if ($save_product_lock) return; //locked, don't do this
-		wp_mail('mpanasiuk@megaventory.com', "producctAAAAAAAAAAAA save", var_export($post_id, true));
 		$product = Product::wc_find($post_id);
-		if ($product->SKU == null) return; //no details yet provided
+		if ($product->SKU == null) return; //no details yet provided, no need to save (will only cause errors at this point)
 		$response = $product->mv_save();
 	}
 }
 
+
+//synchronize from mv to wc. This is deprecated and should be deleted on release
 function synchronize_products_mv_wc() {
 	global $save_product_lock;
 	$save_product_lock = true;
@@ -297,10 +305,16 @@ function synchronize_products_mv_wc() {
 	$save_product_lock = false;
 }
 
+//synchronize products from wc to mv
 function synchronize_products_wc_mv() {
 	// synchronize with delete?
+	//with delete is deprecated - product may be deleted from wc, but still phisically exists in the stock
+	//client must be informed that it is better to hide wc products, and delete them when the stock is depleted
 	$with_delete = isset($_POST['with_delete']);
 
+	//get all wc products and save them to mv
+	//products without mv id will find respective product by SKU
+	//products that do not exist in MV will be created
 	$wc_products = Product::wc_all();
 
 	foreach ($wc_products as $wc_product) {
@@ -308,11 +322,14 @@ function synchronize_products_wc_mv() {
 	}
 }
 
+//push clients from mv to wc
 function synchronize_clients() {
 	// synchronize with delete?
 	$with_delete = isset($_POST['with_delete']);
-	//do delete later - discuss with kostis SupplierClientDeleteAction enum
+	//do delete later - discuss with Kostis if it is necessary
 
+	//get all wc clients and save them in mv, creating new ones if needed
+	//refer to Client::mv_save() to find out how conflicting names are resolved
 	$wc_clients = Client::wc_all();
 
 	foreach ($wc_clients as $wc_client) {
@@ -320,8 +337,11 @@ function synchronize_clients() {
 	}
 }
 
-
+//initial integration of plugin
+//creates guest user
+//should map MV_IDs by SKU/////////////////////////////////////////////////////////////////////////////////////////////////
 function initialize_integration() {
+	//Create guest client in wc if does not exist yet.
 	$user_name = "WooCommerce_Guest";
 	$id = username_exists($user_name);
 	if (!$id) {
@@ -330,43 +350,12 @@ function initialize_integration() {
 		update_user_meta($id, "last_name", "Guest");
 	}
 
+	//save the client to mv. undelete if necessary
 	$wc_main = Client::wc_find($id);
-
-	var_dump($wc_main);
 	$response = $wc_main->mv_save();
-	var_dump($response);
-	if ($response['InternalErrorCode'] == "SupplierClientAlreadyDeleted") {
-		// client must be undeleted first and then updated
-		Client::mv_undelete($response["entityID"]);
-		$response["mvSupplierClient"]["SupplierClientID"] = $response["entityID"];
-	}
-
-	$id = -1;
-	if ($response['mvSupplierClient'] == null) {
-		$id = Client::mv_find_by_name("WooCommerce Guest")->MV_ID;
-	} else {
-		$id = $response["mvSupplierClient"]["SupplierClientID"];
-	}
-
-	$post = get_page_by_title("guest_id", ARRAY_A, "post");
-	var_dump($post);
-	if (!$post) {
-		echo "POST NOT EXISTS";
-		wp_insert_post(array
-			(
-				'post_title' => "guest_id",
-				'post_content' => (string)$id
-			)
-		);
-	} else {
-		echo "POST EXISTS";
-		$post["post_content"] = $id;
-		wp_update_post($post);
-	}
 	
-	//currency
-	//$cur = get_default_currency();
-	//update_option("woocommerce_currency", $cur, "yes");
+	//store id for reference
+	update_option("woocommerce_guest", (string)$wc_main->WC_ID);
 }
 
 function test() {
@@ -383,7 +372,7 @@ function test() {
 	}
 	*/
 	echo "<br>--------<br>";
-	echo get_api_key();
+	var_dump(get_guest_mv_client());
 	echo "<br>--------<br>";
 	
 	echo '</div>';
@@ -428,17 +417,6 @@ function order_placed($order_id){
 	var_dump($client);
 }
 
-function pull_stock() {
-	$products = Product::wc_all();
-	var_dump($products);
-
-	echo "<br>--------------------------------------<br>";
-
-	foreach ($products as $prod) {
-		$prod->sync_stock();
-	}
-}
-
 //////// CRON //////////////////////////////////////////////////////////
 
 register_activation_hook(__FILE__, 'cron_activation');
@@ -451,6 +429,18 @@ add_filter('cron_schedules', 'schedule');
 
 // The WP Cron event callback function
 function pull_changes() {
+	global $execute_lock;
+	if ($execute_lock) {
+		$args = array
+		(
+			'problem' => "Currencies are not matching",
+			'full_msg' => "Auto sync failed. Currencies between MV and WC do not match",
+			'type' => "fatal"
+		);
+		$er = new MVWC_Error($args);
+		return;
+	}
+	
 	$changes = pull_product_changes();
 
 	if (count($changes) <= 0) {

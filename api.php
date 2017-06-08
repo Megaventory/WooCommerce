@@ -11,10 +11,14 @@
 	}
 	
 	function get_guest_mv_client() {
-		$post = get_page_by_title("guest_id", ARRAY_A, "post");
-		$id = $post['post_content'];
-		$client = Client::mv_find($id);
-		return $client;
+		//$post = get_page_by_title("guest_id", ARRAY_A, "post");
+		//$id = $post['post_content'];
+		//$client = Client::mv_find($id);
+		//return $client;
+		echo "FINDING CLIENT";
+		var_dump((int)get_option("woocommerce_guest"));
+		$client = Client::wc_find((int)get_option("woocommerce_guest"));
+		return $client; //$use $client->MV_ID
 	}
 
 	$url = "https://apitest.megaventory.com/json/reply/";
