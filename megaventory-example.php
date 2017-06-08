@@ -11,6 +11,7 @@ if (!defined('ABSPATH')) {
 require_once(ABSPATH . "wp-includes/pluggable.php");
 ////////////////////////////////////////////////////
 
+require_once("cron.php");
 require_once("api.php");
 require_once("error.php");
 require_once("product.php");
@@ -22,44 +23,7 @@ define('ALTERNATE_WP_CRON', true);
 //when lock is true, edited product will not update mv products
 $save_product_lock = false;
 
-// this function will be called everytime an order is finalized
-function order_placed($order_id){
-    $order = wc_get_order($order_id);
-    var_dump($order);
-    echo "<br><br>";
-
-    foreach ($order->get_items() as $value) {
-		echo $value;
-		$product = new WC_Product($value['product_id']);
-		echo $product->get_sku();
-	}
-	echo "<br><br> customerID: " . $order->get_customer_id();
-
-	$id = $order->get_customer_id();
-	$client = Client::wc_find($id);
-	if ($client == null) {
-		echo "CLIENT WAS NUL";
-		$client = get_guest_mv_client();
-	}
-	
-	$returned = place_sales_order($order, $client);
-	
-	if ($returned['mvSalesOrder'] == null) {
-		//error happened
-		$args = array
-		(
-			'type' => 'error',
-			'entity_name' => 'oder by: ' . $order->get_billing_first_name() . " " . $order->get_billing_last_name(),
-			'entity_id' => array('wc' => $order->get_order_number()),
-			'problem' => 'Order not placed in MV',
-			'full_msg' => $returned['ResponseStatus']['Message'],
-			'error_code' => $returned['ResponseStatus']['ErrorCode']
-		);
-		$e = new MVWC_Error($args);
-	}
-
-	var_dump($client);
-}
+//////////////// PLUGIN INITIALIZATION //////////////////////////////////////////////////
 
 // main. This code is executed only if woocommerce is an installed and activated plugin.
 if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
@@ -85,8 +49,11 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	add_action('admin_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
 	//add_action('wp_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
 	
+	$correct_currency = get_default_currency() == get_option("woocommerce_currency");
+	if (!$correct_currency) {
+		add_action('admin_notices', 'sample_admin_notice__error');
+	}
 	
-
 }
 
 function register_style() {
@@ -146,22 +113,11 @@ function column($column, $postid) {
     }
 }
 
-//product edit or create
-function mp_sync_on_product_save($post_id, $post, $update) {
-	global $save_product_lock;
-	
-	if (get_post_type($post_id) == 'product') {
-		if ($save_product_lock) return; //locked, don't do this
-		wp_mail('mpanasiuk@megaventory.com', "producctAAAAAAAAAAAA save", var_export($post_id, true));
-		$product = Product::wc_find($post_id);
-		if ($product->SKU == null) return; //no details yet provided
-		$response = $product->mv_save();
-	}
-}
-
 function plugin_setup_menu(){
 	add_menu_page('Test Plugin Page', 'Test Plugin', 'manage_options', 'test-plugin', 'test_init');
 }
+
+//////////////////////////////// ADMIN PANEL ///////////////////////////////////////////////////////////////
 
 // admin panel
 function test_init(){
@@ -293,6 +249,21 @@ function set_api_key() {
 	}
 }
 
+////////////////////// SYNC //////////////////////////////////////////
+
+//product edit or create
+function mp_sync_on_product_save($post_id, $post, $update) {
+	global $save_product_lock;
+	
+	if (get_post_type($post_id) == 'product') {
+		if ($save_product_lock) return; //locked, don't do this
+		wp_mail('mpanasiuk@megaventory.com', "producctAAAAAAAAAAAA save", var_export($post_id, true));
+		$product = Product::wc_find($post_id);
+		if ($product->SKU == null) return; //no details yet provided
+		$response = $product->mv_save();
+	}
+}
+
 function synchronize_products_mv_wc() {
 	global $save_product_lock;
 	$save_product_lock = true;
@@ -394,15 +365,8 @@ function initialize_integration() {
 	}
 	
 	//currency
-	$cur = get_default_currency();
-	update_option("woocommerce_currency", $cur, "yes");
-}
-
-function get_guest_mv_client() {
-	$post = get_page_by_title("guest_id", ARRAY_A, "post");
-	$id = $post['post_content'];
-	$client = Client::mv_find($id);
-	return $client;
+	//$cur = get_default_currency();
+	//update_option("woocommerce_currency", $cur, "yes");
 }
 
 function test() {
@@ -425,6 +389,45 @@ function test() {
 	echo '</div>';
 }
 
+// this function will be called everytime an order is finalized
+function order_placed($order_id){
+    $order = wc_get_order($order_id);
+    var_dump($order);
+    echo "<br><br>";
+
+    foreach ($order->get_items() as $value) {
+		echo $value;
+		$product = new WC_Product($value['product_id']);
+		echo $product->get_sku();
+	}
+	echo "<br><br> customerID: " . $order->get_customer_id();
+
+	$id = $order->get_customer_id();
+	$client = Client::wc_find($id);
+	if ($client == null) {
+		echo "CLIENT WAS NUL";
+		$client = get_guest_mv_client();
+	}
+	
+	$returned = place_sales_order($order, $client);
+	
+	if ($returned['mvSalesOrder'] == null) {
+		//error happened
+		$args = array
+		(
+			'type' => 'error',
+			'entity_name' => 'oder by: ' . $order->get_billing_first_name() . " " . $order->get_billing_last_name(),
+			'entity_id' => array('wc' => $order->get_order_number()),
+			'problem' => 'Order not placed in MV',
+			'full_msg' => $returned['ResponseStatus']['Message'],
+			'error_code' => $returned['ResponseStatus']['ErrorCode']
+		);
+		$e = new MVWC_Error($args);
+	}
+
+	var_dump($client);
+}
+
 function pull_stock() {
 	$products = Product::wc_all();
 	var_dump($products);
@@ -438,39 +441,9 @@ function pull_stock() {
 
 //////// CRON //////////////////////////////////////////////////////////
 
-// The activation hook
-function isa_activation(){
-    if(!wp_next_scheduled('pull_changes_event')){
-        wp_schedule_event(time(), '5min', 'pull_changes_event');
-    }
-    if(!wp_next_scheduled('pull_stock_event')){
-        wp_schedule_event(time(), '5min', 'pull_stock_event');
-    }
-}
+register_activation_hook(__FILE__, 'cron_activation');
 
-register_activation_hook(__FILE__, 'isa_activation');
-
-// The deactivation hook
-function isa_deactivation(){
-    if(wp_next_scheduled('pull_changes_event')){
-        wp_clear_scheduled_hook('pull_changes_event');
-    }
-    if(wp_next_scheduled('pull_stock_event')){
-        wp_clear_scheduled_hook('pull_stock_event');
-    }
-}
-
-register_deactivation_hook( __FILE__, 'isa_deactivation');
-
-
-// every 5 mins
-function schedule($schedules) {
-    $schedules['5min'] = array(
-            'interval'  => 30, //30 secs for debug //5 * 60, //5min
-            'display'   => __('Every 5 Minutes', 'textdomain')
-    );
-    return $schedules;
-}
+register_deactivation_hook( __FILE__, 'cron_deactivation');
 
 // add 5min to cron schedule
 add_filter('cron_schedules', 'schedule');
@@ -535,7 +508,6 @@ function pull_changes() {
 
 //on event, run pull_changes function
 add_action('pull_changes_event', 'pull_changes'); 
-//add_action('pull_stock_event', 'pull_stock');
 
 //////////////////////////////////////// DB ////////////////////////////
 
@@ -583,5 +555,15 @@ function remove_db_table() {
 }
  
 register_deactivation_hook(__FILE__, 'remove_db_table');
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function sample_admin_notice__error() {
+	$class = 'notice notice-error';
+	$message = __('MEGAVENTORY ERROR! Currencies in woocommerce and megaventory do not match! Megaventory plugin will halt until this issue is resolved!', 'sample-text-domain');
+	$message2 = __('If you are sure that the currency is correct, please refresh until this warning disappears.');
+	
+	printf('<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr($class), esc_html($message), esc_html($message2)); 
+}
 
 ?>

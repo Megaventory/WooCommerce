@@ -9,6 +9,13 @@
 		}
 		return $post["post_content"];
 	}
+	
+	function get_guest_mv_client() {
+		$post = get_page_by_title("guest_id", ARRAY_A, "post");
+		$id = $post['post_content'];
+		$client = Client::mv_find($id);
+		return $client;
+	}
 
 	$url = "https://apitest.megaventory.com/json/reply/";
 	$xml_url = "https://apitest.megaventory.com/xml/reply/";
