@@ -16,6 +16,7 @@ require_once("api.php");
 require_once("error.php");
 require_once("product.php");
 require_once("client.php");
+require_once("tax.php");
 require_once("error.php");
 
 //normal cron would not work
@@ -215,8 +216,7 @@ function test_init(){
 }
 
 //error comparator - sort by date
-function error_cmp($a, $b)
-{
+function error_cmp($a, $b) {
     return strcmp($a->created_at, $b->created_at);
 }
 
@@ -359,8 +359,22 @@ function test() {
 	}
 	*/
 	echo "<br>--------<br>";
-	var_dump(get_guest_mv_client());
+	$taxes = Tax::wc_all();
+	var_dump($taxes);
 	echo "<br>--------<br>";
+	var_dump(Tax::wc_find($taxes[0]->WC_ID));
+	echo "<br>--------<br>";
+	var_dump(Tax::mv_all());
+	echo "<br>--------<br>";
+	var_dump(Tax::mv_find(4));
+	echo "<br>--------<br>";
+	var_dump(Tax::mv_find_by_name('aasd'));
+	
+	foreach ($taxes as $tax) {
+		echo "<br>///////////////////////</br>";
+		var_dump($tax->mv_save());
+		echo "<br>///////////////////////</br>";
+	}
 	
 	echo '</div>';
 }
@@ -368,27 +382,18 @@ function test() {
 // this function will be called everytime an order is finalized
 function order_placed($order_id){
     $order = wc_get_order($order_id);
-    var_dump($order);
-    echo "<br><br>";
-
-    foreach ($order->get_items() as $value) {
-		echo $value;
-		$product = new WC_Product($value['product_id']);
-		echo $product->get_sku();
-	}
-	echo "<br><br> customerID: " . $order->get_customer_id();
-
+	
 	$id = $order->get_customer_id();
 	$client = Client::wc_find($id);
-	if ($client == null) {
-		echo "CLIENT WAS NUL";
+	if ($client == null) { //get guest
 		$client = get_guest_mv_client();
 	}
 	
+	//place order through API
 	$returned = place_sales_order($order, $client);
 	
 	if ($returned['mvSalesOrder'] == null) {
-		//error happened
+		//error happened. It needs to be reported
 		$args = array
 		(
 			'type' => 'error',
@@ -400,8 +405,6 @@ function order_placed($order_id){
 		);
 		$e = new MVWC_Error($args);
 	}
-
-	var_dump($client);
 }
 
 //////// CRON //////////////////////////////////////////////////////////
@@ -417,7 +420,7 @@ add_filter('cron_schedules', 'schedule');
 // The WP Cron event callback function
 function pull_changes() {
 	global $execute_lock;
-	if ($execute_lock) {
+	if ($execute_lock) { //log info about sync being prevented
 		$args = array
 		(
 			'problem' => "Currencies are not matching",
@@ -430,34 +433,27 @@ function pull_changes() {
 	
 	$changes = pull_product_changes();
 
-	if (count($changes) <= 0) {
+	if (count($changes) <= 0) { //no need to do anything if there are no changes
 		return;
 	}
 
-	$mv_categories = Product::mv_get_categories(); //is this needed?
+	$mv_categories = Product::mv_get_categories(); //is this needed? - maybe use this when optimizing later
 
 	foreach ($changes['mvIntegrationUpdates'] as $change) {
-		
-		wp_mail('mpanasiuk@megaventory.com', "We out here ", var_export($change, true));
 		if ($change["Entity"] == "product") {
 			global $save_product_lock;
-			$save_product_lock = true;
+			$save_product_lock = true; //prevent changes from mv to be pushed back to mv again (prevent infinite loop of updates)
 			
-			wp_mail("mpanasiuk@megaventory.com", "S Y N C C", var_export($change, true));
-			
-			if ($change["Action"] == "update" or $change["Action"] == "insert") {
+			if ($change["Action"] == "update" or $change["Action"] == "insert") { //new product created, or details changed
 				//get product new info
 				$product = Product::mv_find($change['EntityIDs']);
-				wp_mail("mpanasiuk@megaventory.com", "S Y N C C 2", var_export($product, true));
 				//save new info
 				$product->wc_save(); 
 				
-			} else if ($change["Action"] == "delete") {
+			} else if ($change["Action"] == "delete") { //delete the product
 				//already deleted from mv
 				$data = json_decode($change['JsonData'], true);
-				wp_mail("mpanasiuk@megaventory.com", "JSONDATA", var_export($data, true));
 				$product = Product::wc_find_by_SKU($data['ProductSKU']);
-				wp_mail("mpanasiuk@megaventory.com", "PROD", var_export($product, true));
 				if ($product != null) $product->wc_destroy();
 			}
 			
@@ -465,12 +461,13 @@ function pull_changes() {
 			remove_integration_update($change['IntegrationUpdateID']);
 			
 			$save_product_lock = false;
-		} elseif ($change["Entity"] == "stock") {
+			
+		} elseif ($change["Entity"] == "stock") { //stock changed
 			$id = json_decode($change['JsonData'], true)[0]['productID'];
 			$product = Product::mv_find($id);
 			$product->sync_stock();
 			$data = remove_integration_update($change['IntegrationUpdateID']);
-		} elseif ($change['Entity'] == 'document') {
+		} elseif ($change['Entity'] == 'document') { //order changed
 			global $document_status, $translate_order_status;
 			$jsondata = json_decode($change['JsonData'], true);
 			if ($jsondata['DocumentTypeAbbreviation'] != "SO") continue; // only salesorder
