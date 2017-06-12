@@ -256,6 +256,9 @@ class Client {
 		//return true;
 	}
 	
+	public function wc_reset_mv_data() {
+		return delete_user_meta($this->WC_ID, "MV_ID");
+	}
 }
 
 ?>

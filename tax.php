@@ -114,7 +114,7 @@ class Tax {
 		
 		$xml = '
 			<mvTax>
-				' . ($create_new ? '<TaxID>'.$this->MV_ID.'</TaxID>' : '') . '
+				' . (!$create_new ? '<TaxID>'.$this->MV_ID.'</TaxID>' : '') . '
 				<TaxName>'.$this->name.'</TaxName>
 				<TaxDescription>'.$this->description.'</TaxDescription>
 				<TaxValue>'.$this->rate.'</TaxValue>
@@ -127,6 +127,9 @@ class Tax {
 		$xml = wrap_xml(self::$tax_update_call, $xml);
 			
 		$data = send_xml($url, $xml);
+		
+		echo "+++++++++++++++++++++++++++++++++++++++++++++++++<br> sending:";
+		var_dump(htmlentities($xml));
 		
 		return $data;
 	}

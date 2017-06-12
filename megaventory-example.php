@@ -358,6 +358,7 @@ function test() {
 		}
 	}
 	*/
+	/*
 	echo "<br>--------<br>";
 	$taxes = Tax::wc_all();
 	var_dump($taxes);
@@ -375,6 +376,16 @@ function test() {
 		var_dump($tax->mv_save());
 		echo "<br>///////////////////////</br>";
 	}
+	*/
+	
+	$prod = Product::mv_find_by_sku('dvd-w-case-gdf1');
+	var_dump($prod);
+	echo "<br>-------------------------<br>";
+	$prod2 = Product::wc_find_by_SKU('dvd-w-case-gdf1');
+	var_dump($prod2);
+	echo "<br>-------------------------<br>";
+	
+	$prod2->mv_save();
 	
 	echo '</div>';
 }
@@ -526,9 +537,28 @@ function remove_db_table() {
 	
 	$sql = "DROP TABLE $table_name";
 	$wpdb->query($sql);
+	
+	wp_mail("mpanasiuk@megaventory.com", "db_table", "aaaaaa");
+}
+
+function reset_mv_data() {
+	wp_mail("mpanasiuk@megaventory.com", "mv_data", "bbbbbbb");
+	$products = Product::wc_all_with_variable();
+	$clients = Client::wc_all();
+	
+	foreach ($products as $product) {
+		$product->wc_reset_mv_data();
+	}
+	
+	foreach ($clients as $client) {
+		$client->wc_reset_mv_data();
+	}
+	
+	delete_option("mv_api_key");
 }
  
 register_deactivation_hook(__FILE__, 'remove_db_table');
+register_deactivation_hook(__FILE__, 'reset_mv_data');
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 

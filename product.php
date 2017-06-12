@@ -28,6 +28,8 @@ class Product {
 	public $stock_on_hand;
 	public $mv_qty;
 	
+	public $mv_type;
+	
 	public $variations;
 	
 	public $errors;
@@ -194,6 +196,7 @@ class Product {
 		
 		$product->MV_ID = $mv_prod['ProductID'];
 		$product->type = $mv_prod['ProductType'];
+		$product->mv_type = $mv_prod['ProductType'];
 		$product->SKU = $mv_prod['ProductSKU'];
 		$product->EAN = $mv_prod['ProductEAN'];
 		$product->description = $mv_prod['ProductDescription'];
@@ -445,6 +448,13 @@ class Product {
 			}
 		}
 		
+		$prod = self::mv_find_by_sku($this->SKU);
+		if ($prod) {
+			$this->MV_ID = $prod->MV_ID;
+			$this->mv_type = $prod->mv_type;
+		}
+		
+		
 		//this needs to be split into few small requests, as urls get too long otherwise
 		//$create_url = $this->create_json_url($this->product_update_call);
 		$url = create_xml_url(self::$product_update_call);
@@ -467,7 +477,6 @@ class Product {
 			
 			//try again
 			$xml_request = $this->generate_update_xml($category_id);
-			echo "YO BOY BOBOBOBOBOBOY "; var_dump(htmlentities($xml_request));
 			$data = send_xml($url, $xml_request);
 		}
 		
@@ -500,9 +509,9 @@ class Product {
 		$action = ($create_new ? "Insert" : "Update");
 		
 		$xml_request = '
-				<mvProduct>
-					' . ($create_new ? '<ProductType>BuyFromSupplier</ProductType>' : '') . '
+				<mvProduct>' . '
 					' . ($create_new ? '' : '<ProductID>' . $this->MV_ID . '</ProductID>') . '
+					' . ($create_new ? '<ProductType>BuyFromSupplier</ProductType>' : ($this->mv_type ? '<ProductType>' . $this->mv_type . '</ProductType>' : '')) . '
 					<ProductSKU>' . $this->SKU . '</ProductSKU> 
 					<ProductDescription>' . $this->description . '</ProductDescription> 
 					' . ($this->version ? '<ProductVersion>' . $this->version . '</ProductVersion>' : '') . '
@@ -541,7 +550,7 @@ class Product {
 		
 	}
 	
-		// image is attached only if a product has no image yet
+	// image is attached only if a product has no image yet
 	function attach_image() {
 		require_once(ABSPATH . 'wp-admin/includes/media.php');
 		require_once(ABSPATH . 'wp-admin/includes/file.php');
@@ -693,9 +702,10 @@ class Product {
 		update_post_meta($this->WC_ID, '_stock', (string)$this->stock_on_hand);
 		update_post_meta($this->WC_ID, '_stock_status', ($this->stock_on_hand > 0 ? "instock" : "outofstock"));
 	}
+	
+	public function wc_reset_mv_data() {
+		return delete_post_meta($this->WC_ID, "MV_ID");
+	}
 }
-
-
-
 
 ?>
