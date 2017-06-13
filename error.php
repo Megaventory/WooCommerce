@@ -43,7 +43,9 @@ class MVWC_Error {
 			"type" => $this->type
 		));
 		
-		wp_mail("mpanasiuk@megaventory.com", "return", var_export($return, true));
+		wp_mail("mpanasiuk@megaventory.com", "return", var_export($return, true)); 
+		wp_mail("mpanasiuk@megaventory.com", "error error", var_export($wpdb->last_result, true));
+		wp_mail("mpanasiuk@megaventory.com", "error error", var_export($wpdb->last_query, true));
 		var_dump($return);
 	}
 }

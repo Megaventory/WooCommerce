@@ -481,9 +481,12 @@ class Product {
 		}
 		
 		wp_mail('mpanasiuk@megaventory.com', "producct save", var_export($xml_request, true));
-		wp_mail('mpanasiuk@megaventory.com', "producct save", var_export($data, true));
+		wp_mail('mpanasiuk@megaventory.com', "producct savehhh", var_export($data, true));
+		
 		if (count($data['mvProduct']) <= 0) { //not saved
 			$this->log_error('Product not saved to MV', $data['InternalErrorCode'], -1);
+			wp_mail("mpanasiuk@megaventory.com", "AAAAAAAAAAAA", "AAAAggfjfuAAAAAAAAH");
+			//$this->log_error('Product not saved to MV', 'Grouped products cannot be saved to MV', -1, 'warning');
 			return false;
 		}
 		
@@ -704,7 +707,8 @@ class Product {
 	}
 	
 	public function wc_reset_mv_data() {
-		return delete_post_meta($this->WC_ID, "MV_ID");
+		delete_post_meta($this->WC_ID, "MV_ID");
+		delete_post_meta($this->WC_ID, '_mv_qty');
 	}
 }
 

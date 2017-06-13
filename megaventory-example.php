@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 require_once(ABSPATH . "wp-includes/pluggable.php");
+define( 'WP_DEBUG', true );
 ////////////////////////////////////////////////////
 
 require_once("cron.php");
@@ -25,6 +26,9 @@ define('ALTERNATE_WP_CRON', true);
 //when lock is true, edited product will not update mv products
 $save_product_lock = false;
 $execute_lock = false; //this lock prevents all sync fro
+
+$correct_currency = true;
+$correct_connection = true;
 
 //////////////// PLUGIN INITIALIZATION //////////////////////////////////////////////////
 
@@ -43,6 +47,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	//add_action('wp_enqueue_scripts', 'enqueue_style'); //for outside admin if needed, uncomment
 	
 	//if main currency of wc and mv are different, halt all sync!
+	global $correct_currency;
 	$correct_currency = get_default_currency() == get_option("woocommerce_currency");
 	if (!$correct_currency) {
 		add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
@@ -55,6 +60,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 
 		//on add / edit product
 		add_action('save_post', 'sync_on_product_save', 10, 3);
+		add_action( 'profile_update', 'sync_on_profile_update', 10, 2 );
 	} else {
 		$execute_lock = true;
 	}
@@ -253,8 +259,15 @@ function sync_on_product_save($post_id, $post, $update) {
 		if ($save_product_lock) return; //locked, don't do this
 		$product = Product::wc_find($post_id);
 		if ($product->SKU == null) return; //no details yet provided, no need to save (will only cause errors at this point)
+		wp_mail("mpanasiuk@megaventory.com", "product saving", var_export($product, true));
 		$response = $product->mv_save();
+		wp_mail("mpanasiuk@megaventory.com", "product response", var_export($response, true));
 	}
+}
+
+function sync_on_profile_update($user_id, $old_user_data) {
+	$user = Client::wc_find($user_id);
+	$user->mv_save();
 }
 
 
@@ -306,6 +319,7 @@ function synchronize_products_wc_mv() {
 
 	foreach ($wc_products as $wc_product) {
 		$wc_product->mv_save();
+		$wc_product->sync_stock();
 	}
 }
 
@@ -428,7 +442,7 @@ register_deactivation_hook( __FILE__, 'cron_deactivation');
 add_filter('cron_schedules', 'schedule');
 
 
-// The WP Cron event callback function
+// The WP Cron event callback function'
 function pull_changes() {
 	global $execute_lock;
 	if ($execute_lock) { //log info about sync being prevented
@@ -513,10 +527,10 @@ function create_plugin_database_table() {
 		  created_at datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
 		  wc_id int,
 		  mv_id int,
-		  name varchar(40),
+		  name varchar(200),
 		  problem text NOT NULL,
 		  message text,
-		  type varchar(20),
+		  type varchar(100),
 		  code int,
 		  PRIMARY KEY  (id)
 		) $charset_collate;";
