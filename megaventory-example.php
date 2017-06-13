@@ -27,10 +27,18 @@ define('ALTERNATE_WP_CRON', true);
 $save_product_lock = false;
 $execute_lock = false; //this lock prevents all sync fro
 
-$correct_currency = true;
-$correct_connection = true;
+$correct_currency;
+$correct_connection;
+$correct_key;
+$err_messages = array();
 
 //////////////// PLUGIN INITIALIZATION //////////////////////////////////////////////////
+
+function register_error($str1, $str2) {
+	global $err_messages;
+	$message = array(__($str1, 'sample-text-domain'), __($str2));
+	array_push($err_messages, $message);
+}
 
 // main. This code is executed only if woocommerce is an installed and activated plugin.
 if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
@@ -46,14 +54,28 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	add_action('admin_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
 	//add_action('wp_enqueue_scripts', 'enqueue_style'); //for outside admin if needed, uncomment
 	
-	//if main currency of wc and mv are different, halt all sync!
-	global $correct_currency;
-	$correct_currency = get_default_currency() == get_option("woocommerce_currency");
-	if (!$correct_currency) {
-		add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
+	//halt sync?
+	global $correct_currency, $correct_connection, $correct_key;
+	$can_execute = true;
+	
+	$correct_connection = check_connectivity();
+	if ($can_execute and !$correct_connection) {
+		register_error('MEGAVENTORY ERROR! No connection to megaventory!', 'Check if Wordpress and Megaventory servers are online');
+		$can_execute = false;
 	}
 	
-	$can_execute = $correct_currency;
+	$correct_key = check_key();
+	if ($can_execute and !$correct_key) {
+		register_error("MEGAVENTORY Error! Invalid API KEY", "Please check if the API key is correct");
+		$can_execute = false;
+	}
+	
+	$correct_currency = get_default_currency() == get_option("woocommerce_currency");
+	if ($can_execute and !$correct_currency) {
+		register_error('MEGAVENTORY ERROR! Currencies in woocommerce and megaventory do not match! Megaventory plugin will halt until this issue is resolved!', 'If you are sure that the currency is correct, please refresh until this warning disappears.');
+		$can_execute = false;
+	}
+	
 	if ($can_execute) {
 		//placed order
 		add_action('woocommerce_thankyou', 'order_placed', 111, 1);
@@ -63,7 +85,12 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 		add_action( 'profile_update', 'sync_on_profile_update', 10, 2 );
 	} else {
 		$execute_lock = true;
+		add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
 	}
+} else { //no woocommerce detected
+	//untested
+	register_error('Woocommerce not detected', 'Megaventory plugin cannot operate without woocommerce');
+	add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
 }
 
 //link style.css
@@ -124,23 +151,14 @@ function column($column, $postid) {
 
 function plugin_setup_menu(){
 	//plugin tab
-	add_menu_page('Test Plugin Page', 'Test Plugin', 'manage_options', 'test-plugin', 'test_init');
+	add_menu_page('Megaventory plugin', 'Megaventory', 'manage_options', 'megaventory-plugin', 'panel_init', plugin_dir_url( __FILE__ ).'mv3.png');
 }
 
 //////////////////////////////// ADMIN PANEL ///////////////////////////////////////////////////////////////
 
 // admin panel
-function test_init(){
+function panel_init(){
 	/*
-	echo '<form id="sync-mv-wc" method="post">';
-	echo '<input type="checkbox" name="with_delete" /> with delete';
-	echo '<input type="hidden" name="sync-mv-wc" value="true" />';
-	echo '<input type="submit" value="Synchronize Products From MV to WC" />';
-	echo '</form>';
-
-	echo '<br><br>';
-	*/
-	
 	echo '<form id="sync-wc-mv" method="post">';
 	echo '<input type="checkbox" name="with_delete" /> with delete';
 	echo '<input type="hidden" name="sync-wc-mv" value="true" />';
@@ -176,6 +194,7 @@ function test_init(){
 	echo '<input type="hidden" name="test" value="true" />';
 	echo '<input type="submit" value="TEST" />';
 	echo '</form>';
+	
 	
 	
 	/////// ERROR TABLE ///////
@@ -219,6 +238,25 @@ function test_init(){
 			}
 	$table .= '</table>';
 	echo $table;
+	*/
+	$html = '
+		<div class="mv-row">
+			<div class="mv-col">
+				<h3>test</h3>
+			</div>
+			<div class="mv-col">
+				<h3>test</h3>
+			</div>
+		</div>
+	';
+	
+	echo $html;
+	
+	
+	echo '<form id="test" method="post">';
+	echo '<input type="hidden" name="test" value="true" />';
+	echo '<input type="submit" value="TEST" />';
+	echo '</form>';
 }
 
 //error comparator - sort by date
@@ -360,6 +398,8 @@ function initialize_integration() {
 }
 
 function test() {
+	update_option("mv_api_key", (string)'e8a3711b83dc84dd@m66472');
+	
 	echo '<div style="margin:auto;width:50%">';
 	/*
 	foreach (Product::wc_all_with_variable() as $prod) {
@@ -577,11 +617,13 @@ register_deactivation_hook(__FILE__, 'reset_mv_data');
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function sample_admin_notice__error() {
+	global $err_messages;
 	$class = 'notice notice-error';
-	$message = __('MEGAVENTORY ERROR! Currencies in woocommerce and megaventory do not match! Megaventory plugin will halt until this issue is resolved!', 'sample-text-domain');
-	$message2 = __('If you are sure that the currency is correct, please refresh until this warning disappears.');
 	
-	printf('<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr($class), esc_html($message), esc_html($message2)); 
+	foreach ($err_messages as $msg) {
+		printf('<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr($class), esc_html($msg[0]), esc_html($msg[1]));
+		
+	} 
 }
 
 ?>

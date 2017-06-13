@@ -16,9 +16,10 @@
 		$client = Client::wc_find((int)get_option("woocommerce_guest"));
 		return $client; //$use $client->MV_ID
 	}
-
-	$url = "https://apitest.megaventory.com/json/reply/";
-	$xml_url = "https://apitest.megaventory.com/xml/reply/";
+	
+	$host = "https://apitest.megaventory.com/";
+	$url = $host."json/reply/";
+	$xml_url = $host."xml/reply/";
 	$API_KEY = get_api_key();
 	//$API_KEY = "b7d0cc59b72af1e5@m65192"; // DEV AND DEBUG ONLY
 	
@@ -248,6 +249,28 @@
 		
 		$data = file_get_contents($url);
 		return json_decode($data, true)['mvCurrencies'][0]['CurrencyCode'];
+	}
+	
+	function check_connectivity() {
+		global $host;
+		$host = 'google.com';
+		if($socket =@ fsockopen($host, 80, $errno, $errstr, 30)) {
+			fclose($socket);
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	function check_key() {
+		global $API_KEY;
+		$data = pull_product_changes();
+		
+		if (!$API_KEY or $data == null or (int)$data['ResponseStatus']['ErrorCode'] == 401) {
+			return false;
+		} else {
+			return true;
+		}
 	}
 	
 ?>
