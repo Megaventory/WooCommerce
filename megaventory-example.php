@@ -240,9 +240,55 @@ function panel_init(){
 	echo $table;
 	*/
 	
+	
+	/////// ERROR TABLE ///////
+	global $wpdb;
+	$table_name = $wpdb->prefix . "mvwc_errors"; 
+	$errors = $wpdb->get_results("SELECT * FROM $table_name;");
+	
+	//var_dump($errors);
+	
+	usort($errors, "error_cmp");
+	$errors = array_reverse($errors);
+	
+	$table = '
+		<h2>Error log</h2>
+		<table id="error-log" class="wp-list-table widefat fixed striped posts">
+			<tr>
+				<th id="id">id</th>
+				<th id="id">mv id</th>
+				<th id="id">wc id</th>
+				<th>Created at</th>
+				<th id="type">Error type</th>
+				<th>Entity name</th>
+				<th id="problem">Problem</th>
+				<th id="full-msg">Full message</th>
+				<th id="code">Code</th>
+			</tr>';
+			foreach ($errors as $error) {
+				$str = '<tr>';
+				
+				$str .= '<td>' . $error->id . '</td>';
+				$str .= '<td>' . $error->mv_id . '</td>';
+				$str .= '<td>' . $error->wc_id . '</td>';
+				$str .= '<td>' . $error->created_at . '</td>';
+				$str .= '<td>' . $error->type . '</td>';
+				$str .= '<td>' . $error->name . '</td>';
+				$str .= '<td>' . $error->problem . '</td>';
+				$str .= '<td>' . $error->message . '</td>';
+				$str .= '<td>' . $error->code . '</td>';
+				
+				$str .= '</tr>';
+				$table .= $str;
+			}
+	$table .= '</table>';
+	
 	global $correct_connection, $correct_currency, $correct_key;
 	$initialized = (bool)get_option("mv_initialized");
 	$html = '
+		<div class="mv-admin">
+		<h1>Megaventory</h1>
+		
 		<div class="mv-row row-main">
 			<div class="mv-col">
 				<h3>Status</h3>
@@ -293,12 +339,18 @@ function panel_init(){
 		</div>
 		
 		<div class="mv-row row-main">
+			'.$table.'
+		</div>
+		
+		<div class="mv-row row-main">
 			<div class="mv-col">
 				<form id="test" method="post">
 					<input type="hidden" name="test" value="true" />
 					<input type="submit" value="TEST" />
 				</form>
 			</div>
+		</div>
+		
 		</div>
 	';
 	

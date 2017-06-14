@@ -7,7 +7,7 @@
 }
 
 .column-mv_stock {
-	width: 5%;
+	width: 15%;
 	color: red;
 }
 
@@ -72,6 +72,7 @@
 	display: block;
 	float: none;
 	overflow: auto;
+	text-align: center;
 }
 
 .mv-row .mv-col {
@@ -131,4 +132,39 @@ div.mv-row.row-main {
 .wrap-init input {
 	width: 90%;
 }
+
+.mv-admin {
+	text-align: center;
+	min-width: 800px;
 }
+
+.mv-admin h1 {
+	margin-right: 5%;
+}
+
+
+/* ERROR LOG */
+#error-log {
+	text-align: left;
+}
+
+#error-log #id {
+	width: 5%;
+}
+
+#error-log #code {
+	width: 6%;
+}
+
+#error-log #type {
+	width: 7%;
+}
+
+#error-log #full-msg {
+	width: 25%;
+}
+
+#error-log #problem {
+	width: 20%;
+}
+
