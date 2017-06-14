@@ -6,6 +6,15 @@
 		return get_option("mv_api_key");
 	}
 	
+	function get_api_host() {
+		global $default_host;
+		$host = get_option("mv_api_host");
+		if (!$host) {
+			$host = $default_host;
+		}
+		return $host;
+	}
+	
 	function get_guest_mv_client() {
 		//$post = get_page_by_title("guest_id", ARRAY_A, "post");
 		//$id = $post['post_content'];
@@ -17,7 +26,8 @@
 		return $client; //$use $client->MV_ID
 	}
 	
-	$host = "https://apitest.megaventory.com/";
+	$default_host = "https://apitest.megaventory.com/";
+	$host = get_api_host();
 	$url = $host."json/reply/";
 	$xml_url = $host."xml/reply/";
 	$API_KEY = get_api_key();
@@ -253,8 +263,12 @@
 	
 	function check_connectivity() {
 		global $host;
-		$host = 'google.com';
-		if($socket =@ fsockopen($host, 80, $errno, $errstr, 30)) {
+		$host2 = $host;
+		$host2 = str_replace("https://", "", $host2);
+		$host2 = str_replace("http://", "", $host2);
+		$host2 = explode("/", $host2)[0];
+		
+		if($socket =@ fsockopen($host2, 80, $errno, $errstr, 30)) {
 			fclose($socket);
 			return true;
 		} else {

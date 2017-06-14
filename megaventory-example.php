@@ -239,24 +239,71 @@ function panel_init(){
 	$table .= '</table>';
 	echo $table;
 	*/
+	
+	global $correct_connection, $correct_currency, $correct_key;
+	$initialized = (bool)get_option("mv_initialized");
 	$html = '
-		<div class="mv-row">
+		<div class="mv-row row-main">
 			<div class="mv-col">
-				<h3>test</h3>
+				<h3>Status</h3>
+				<div class="mv-status">
+					<ul class="mv-status">
+						<li class="mv-li-left">Connection:</li><li>'.($correct_connection ? '&check;' : '&cross;').'</li>
+						<li class="mv-li-left">Key: </li><li>'.($correct_key ? '&check;' : '&cross;').'</li>
+						<li class="mv-li-left">Currency: </li><li>'.($correct_currency ? '&check;' : '&cross;').'</li>
+						<li class="mv-li-left">Initialized: </li><li>'.($initialized ? '&check;' : '&cross;').'</li>
+					</ul>
+				</div>
 			</div>
 			<div class="mv-col">
-				<h3>test</h3>
+				<h3>Setup</h3>
+				<div class="mv-row">
+					<div class="mv-form">
+						<form id="options" method="post">
+							<div class="mv-form-body">
+								<p>
+									<label for="api_key">Megaventory API key: </label>
+									<input type="text" name="api_key" value="' . get_api_key() . '"/>
+								</p>
+								</p>
+									<label for="api_key">Megaventory API host: </label>
+									<input type="text" name="api_host" value="' . get_api_host() . '"/>
+								</p>
+							</div>
+							<div class="mv-form-bottom">
+								<input type="submit" value="update"/>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+			<div class="mv-col">
+				<h3>Initialization</h3>
+				<div class="wrap-init">
+					<form id="initialize" method="post">
+						<input type="hidden" name="initialize" value="true" />
+						<input type="submit" value="Initialize" />
+					</form>
+					<form id="sync-wc-mg" method="post">
+						<input type="hidden" name="sync-wc-mv" />
+						<input type="submit" value="Import Products from WC to MV" />
+					</form>
+				</div>
+			</div>
+		</div>
+		
+		<div class="mv-row row-main">
+			<div class="mv-col">
+				<form id="test" method="post">
+					<input type="hidden" name="test" value="true" />
+					<input type="submit" value="TEST" />
+				</form>
 			</div>
 		</div>
 	';
 	
 	echo $html;
 	
-	
-	echo '<form id="test" method="post">';
-	echo '<input type="hidden" name="test" value="true" />';
-	echo '<input type="submit" value="TEST" />';
-	echo '</form>';
 }
 
 //error comparator - sort by date
@@ -270,21 +317,37 @@ function error_cmp($a, $b) {
 // otherwise, some wc variables are not correctly initialized
 if (isset($_POST['sync-mv-wc'])) {
 	add_action('init', 'synchronize_products_mv_wc');
-} else if (isset($_POST['sync-wc-mv'])) {
+}
+if (isset($_POST['sync-wc-mv'])) {
 	add_action('init', 'synchronize_products_wc_mv');
-} else if (isset($_POST['sync-clients'])) {
+}
+if (isset($_POST['sync-clients'])) {
 	add_action('init', 'synchronize_clients');
-} else if (isset($_POST['initialize'])) {
+}
+if (isset($_POST['initialize'])) {
 	add_action('init', 'initialize_integration');
-} else if (isset($_POST['test'])) {
+}
+if (isset($_POST['test'])) {
 	add_action('init', 'test');
-} else if (isset($_POST['api_key'])) {
+}
+if (isset($_POST['api_key'])) {
 	add_action('init', 'set_api_key');
+}
+if (isset($_POST['api_host'])) {
+	add_action('init', 'set_api_host');
 }
 
 function set_api_key() {
 	$key = $_POST['api_key'];	
 	update_option("mv_api_key", (string)$key);
+}
+
+function set_api_host() {
+	$host = $_POST['api_host'];	
+	if(substr($host, -1) != '/') {
+		$host .= '/';
+	}
+	update_option("mv_api_host", (string)$host);
 }
 
 ////////////////////// SYNC //////////////////////////////////////////
@@ -379,6 +442,17 @@ function synchronize_clients() {
 //initial integration of plugin
 //creates guest user
 //should map MV_IDs by SKU/////////////////////////////////////////////////////////////////////////////////////////////////
+function map_existing_products_by_SKU() {
+	$products = Product::wc_all();
+	
+	foreach ($products as $wc_product) {
+		$mv_product = Product::mv_find_by_sku($wc_product->SKU);
+		if ($mv_product) {
+			update_post_meta($wc_product->WC_ID, 'MV_ID', $mv_product->MV_ID);
+		}
+	}
+}
+
 function initialize_integration() {
 	//Create guest client in wc if does not exist yet.
 	$user_name = "WooCommerce_Guest";
@@ -393,8 +467,11 @@ function initialize_integration() {
 	$wc_main = Client::wc_find($id);
 	$response = $wc_main->mv_save();
 	
+	map_existing_products_by_SKU();
+	
 	//store id for reference
 	update_option("woocommerce_guest", (string)$wc_main->WC_ID);
+	update_option("mv_initialized", (string)true);
 }
 
 function test() {
@@ -609,6 +686,8 @@ function reset_mv_data() {
 	}
 	
 	delete_option("mv_api_key");
+	delete_option("mv_api_host");
+	delete_option("mv_initialized");
 }
  
 register_deactivation_hook(__FILE__, 'remove_db_table');
