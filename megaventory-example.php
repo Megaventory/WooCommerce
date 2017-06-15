@@ -82,7 +82,11 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 
 		//on add / edit product
 		add_action('save_post', 'sync_on_product_save', 10, 3);
-		add_action( 'profile_update', 'sync_on_profile_update', 10, 2 );
+		add_action('profile_update', 'sync_on_profile_update', 10, 2);
+		
+		//tax
+		// add the action 
+		add_action('woocommerce_tax_rate_updated', 'on_tax_update', 10, 2); 
 	} else {
 		$execute_lock = true;
 		add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
@@ -92,6 +96,24 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	register_error('Woocommerce not detected', 'Megaventory plugin cannot operate without woocommerce');
 	add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
 }
+
+// define the woocommerce_tax_rate_updated callback 
+function on_tax_update($tax_rate_id, $tax_rate) { 
+	//wp_mail("mpanasiuk@megaventory.com", "old_tax", var_export($tax_rate, true));
+	//wp_mail("mpanasiuk@megaventory.com", "new_tax", var_export(Tax::wc_find($tax_rate_id), true));
+	$tax = Tax::wc_find($tax_rate_id);
+	
+	$wc_taxes = Tax::wc_all();
+	
+	$can_save = true;
+	foreach ($wc_taxes as $wc_tax) {
+		if ($wc_tax->name == $tax->name and $wc_tax->MV_ID != $tax->MV_ID) { //if name is taken by different tax
+			$tax->wc_delete();
+			break;
+		}
+	}
+	
+}; 
 
 //link style.css
 function register_style() {
@@ -642,8 +664,7 @@ function test() {
 	//$tax->rate = 20;
 	//$tax->description = "hello";
 	//$tax->mv_save();
-	initialize_taxes();
-	
+	//initialize_taxes();
 	
 	
 	echo '</div>';

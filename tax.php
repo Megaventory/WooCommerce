@@ -196,7 +196,14 @@ class Tax {
 		
 		echo $wpdb->last_query;
 		echo $wpdb->last_result;
+	}
+	
+	public function wc_delete() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . self::$table_name;
+		$sql = "DELETE FROM $table_name WHERE tax_rate_id=".(string)$this->WC_ID.";";
 		
+		return $wpdb->query($sql);
 	}
 }
 
