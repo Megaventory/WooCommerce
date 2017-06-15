@@ -31,7 +31,11 @@ $execute_lock = false; //this lock prevents all sync fro
 $correct_currency = true;
 $correct_connection = true;
 
+
+$err_messages = array();
+
 //////////////// PLUGIN INITIALIZATION //////////////////////////////////////////////////
+
 
 // main. This code is executed only if woocommerce is an installed and activated plugin.
 if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
@@ -89,6 +93,32 @@ function add_mv_column($columns){
 
 	return $columns;
 }
+
+//ERROR handling
+
+function register_error($str1, $str2) {
+	global $err_messages;
+	$message = array(__($str1, 'sample-text-domain'), __($str2));
+	
+		
+	$err_messages = array();
+	array_push($err_messages, $message);
+}
+
+function sample_admin_notice__error() {
+	global $err_messages;
+	$class = 'notice notice-error';
+	
+	
+	foreach ($err_messages as $msg) {
+		printf('<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr($class), esc_html($msg[0]), esc_html($msg[1]));
+	} 
+		
+	
+	wp_mail("bmodelski@megaventory.com", "ERROR message", var_export(get_error_codes(), true));
+}
+
+add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
 
 //MV stock column in products table
 function column($column, $postid) {
@@ -513,45 +543,41 @@ add_action('pull_changes_event', 'pull_changes');
 /////////////////////////////// COUPONS ///////////////////////////////////////
 
 function new_post($data , $postarr) { 
-	$admin_notices = new WP_Error('check_post_title_length', 'Example error.', 'update-nag');
 
-	if (($data['post_type'] == 'shop_coupon') and 
-		($data['post_status'] == 'publish')) {
-			
-		//wp_mail("bmodelski@megaventory.com", "coupon.php", "HERE");
-		//wp_mail("bmodelski@megaventory.com", "coupon.php", var_export($postarr, true));
-		
-		if ((Coupon::MV_is_name_present($data['post_title']))) {
-			return;
-		} 
-		
+	if ((($data['post_type'] != 'shop_coupon') or ($data['post_status'] != 'publish')))
+		return $data;
+	
+	if (empty($postarr['coupon_amount'])){ 
+		register_error("Wrong name", "Name already present in MV database. Please choose a different one.");
+		return;
+	}
+	
+	//create and add coupon to megaventory
+	$coupon = new Coupon;
+	$coupon->name = $postarr['post_title'];
+	$coupon->rate = $postarr['coupon_amount'];
+	$coupon->description = $postarr['excerpt']; // Should be whole content here, but for whatever 
+												// reason fields responsible for that in $data, 
+												// $postarr are always empty.
+	
+	// If post is a coupon and is not a draft, check if there's a discount with the same name added to MV already. 
+	// If there's block addition of coupon.
+	if ($coupon->MV_is_name_present()) {
+		register_error("Wrong name", "Name already present in MV database. Please choose a different one.");
+		return;
 	} 
 
+
+	$coupon->mv_add();
+
+	
 	
 	//wp_mail("bmodelski@megaventory.com", "coupon.php", var_export($data, true));
 	//wp_mail("bmodelski@megaventory.com", "coupon.php", var_export($postarr, true));
-	return $data;
-}; 
+	return $data; 
+}
          
 add_filter('wp_insert_post_data', 'new_post', '99', 2); 
-
-
-function display_admin_notices(){
-	wp_mail("bmodelski@megaventory.com", "coupon.php", "IN ERROR 1");
-	?>
-	
-	<div class="notice notice-success is-dismissible">
-		<p><?php _e('Congratulations, you did it!', 'shapeSpace'); ?></p>
-	</div>
-	
-	<?php 
-    
-}
-add_action('admin_notices', 'display_admin_notices');
-
-
-
-
 
 
 
@@ -621,14 +647,6 @@ function reset_mv_data() {
 register_deactivation_hook(__FILE__, 'remove_db_table');
 register_deactivation_hook(__FILE__, 'reset_mv_data');
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-function sample_admin_notice__error() {
-	$class = 'notice notice-error';
-	$message = __('MEGAVENTORY ERROR! Currencies in woocommerce and megaventory do not match! Megaventory plugin will halt until this issue is resolved!', 'sample-text-domain');
-	$message2 = __('If you are sure that the currency is correct, please refresh until this warning disappears.');
-	
-	printf('<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr($class), esc_html($message), esc_html($message2)); 
-}
 
 ?>
