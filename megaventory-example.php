@@ -18,7 +18,8 @@ require_once("error.php");
 require_once("product.php");
 require_once("client.php");
 require_once("tax.php");
-require_once("error.php");
+require_once("coupon.php");
+
 
 //normal cron would not work
 define('ALTERNATE_WP_CRON', true);
@@ -508,8 +509,54 @@ function pull_changes() {
 //on event, run pull_changes function
 add_action('pull_changes_event', 'pull_changes'); 
 
-//////////////////////////////////////// DB ////////////////////////////
 
+/////////////////////////////// COUPONS ///////////////////////////////////////
+
+function new_post($data , $postarr) { 
+	$admin_notices = new WP_Error('check_post_title_length', 'Example error.', 'update-nag');
+
+	if (($data['post_type'] == 'shop_coupon') and 
+		($data['post_status'] == 'publish')) {
+			
+		//wp_mail("bmodelski@megaventory.com", "coupon.php", "HERE");
+		//wp_mail("bmodelski@megaventory.com", "coupon.php", var_export($postarr, true));
+		
+		if ((Coupon::MV_is_name_present($data['post_title']))) {
+			return;
+		} 
+		
+	} 
+
+	
+	//wp_mail("bmodelski@megaventory.com", "coupon.php", var_export($data, true));
+	//wp_mail("bmodelski@megaventory.com", "coupon.php", var_export($postarr, true));
+	return $data;
+}; 
+         
+add_filter('wp_insert_post_data', 'new_post', '99', 2); 
+
+
+function display_admin_notices(){
+	wp_mail("bmodelski@megaventory.com", "coupon.php", "IN ERROR 1");
+	?>
+	
+	<div class="notice notice-success is-dismissible">
+		<p><?php _e('Congratulations, you did it!', 'shapeSpace'); ?></p>
+	</div>
+	
+	<?php 
+    
+}
+add_action('admin_notices', 'display_admin_notices');
+
+
+
+
+
+
+
+
+//////////////////////////////////////// DB ////////////////////////////
 function create_plugin_database_table() {
     global $table_prefix, $wpdb;
 
