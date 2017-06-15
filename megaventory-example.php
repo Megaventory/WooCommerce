@@ -251,7 +251,7 @@ function panel_init(){
 	usort($errors, "error_cmp");
 	$errors = array_reverse($errors);
 	
-	$table = '
+	$error_table = '
 		<h2>Error log</h2>
 		<table id="error-log" class="wp-list-table widefat fixed striped posts">
 			<tr>
@@ -279,9 +279,33 @@ function panel_init(){
 				$str .= '<td>' . $error->code . '</td>';
 				
 				$str .= '</tr>';
-				$table .= $str;
+				$error_table .= $str;
 			}
-	$table .= '</table>';
+	$error_table .= '</table>';
+	
+	$taxes = Tax::wc_all();
+	$tax_table = '
+		<h2>Taxes</h2>
+		<table id="taxes" class="wp-list-table widefat fixed striped posts">
+			<tr>
+				<th id="id">id</th>
+				<th>mv id</th>
+				<th>name</th>
+				<th>rate</th>
+			</tr>';
+			foreach ($taxes as $tax) {
+				$str = '<tr>';
+				
+				$str .= '<td>' . $tax->WC_ID . '</td>';
+				$str .= '<td>' . $tax->MV_ID . '</td>';
+				$str .= '<td>' . $tax->name . '</td>';
+				$str .= '<td>' . $tax->rate . '</td>';
+				
+				$str .= '</tr>';
+				$tax_table .= $str;
+			}
+			
+	$tax_table .= "</table>";
 	
 	global $correct_connection, $correct_currency, $correct_key;
 	$initialized = (bool)get_option("mv_initialized");
@@ -326,29 +350,38 @@ function panel_init(){
 			<div class="mv-col">
 				<h3>Initialization</h3>
 				<div class="wrap-init">
+				
 					<form id="initialize" method="post">
 						<input type="hidden" name="initialize" value="true" />
-						<input type="submit" value="Initialize" />
+						<input type="submit" value="'.($initialized ? 'Reinitialize' : 'Initialize').'" />
 					</form>
 					<form id="sync-wc-mg" method="post">
 						<input type="hidden" name="sync-wc-mv" />
 						<input type="submit" value="Import Products from WC to MV" />
+					</form>
+					<form id="sync-clients" method="post">
+						<input type="hidden" name="sync-clients" value="true" />
+						<input type="submit" value="Import Clients from WC to MV" />
 					</form>
 				</div>
 			</div>
 		</div>
 		
 		<div class="mv-row row-main">
-			'.$table.'
+			'.$error_table.'
 		</div>
 		
 		<div class="mv-row row-main">
-			<div class="mv-col">
+			'.$tax_table.'
+		</div>
+		
+		<div class="mv-row row-main">
+			<!--<div class="mv-col">-->
 				<form id="test" method="post">
 					<input type="hidden" name="test" value="true" />
 					<input type="submit" value="TEST" />
 				</form>
-			</div>
+			<!--</div>-->
 		</div>
 		
 		</div>
@@ -505,6 +538,49 @@ function map_existing_products_by_SKU() {
 	}
 }
 
+function map_existing_clients_by_email() {
+	$clients = Client::wc_all();
+	
+	foreach ($clients as $wc_client) {
+		$mv_client = Client::mv_find_by_email($wc_client->email);
+		if ($mv_client) {
+			echo $mv_client->email;
+			update_user_meta($mv_client->MV_ID, 'MV_ID', $mv_client->MV_ID);
+		}
+	}
+}
+
+function initialize_taxes() {
+	$wc_taxes = Tax::wc_all();
+	$mv_taxes = Tax::mv_all();
+	
+	$mv_names = array();
+	foreach ($mv_taxes as $mv_tax) {
+		$mv_names[strtolower($mv_tax->name)] = $mv_tax;
+	}
+	
+	foreach ($wc_taxes as $wc_tax) {
+		$mv_tax = $mv_names[strtolower($wc_tax->name)];
+		if ($mv_tax != null) { //tax already exists in MV
+			//update in wc from mv
+			$mv_tax->WC_ID = $wc_tax->WC_ID;
+			$mv_tax->wc_save();
+			
+			echo "saving: ";
+			var_dump($mv_tax);
+			echo "<br>----------------<br>";
+		} else {
+			//save to mv from wc
+			$wc_tax->MV_ID = null;
+			$wc_tax->mv_save();
+		}
+	}
+	
+	var_dump($wc_taxes);
+	echo "<br>----------<br>";
+	var_dump($mv_names);
+}
+
 function initialize_integration() {
 	//Create guest client in wc if does not exist yet.
 	$user_name = "WooCommerce_Guest";
@@ -520,15 +596,16 @@ function initialize_integration() {
 	$response = $wc_main->mv_save();
 	
 	map_existing_products_by_SKU();
+	map_existing_clients_by_email();
+	initialize_taxes();
+	
 	
 	//store id for reference
 	update_option("woocommerce_guest", (string)$wc_main->WC_ID);
 	update_option("mv_initialized", (string)true);
 }
 
-function test() {
-	update_option("mv_api_key", (string)'e8a3711b83dc84dd@m66472');
-	
+function test() {	
 	echo '<div style="margin:auto;width:50%">';
 	/*
 	foreach (Product::wc_all_with_variable() as $prod) {
@@ -560,15 +637,14 @@ function test() {
 		echo "<br>///////////////////////</br>";
 	}
 	*/
+	//$tax = new Tax();
+	//$tax->name = "tax";
+	//$tax->rate = 20;
+	//$tax->description = "hello";
+	//$tax->mv_save();
+	initialize_taxes();
 	
-	$prod = Product::mv_find_by_sku('dvd-w-case-gdf1');
-	var_dump($prod);
-	echo "<br>-------------------------<br>";
-	$prod2 = Product::wc_find_by_SKU('dvd-w-case-gdf1');
-	var_dump($prod2);
-	echo "<br>-------------------------<br>";
 	
-	$prod2->mv_save();
 	
 	echo '</div>';
 }
@@ -687,6 +763,7 @@ function create_plugin_database_table() {
 
     #Check to see if the table exists already, if not, then create it
 
+	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     if($wpdb->get_var("show tables like '$wp_track_table'") != $wp_track_table) {
 		$table_name = $wpdb->prefix . "mvwc_errors"; 
 		$charset_collate = $wpdb->get_charset_collate();
@@ -704,11 +781,13 @@ function create_plugin_database_table() {
 		  PRIMARY KEY  (id)
 		) $charset_collate;";
 
-		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 		$return = dbDelta($sql);
     }
 	
-	wp_mail("mpanasiuk@megaventory.com", "activating broom", var_export($return, true)); 
+	
+	$sql = "ALTER TABLE {$wpdb->prefix}woocommerce_tax_rates ADD mv_id INT;";
+	$return = $wpdb->query($sql);
+	
 }
 
 register_activation_hook(__FILE__, 'create_plugin_database_table');
@@ -740,6 +819,10 @@ function reset_mv_data() {
 	delete_option("mv_api_key");
 	delete_option("mv_api_host");
 	delete_option("mv_initialized");
+	
+	global $wpdb;
+	$sql = "ALTER TABLE {$wpdb->prefix}woocommerce_tax_rates DROP COLUMN mv_id;";
+	$return = $wpdb->query($sql);
 }
  
 register_deactivation_hook(__FILE__, 'remove_db_table');

@@ -143,8 +143,8 @@ div.mv-row.row-main {
 }
 
 
-/* ERROR LOG */
-#error-log {
+/* ERROR LOG AND TAX TABLE */
+.mv-row table {
 	text-align: left;
 }
 
