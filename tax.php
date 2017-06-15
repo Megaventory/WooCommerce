@@ -172,16 +172,17 @@ class Tax {
 	}
 	
 	public function wc_save() {
+		wp_mail("mpanasiuk@megaventory.com", "step 800", $wpdb->last_query . " " . var_export($wpdb->last_result, true));
+		wp_mail("mpanasiuk@megaventory.com", "step 2", "Heregoes");
 		global $wpdb;
 		$create_new = $this->WC_ID == null;
 		
 		$table_name = $wpdb->prefix . self::$table_name;
 		$sql;
 		if ($create_new) {
-			$sql = "INSERT INTO $table_name(tax_rate_id, tax_rate, tax_rate_name, mv_id) VALUES(";
-			$sql .= (string)$this->WC_ID.", ";
+			$sql = "INSERT INTO $table_name(tax_rate, tax_rate_name, mv_id) VALUES(";
 			$sql .= (string)$this->rate.", ";
-			$sql .= $this->name.", ";
+			$sql .= "'".$this->name."', ";
 			$sql .= ($this->MV_ID ? (string)$this->MV_ID : "NULL");
 			$sql .= ");";
 			
@@ -196,6 +197,7 @@ class Tax {
 		
 		echo $wpdb->last_query;
 		echo $wpdb->last_result;
+		wp_mail("mpanasiuk@megaventory.com", "step 3", $wpdb->last_query . " " . var_export($wpdb->last_result, true));
 	}
 	
 	public function wc_delete() {

@@ -87,6 +87,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 		//tax
 		// add the action 
 		add_action('woocommerce_tax_rate_updated', 'on_tax_update', 10, 2); 
+		add_action('woocommerce_tax_rate_added', 'on_tax_update', 10, 2); 
 	} else {
 		$execute_lock = true;
 		add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
@@ -113,7 +114,20 @@ function on_tax_update($tax_rate_id, $tax_rate) {
 		}
 	}
 	
-}; 
+	//can add, but cannot change rate afterswards - keep updated with MV
+	if ($tax->MV_ID != null) {
+		$tax2 = Tax::mv_find($tax->MV_ID);
+		$tax2->WC_ID = $tax->WC_ID;
+		$tax = $tax2;
+		wp_mail("mpanasiuk@megaventory.com", "step 1", "Heregoes");
+		$tax->wc_save();
+		wp_mail("mpanasiuk@megaventory.com", "step 4", "Heregoes");
+		header("Refresh:0");
+		exit;
+	}
+	
+	return $tax_rate_id;
+}
 
 //link style.css
 function register_style() {
@@ -666,6 +680,7 @@ function test() {
 	//$tax->mv_save();
 	//initialize_taxes();
 	
+	initialize_taxes();
 	
 	echo '</div>';
 }
