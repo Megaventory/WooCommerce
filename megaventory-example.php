@@ -32,6 +32,24 @@ $correct_connection;
 $correct_key;
 $err_messages = array();
 
+function sess_start() {
+    if (!session_id())
+		session_start();
+
+	if ($_SESSION["errs"] == null) { 
+		$_SESSION["errs"] = array();
+	} else if (count($_SESSION["errs"]) > 0) {
+		foreach ($_SESSION["errs"] as $err) {
+			register_error($err[0], $err[1]);
+		}
+		$_SESSION["errs"] = array();
+		wp_mail("mpanasiuk@megaventory.com", "jobwelldone", "jobdone");
+	}
+}
+add_action('init','sess_start');
+
+
+
 //////////////// PLUGIN INITIALIZATION //////////////////////////////////////////////////
 
 function register_error($str1, $str2) {
@@ -90,8 +108,8 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 		add_action('woocommerce_tax_rate_added', 'on_tax_update', 10, 2); 
 	} else {
 		$execute_lock = true;
-		add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
 	}
+	add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
 } else { //no woocommerce detected
 	//untested
 	register_error('Woocommerce not detected', 'Megaventory plugin cannot operate without woocommerce');
@@ -102,31 +120,43 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 function on_tax_update($tax_rate_id, $tax_rate) { 
 	//wp_mail("mpanasiuk@megaventory.com", "old_tax", var_export($tax_rate, true));
 	//wp_mail("mpanasiuk@megaventory.com", "new_tax", var_export(Tax::wc_find($tax_rate_id), true));
+	
 	$tax = Tax::wc_find($tax_rate_id);
+	if (!$tax) return;
 	
 	$wc_taxes = Tax::wc_all();
 	
 	$can_save = true;
 	foreach ($wc_taxes as $wc_tax) {
-		if ($wc_tax->name == $tax->name and $wc_tax->MV_ID != $tax->MV_ID) { //if name is taken by different tax
+		if ($wc_tax->WC_ID == $tax->WC_ID) continue;
+		wp_mail("mpanasiuk@megaventory.com", "sesja", var_export($_SESSION, true));
+		
+		if ($wc_tax->name == $tax->name and (float)$wc_tax->rate == (float)$tax->rate and $wc_tax->WC_ID != $tax->WC_ID) { //if name is taken by different tax
 			$tax->wc_delete();
-			break;
+			array_push($_SESSION["errs"], array("Cannot add a new tax with same name and rate", "Please try again with different details"));
+			wp_mail("mpanasiuk@megaventory.com", "sesja2", var_export($_SESSION, true));
+			return;
 		}
 	}
 	
 	//can add, but cannot change rate afterswards - keep updated with MV
-	if ($tax->MV_ID != null) {
-		$tax2 = Tax::mv_find($tax->MV_ID);
+	$tax2 = null;
+	if ($tax->MV_ID != null or $tax2 = Tax::mv_find_by_name_and_rate($tax->name, $tax->rate)) {
+		if (!$tax2) 
+			$tax2 = Tax::mv_find($tax->MV_ID);
+		
 		$tax2->WC_ID = $tax->WC_ID;
 		$tax = $tax2;
-		wp_mail("mpanasiuk@megaventory.com", "step 1", "Heregoes");
 		$tax->wc_save();
-		wp_mail("mpanasiuk@megaventory.com", "step 4", "Heregoes");
-		header("Refresh:0");
-		exit;
+	} else { //creating new tax in MV
+		$saved = $tax->mv_save();
+		if (!$saved) {
+			$tax->wc_delete(); //not saved
+		}
 	}
 	
-	return $tax_rate_id;
+	return;
+	
 }
 
 //link style.css
@@ -590,14 +620,17 @@ function initialize_taxes() {
 	$wc_taxes = Tax::wc_all();
 	$mv_taxes = Tax::mv_all();
 	
-	$mv_names = array();
-	foreach ($mv_taxes as $mv_tax) {
-		$mv_names[strtolower($mv_tax->name)] = $mv_tax;
-	}
 	
 	foreach ($wc_taxes as $wc_tax) {
-		$mv_tax = $mv_names[strtolower($wc_tax->name)];
-		if ($mv_tax != null) { //tax already exists in MV
+		$mv_tax = null;
+		foreach ($mv_taxes as $tax) { //check if exists
+			if ($wc_tax->equals($tax)) {
+				$mv_tax = $tax;
+				break;
+			}
+		}
+		
+		if ($mv_tax != null and $wc_tax->rate == $mv_tax->rate) { //tax already exists in MV
 			//update in wc from mv
 			$mv_tax->WC_ID = $wc_tax->WC_ID;
 			$mv_tax->wc_save();
@@ -681,6 +714,14 @@ function test() {
 	//initialize_taxes();
 	
 	initialize_taxes();
+	
+	//$t = new Tax();
+	//$t->name = "ooooo3";
+	//$t->rate = 79;
+	//$t->mv_save();
+	//$t->wc_save();
+	
+	//var_dump($t);
 	
 	echo '</div>';
 }

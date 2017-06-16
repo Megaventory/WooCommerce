@@ -93,6 +93,20 @@
 	function create_json_url_filter($call, $fieldName, $searchOperator, $searchValue) {
 		return create_json_url($call) . "&Filters={FieldName:" . $fieldName . ",SearchOperator:" . $searchOperator . ",SearchValue:" . $searchValue ."}";
 	}
+		
+	function create_json_url_filters($call, $args) {
+		$url = create_json_url($call) . "&Filters=[";
+		for ($i = 0; $i < count($args); $i++) {
+			$arg = $args[$i];
+			$url .= "{FieldName:" . $arg[0] . ",SearchOperator:" . $arg[1] . ",SearchValue:" . $arg[2] ."}";
+			if ($i + 1 < count($args)) { //not last element
+				$url .= ",";
+			}
+		}
+		$url .= "]";
+		
+		return $url;
+	}
 	
 	function send_xml($url, $xml_request) {
 		$ch = curl_init();
@@ -152,6 +166,20 @@
 		global $salesorder_update_call, $API_KEY;
 		$url = create_xml_url($salesorder_update_call);
 		
+		
+		
+		//tax - currently using just one
+		$taxes = array();
+		foreach($order->get_taxes() as $key => $tax) {
+			array_push($taxes, $tax->get_rate_id());
+		}
+		
+		$tax = null;
+		if (count($taxes) == 1) {
+			$tax = Tax::wc_find($taxes[0]);
+		}
+		wp_mail("mpanasiuk@megaventory.com", "orderplac", var_export($taxes[0], true) . var_export($tax, true));
+		
 		$products_xml = '';
 		foreach ($order->get_items() as $item) {
 			$product = new WC_Product($item['product_id']);
@@ -161,6 +189,7 @@
 			$productstring .= '<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>';
 			$productstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
 			$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . $product->get_regular_price() . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
+			$productstring .= ($tax ? '<SalesOrderRowTaxID>'.(string)$tax->MV_ID.'</SalesOrderRowTaxID>' : '');
 			$productstring .= '</mvSalesOrderRow>';
 			
 			$products_xml .= $productstring;

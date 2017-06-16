@@ -112,6 +112,19 @@ class Tax {
 		}
 		
 		return self::mv_convert($jsontax['mvTaxes'][0]);
+	}	
+	
+	public static function mv_find_by_name_and_rate($name, $rate) {
+		$jsonurl = create_json_url_filters(self::$tax_get_call, array(array("TaxName", "Equals", htmlentities($name)), array("TaxValue", "Equals", htmlentities($rate))));
+		wp_mail("mpanasiuk@megaventory.com", "URL", $jsonurl);
+		$jsontax = file_get_contents($jsonurl);
+		$jsontax = json_decode($jsontax, true);
+		
+		if (count($jsontax['mvTaxes']) <= 0) {
+			return null;
+		}
+		
+		return self::mv_convert($jsontax['mvTaxes'][0]);
 	}
 	
 	public static function mv_convert($mv_tax) {
@@ -128,7 +141,7 @@ class Tax {
 	public function mv_save() {
 		$create_new = false;
 		if ($this->MV_ID == null) { //find by name first
-			$tax = self::mv_find_by_name($this->name);
+			$tax = self::mv_find_by_name_and_rate($this->name, $this->rate);
 			if ($tax != null) {
 				$this->MV_ID = $tax->MV_ID;
 			} else {
@@ -153,6 +166,10 @@ class Tax {
 			
 		$data = send_xml($url, $xml);
 		
+		echo "<br>-------------XML SENT for " . $this->name . "------<br>";
+		var_dump($xml);
+		echo "<br>-------------------------------------<br>";
+		
 		if (count($data['mvTax']) <= 0) {
 			//log err
 			$this->log_error("Tax not saved to MV", $data['ResponseStatus']['Message'], $data['ResponseStatus']['ErrorCode']);
@@ -163,7 +180,7 @@ class Tax {
 			if ($new_id != $this->MV_ID) {
 				global $wpdb;
 				$table_name = $wpdb->prefix . self::$table_name;
-				$sql = "UPDATE $table_name SET mv_id=".(string)$new_id.";";
+				$sql = "UPDATE $table_name SET mv_id=".(string)$new_id." WHERE tax_rate_id=".(string)$this->WC_ID.";"; //WOW M9
 				$wpdb->query($sql);
 			}
 		}
@@ -174,6 +191,14 @@ class Tax {
 	public function wc_save() {
 		wp_mail("mpanasiuk@megaventory.com", "step 800", $wpdb->last_query . " " . var_export($wpdb->last_result, true));
 		wp_mail("mpanasiuk@megaventory.com", "step 2", "Heregoes");
+		
+		foreach (self::wc_all() as $wc_tax) {
+			if ($wc_tax->equals($this)) {
+				$this->WC_ID = $wc_tax->WC_ID;
+				break;
+			}
+		}
+		
 		global $wpdb;
 		$create_new = $this->WC_ID == null;
 		
@@ -206,6 +231,10 @@ class Tax {
 		$sql = "DELETE FROM $table_name WHERE tax_rate_id=".(string)$this->WC_ID.";";
 		
 		return $wpdb->query($sql);
+	}
+	
+	public function equals($tax) {
+		return $this->name == $tax->name and (float)$this->rate == (float)$tax->rate;
 	}
 }
 
