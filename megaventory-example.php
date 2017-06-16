@@ -31,7 +31,7 @@ $execute_lock = false; //this lock prevents all sync fro
 $correct_currency = true;
 $correct_connection = true;
 
-
+ 
 $err_messages = array();
 
 //////////////// PLUGIN INITIALIZATION //////////////////////////////////////////////////
@@ -69,12 +69,16 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	} else {
 		$execute_lock = true;
 	}
+	
+	//wp_mail("bmodelski@megaventory.com", "product response", "HERE");
+	//Coupon::MV_initialise();
 }
 
 //link style.css
 function register_style() {
 	wp_register_style('mv_style', plugins_url('/style/style.css', __FILE__), false, '1.0.0', 'all');
 }
+
 function enqueue_style(){
 	wp_enqueue_style('mv_style');
 }
@@ -95,7 +99,6 @@ function add_mv_column($columns){
 }
 
 //ERROR handling
-
 function register_error($str1, $str2) {
 	global $err_messages;
 	$message = array(__($str1, 'sample-text-domain'), __($str2));
@@ -112,10 +115,15 @@ function sample_admin_notice__error() {
 	
 	foreach ($err_messages as $msg) {
 		printf('<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr($class), esc_html($msg[0]), esc_html($msg[1]));
+		
+		
+		/* ?>
+		<div class="notice notice-success is-dismissible">
+			<p><?php _e('Congratulations, you did it!', 'shapeSpace'); ?></p>
+		</div>
+		<?php  */
 	} 
 		
-	
-	wp_mail("bmodelski@megaventory.com", "ERROR message", var_export(get_error_codes(), true));
 }
 
 add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
@@ -544,41 +552,40 @@ add_action('pull_changes_event', 'pull_changes');
 
 function new_post($data , $postarr) { 
 
+	
+	wp_mail("bmodelski@megaventory.com", "Post data", var_export($data, true));
+	wp_mail("bmodelski@megaventory.com", "Post array", var_export($postarr, true));
+
+	//If it's not a new coupon being added, don't influence the process
 	if ((($data['post_type'] != 'shop_coupon') or ($data['post_status'] != 'publish')))
 		return $data;
 	
+	//Rate of a coupon is compulsory in MV, thereby has to be in WC as well
 	if (empty($postarr['coupon_amount'])){ 
-		register_error("Wrong name", "Name already present in MV database. Please choose a different one.");
+		register_error("Coupon amount", "You have to specify rate of the coupon.");
 		return;
 	}
 	
 	//create and add coupon to megaventory
 	$coupon = new Coupon;
 	$coupon->name = $postarr['post_title'];
-	$coupon->rate = $postarr['coupon_amount'];
-	$coupon->description = $postarr['excerpt']; // Should be whole content here, but for whatever 
-												// reason fields responsible for that in $data, 
-												// $postarr are always empty.
-	
-	// If post is a coupon and is not a draft, check if there's a discount with the same name added to MV already. 
-	// If there's block addition of coupon.
-	if ($coupon->MV_is_name_present()) {
-		register_error("Wrong name", "Name already present in MV database. Please choose a different one.");
-		return;
-	} 
-
-
-	$coupon->mv_add();
-
+	$coupon->rate = $postarr['coupon_amount'];	
 	
 	
-	//wp_mail("bmodelski@megaventory.com", "coupon.php", var_export($data, true));
-	//wp_mail("bmodelski@megaventory.com", "coupon.php", var_export($postarr, true));
+	if ($coupon->MV_load_same_name_rate_if_present()) {
+		register_error("Coupon already present in db.", "Coupon already present in MV database. (?MessageBox here: do you want to update it's description?). Old description: $coupon->description.");
+		$coupon->description = $postarr['excerpt']; // 1. Overwrite loaded value.
+													// 2. Should be whole content here, but for whatever 
+													// reason fields responsible for that in $data, 
+													// $postarr are always empty.
+		$coupon->MV_update();
+	} else {
+		$coupon->MV_add();
+	}		
 	return $data; 
 }
          
 add_filter('wp_insert_post_data', 'new_post', '99', 2); 
-
 
 
 
@@ -612,7 +619,6 @@ function create_plugin_database_table() {
 		$return = dbDelta($sql);
     }
 	
-	wp_mail("mpanasiuk@megaventory.com", "activating broom", var_export($return, true)); 
 }
 
 register_activation_hook(__FILE__, 'create_plugin_database_table');
