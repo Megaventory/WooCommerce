@@ -12,7 +12,7 @@ class Coupon {
 	public $description = "";
 	public $rate = 0.0;
 	
-	public $type; // either 'percent' or 'discount'
+	public $type; // either 'percent' or 'fixed'
 	
 	private static $MV_URL_discount_get = "https://apitest.megaventory.com/xml/reply/DiscountGet";
 	private static $MV_URL_discount_update = "https://apitest.megaventory.com/xml/reply/DiscountUpdate"; //Used also for adding new discounts
@@ -60,7 +60,7 @@ class Coupon {
 		wp_mail("bmodelski@megaventory.com", "product response", var_export(self::$MV_URL_category_update, true));*/
 	}
 	
-	public function MV_load_obj_with_same_name_rate_if_present() {
+	public function MV_load_corresponding_obj_if_present() {
 		if ($this->type == 'percent') {
 			$xml = send_xml(self::$MV_URL_discount_get,
 				self::XML_get_obj_with_same_name_rate_pair_present());
@@ -73,8 +73,8 @@ class Coupon {
 				return true;
 			}			
 		} else {
-			$xml = send_xml(self::MV_URL_product_get,
-				self::XML_get_obj_with_same_name_if_present_product);
+			$xml = send_xml(self::$MV_URL_product_get,
+				self::XML_get_obj_with_same_name_if_present_product());
 			
 			if (empty($xml['mvProducts']))
 				return false;
@@ -184,8 +184,15 @@ class Coupon {
 		return $query;
 	}
 	
-	public function MV_update() {
-		$result = send_xml(self::$MV_URL_discount_update, self::XML_update_in_mv());
+	public function MV_update() {			
+		if ($this->type == 'percent') {
+			wp_mail("bmodelski@megaventory.com", "coupon", "HERE2");
+			
+			$result = send_xml(self::$MV_URL_discount_update, self::XML_update_in_mv());
+			
+		} else {
+			
+		}
 	}
 	
 	private function XML_update_in_mv() {

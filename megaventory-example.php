@@ -566,52 +566,51 @@ function new_post($data, $postarr) {
 		register_error("Coupon amount", "Coupon amount must be a positive number.");
 	}
 	
-	if (($postarr['discount_type'] == 'fixed_cart') or ($postarr['discount_type'] == 'fixed_product')) {
-		return new_fixed_discount($data, $postarr);
-	} else if ($postarr['discount_type'] == 'percent') {
-		return new_percent_discount($data, $postarr);
-	} else {
-		register_error("Error", "Unrecognized coupon type. Please contact support if this error persists.");
-	}	
+	return new_discount($data, $postarr);
+	
 }
          
 add_filter('wp_insert_post_data', 'new_post', '99', 2); 
 
-function new_percent_discount($data, $postarr) {
+function new_discount($data, $postarr) {
 	//create and add coupon to megaventory
+	
 	$coupon = new Coupon;
 	$coupon->name = $postarr['post_title'];
 	$coupon->rate = $postarr['coupon_amount'];
-	$coupon->type = 'percent';
 	
+	if (($postarr['discount_type'] == 'fixed_cart') or ($postarr['discount_type'] == 'fixed_product')) {
+		$coupon->type = 'fixed';
+	} else {
+		$coupon->type = 'percent';
+	}
 	
-	if ($coupon->MV_load_obj_with_same_name_rate_if_present()) {
+	if ($coupon->MV_load_corresponding_obj_if_present()) {
 		register_error("Coupon already present in db.", "Coupon already present in MV database. (?MessageBox here: do you want to update it's description?). Old description: $coupon->description.");
 		$coupon->description = $postarr['excerpt']; // 1. Overwrite loaded value.
 													// 2. Should be whole content here, but for whatever 
 													// reason fields responsible for that in $data, 
 													// $postarr are always empty.
+
+
+		wp_mail("bmodelski@megaventory.com", "new_discount", "+" . var_export($coupon, true));
+
 		$coupon->MV_update();
 	} else {
+		$coupon->description = $postarr['excerpt']; // 1. Overwrite loaded value.
+													// 2. Should be whole content here, but for whatever 
+													// reason fields responsible for that in $data, 
+													// $postarr are always empty.
+
+
+		
 		$coupon->MV_add();
 	}		
 	return $data; 
 }
 
-function new_fixed_discount($data, $postarr) {
-	$coupon = new Coupon;
-	$coupon->name = $postarr['post_title'];
-	$coupon->rate = $postarr['coupon_amount'];
-	$coupon->type = 'fixed';
-	
-	if ($coupon->MV_is_name_in_products()) {
-		register_error("Coupon already present in db.", "Coupon already present in MV database. (?MessageBox here: do you want to update it's description?). Old description: $coupon->description.");
-		return null;
-	} else {
-		$coupon->MV_add();
-	}
-	return $data;
-}
+
+
 
 
 //////////////////////////////////////// DB ////////////////////////////
