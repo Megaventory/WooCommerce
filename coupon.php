@@ -86,7 +86,7 @@ class Coupon {
 		}
 	}
 
-	private function XML_add_to_products() {
+	private function XML_add_to_mv_fixed() {
 		if (!preg_match('/[a-zA-Z]/', $this->description)) 
 			$this->description = "discount";
 		
@@ -161,15 +161,13 @@ class Coupon {
 	
 	public function MV_add() {
 		if ($this->type == 'percent') {
-			send_xml(self::$MV_URL_discount_update, self::XML_add_to_discounts());
+			send_xml(self::$MV_URL_discount_update, self::XML_add_to_mv_percent());
 		} else {
-			$xml = send_xml(self::$MV_URL_product_update, self::XML_add_to_products());
-			wp_mail("bmodelski@megaventory.com", "coupon", var_export($xml, true));
-			wp_mail("bmodelski@megaventory.com", "coupon", var_export(self::XML_add_to_products(), true));
-		}  
+			$xml = send_xml(self::$MV_URL_product_update, self::XML_add_to_mv_fixed());
+		}   
 	}
 	
-	private function XML_add_to_discounts() {
+	private function XML_add_to_mv_percent() {
 		$query = 
 		'<DiscountUpdate xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types"> ' .
 		  '<APIKEY>' . get_api_key() . '</APIKEY> ' .
@@ -185,17 +183,18 @@ class Coupon {
 	}
 	
 	public function MV_update() {			
+			wp_mail("bmodelski@megaventory.com", "coupon", "inside MV_add");
 		if ($this->type == 'percent') {
-			wp_mail("bmodelski@megaventory.com", "coupon", "HERE2");
-			
-			$result = send_xml(self::$MV_URL_discount_update, self::XML_update_in_mv());
-			
+			$result = send_xml(self::$MV_URL_discount_update, self::XML_update_in_mv_percent());
 		} else {
+			$result = send_xml(self::$MV_URL_product_update, self::XML_update_in_mv_fixed());
+			wp_mail("bmodelski@megaventory.com", "coupon", var_export(self::XML_add_to_mv_fixed(), true));
+			wp_mail("bmodelski@megaventory.com", "coupon", var_export($result, true));
 			
 		}
 	}
 	
-	private function XML_update_in_mv() {
+	private function XML_update_in_mv_percent() {
 		$query = 
 		'<DiscountUpdate xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types"> ' .
 		  '<APIKEY>' . get_api_key() . '</APIKEY> ' .
@@ -207,6 +206,23 @@ class Coupon {
 		  '</mvDiscount> ' .
 		  '<mvRecordAction>Update</mvRecordAction>' .
 		'</DiscountUpdate> ';
+		return $query;
+	}
+	
+	private function XML_update_in_mv_fixed() {
+		$query = 
+		'<ProductUpdate xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types">' .
+			  '<APIKEY>' . get_api_key() . '</APIKEY>' .
+				'<mvProduct>' .
+				  '<ProductID>' . $this->MV_ID . '</ProductID>' .
+				  '<ProductType>BuyFromSupplier</ProductType>' .
+				  '<ProductSKU>' . $this->name . '</ProductSKU>' .
+				  '<ProductDescription>' . $this->description . '</ProductDescription>' .
+				  '<ProductSellingPrice>' . $this->rate . '</ProductSellingPrice>' .
+				  '<ProductPurchasePrice>0</ProductPurchasePrice>' .
+				'</mvProduct>' .
+			  '<mvRecordAction>Update</mvRecordAction>' .
+			'</ProductUpdate>';
 		return $query;
 	}
 	

@@ -587,23 +587,21 @@ function new_discount($data, $postarr) {
 	
 	if ($coupon->MV_load_corresponding_obj_if_present()) {
 		register_error("Coupon already present in db.", "Coupon already present in MV database. (?MessageBox here: do you want to update it's description?). Old description: $coupon->description.");
-		$coupon->description = $postarr['excerpt']; // 1. Overwrite loaded value.
-													// 2. Should be whole content here, but for whatever 
+		$coupon->description = $postarr['excerpt']; // - Overwrite loaded value with user input.
+													// - Should be whole content here, but for whatever 
 													// reason fields responsible for that in $data, 
 													// $postarr are always empty.
+													
+		$coupon->rate = $postarr['coupon_amount'];  // If the discount is fixed, then rate can be edited.
 
-
-		wp_mail("bmodelski@megaventory.com", "new_discount", "+" . var_export($coupon, true));
+		//wp_mail("bmodelski@megaventory.com", "new_discount", "+" . var_export($coupon, true));
 
 		$coupon->MV_update();
 	} else {
 		$coupon->description = $postarr['excerpt']; // 1. Overwrite loaded value.
 													// 2. Should be whole content here, but for whatever 
 													// reason fields responsible for that in $data, 
-													// $postarr are always empty.
-
-
-		
+													// $postarr are always empty.		
 		$coupon->MV_add();
 	}		
 	return $data; 
