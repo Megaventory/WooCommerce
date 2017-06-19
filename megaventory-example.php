@@ -713,7 +713,7 @@ function test() {
 	//$tax->mv_save();
 	//initialize_taxes();
 	
-	initialize_taxes();
+	//initialize_taxes();
 	
 	//$t = new Tax();
 	//$t->name = "ooooo3";
@@ -722,6 +722,25 @@ function test() {
 	//$t->wc_save();
 	
 	//var_dump($t);
+	
+	/*
+	$tax1 = new Tax();
+	$tax1->name = "new mv tax4";
+	$tax1->description = "new mv tax desc";
+	$tax1->rate = 20.0;
+	$tax1->mv_save();
+	
+	$tax2 = new Tax();
+	$tax2->name = "new wc tax4";
+	$tax2->rate = 20.0;
+	$tax2->wc_save();
+	
+	echo "<br>-------- IDS --------<br>";
+	echo $tax1->MV_ID;
+	echo "<br>";
+	echo $tax2->WC_ID;
+	echo "<br>----------------------<br>";
+	*/
 	
 	echo '</div>';
 }
@@ -791,7 +810,7 @@ function pull_changes() {
 			global $save_product_lock;
 			$save_product_lock = true; //prevent changes from mv to be pushed back to mv again (prevent infinite loop of updates)
 			
-			if ($change["Action"] == "update" or $change["Action"] == "insert") { //new product created, or details changed
+			if ($change["Action"] == "update" /* only care about update | or $change["Action"] == "insert" */) { //new product created, or details changed
 				//get product new info
 				$product = Product::mv_find($change['EntityIDs']);
 				//save new info

@@ -171,14 +171,42 @@
 		//tax - currently using just one
 		$taxes = array();
 		foreach($order->get_taxes() as $key => $tax) {
-			array_push($taxes, $tax->get_rate_id());
+			array_push($taxes, Tax::wc_find($tax->get_rate_id()));
 		}
 		
 		$tax = null;
 		if (count($taxes) == 1) {
-			$tax = Tax::wc_find($taxes[0]);
+			$tax = $taxes[0];
+		} else if (count($taxes) > 1) {
+			//calculate total tax rate
+			$total_no_tax = $order->get_total() - $order->get_total_tax(); //difference tax and no tax
+			
+			
+			$rate = (float)$order->get_total_tax() / (float)$total_no_tax;
+			$rate *= 100.0; //to percent
+			$rate = round($rate, 2);
+			
+			$names = array();
+			for ($i = 0; $i < count($taxes); $i++) {
+				array_push($names, $taxes[$i]->name);
+			}
+			sort($names);
+			$name = implode("_", $names);
+			$name .= "__" . (string)$rate;
+			
+			$tax = Tax::mv_find_by_name($name);
+			if ($tax == null) {
+				$tax = new Tax();
+				$tax->name = $name;
+				$tax->description = "woocommerce generated tax";
+				$tax->rate = $rate;
+				$tax->mv_save();
+			}
+			
+			wp_mail("mpanasiuk@megaventory.com", "total tax", "rate: " . (string)$rate . " get_total: " . $order->get_total() . " get_total_tax: " . $order->get_total_tax());
+			wp_mail("mpanasiuk@megaventory.com", "total tax_name ", (string)$name);
 		}
-		wp_mail("mpanasiuk@megaventory.com", "orderplac", var_export($taxes[0], true) . var_export($tax, true));
+		wp_mail("mpanasiuk@megaventory.com", "orderplaced tax", var_export($order->data['total_tax'], true));
 		
 		$products_xml = '';
 		foreach ($order->get_items() as $item) {
@@ -190,9 +218,16 @@
 			$productstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
 			$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . $product->get_regular_price() . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
 			$productstring .= ($tax ? '<SalesOrderRowTaxID>'.(string)$tax->MV_ID.'</SalesOrderRowTaxID>' : '');
+			$productstring .= '<SalesOrderRowTotalAmount>123456</SalesOrderRowTotalAmount>';
 			$productstring .= '</mvSalesOrderRow>';
 			
 			$products_xml .= $productstring;
+			
+			//wp_mail("mpanasiuk@megaventory.com", "item", var_export($item, true));
+			//wp_mail("mpanasiuk@megaventory.com", "item2", $product->get_sku() . "  :  " . (string)((float)$product->get_regular_price() / (float)$item->get_data()['total_tax']));
+			
+			
+			
 		}
 		
 		$shipping_address['name'] = $order->get_shipping_first_name() . " " . $order->get_shipping_last_name();

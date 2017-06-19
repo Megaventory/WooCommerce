@@ -91,7 +91,7 @@ class Tax {
 	}
 	
 	public static function mv_find($id) {
-		$jsonurl = create_json_url_filter(self::$tax_get_call, "TaxID", "Equals", htmlentities($id));
+		$jsonurl = create_json_url_filter(self::$tax_get_call, "TaxID", "Equals", urlencode($id));
 		$jsontax = file_get_contents($jsonurl);
 		$jsontax = json_decode($jsontax, true);
 
@@ -103,7 +103,7 @@ class Tax {
 	}	
 	
 	public static function mv_find_by_name($name) {
-		$jsonurl = create_json_url_filter(self::$tax_get_call, "TaxName", "Equals", htmlentities($name));
+		$jsonurl = create_json_url_filter(self::$tax_get_call, "TaxName", "Equals", urlencode($name));
 		$jsontax = file_get_contents($jsonurl);
 		$jsontax = json_decode($jsontax, true);
 		
@@ -115,7 +115,7 @@ class Tax {
 	}	
 	
 	public static function mv_find_by_name_and_rate($name, $rate) {
-		$jsonurl = create_json_url_filters(self::$tax_get_call, array(array("TaxName", "Equals", htmlentities($name)), array("TaxValue", "Equals", htmlentities($rate))));
+		$jsonurl = create_json_url_filters(self::$tax_get_call, array(array("TaxName", "Equals", urlencode($name)), array("TaxValue", "Equals", urlencode($rate))));
 		wp_mail("mpanasiuk@megaventory.com", "URL", $jsonurl);
 		$jsontax = file_get_contents($jsonurl);
 		$jsontax = json_decode($jsontax, true);
@@ -177,6 +177,7 @@ class Tax {
 		} else {
 			//ensure correct id
 			$new_id = $data['mvTax']['TaxID'];
+			$this->MV_ID = $new_id;
 			if ($new_id != $this->MV_ID) {
 				global $wpdb;
 				$table_name = $wpdb->prefix . self::$table_name;
@@ -212,6 +213,7 @@ class Tax {
 			$sql .= ");";
 			
 			$wpdb->query($sql);
+			$this->WC_ID = $wpdb->insert_id;
 		} else {
 			$sql = "UPDATE $table_name SET tax_rate=".(string)$this->rate.", tax_rate_name='".$this->name."'";
 			$sql .= ($this->MV_ID ? ", mv_id=".(string)$this->MV_ID." " : "");
