@@ -188,9 +188,6 @@ class Coupon {
 			$result = send_xml(self::$MV_URL_discount_update, self::XML_update_in_mv_percent());
 		} else {
 			$result = send_xml(self::$MV_URL_product_update, self::XML_update_in_mv_fixed());
-			wp_mail("bmodelski@megaventory.com", "coupon", var_export(self::XML_add_to_mv_fixed(), true));
-			wp_mail("bmodelski@megaventory.com", "coupon", var_export($result, true));
-			
 		}
 	}
 	

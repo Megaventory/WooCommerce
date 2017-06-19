@@ -552,6 +552,7 @@ add_action('pull_changes_event', 'pull_changes');
 
 function new_post($data, $postarr) { 
 	//If it's not a new coupon being added, don't influence the process
+	
 	if ((($data['post_type'] != 'shop_coupon') or ($data['post_status'] != 'publish')))
 		return $data;
 	
@@ -561,12 +562,12 @@ function new_post($data, $postarr) {
 		register_error("Coupon amount", "You have to specify rate of the coupon.");
 		return;
 	}
-	
+	 
 	if ($postarr['coupon_amount'] <= 0) {
 		register_error("Coupon amount", "Coupon amount must be a positive number.");
 	}
 	
-	return new_discount($data, $postarr);
+	return new_discount($data, $postarr); 
 	
 }
          
@@ -574,6 +575,9 @@ add_filter('wp_insert_post_data', 'new_post', '99', 2);
 
 function new_discount($data, $postarr) {
 	//create and add coupon to megaventory
+	
+	wp_mail("bmodelski@megaventory.com", "new_discount", var_export($postarr, true));
+	wp_mail("bmodelski@megaventory.com", "new_discount", var_export($data, true));
 	
 	$coupon = new Coupon;
 	$coupon->name = $postarr['post_title'];
@@ -594,8 +598,6 @@ function new_discount($data, $postarr) {
 													
 		$coupon->rate = $postarr['coupon_amount'];  // If the discount is fixed, then rate can be edited.
 
-		//wp_mail("bmodelski@megaventory.com", "new_discount", "+" . var_export($coupon, true));
-
 		$coupon->MV_update();
 	} else {
 		$coupon->description = $postarr['excerpt']; // 1. Overwrite loaded value.
@@ -606,8 +608,6 @@ function new_discount($data, $postarr) {
 	}		
 	return $data; 
 }
-
-
 
 
 
