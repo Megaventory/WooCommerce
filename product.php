@@ -234,11 +234,25 @@ class Product {
 		
 		$prod->SKU = get_post_meta($ID, '_sku', true);
 		
+		//prices
 		$prod->regular_price = get_post_meta($ID, '_regular_price', true);
 		$prod->sale_price = get_post_meta($ID, '_sale_price', true);
 		$sale_from = get_post_meta($ID, '_sale_price_dates_from', true);
-		$sale_to = get_post_meta($ID, '	_sale_price_dates_to', true);
-		$prod->sale_active = false; //////////////////////////////////////////////// calculate by dates!
+		$sale_to = get_post_meta($ID, '_sale_price_dates_to', true);
+		
+		if ($prod->sale_price) {
+			if(!$sale_from && !$sale_to) {
+				$prod->sale_active = true;
+			} else {
+				$sale_from = ($sale_from ? date("d-m-Y", (int)$sale_from) : null); 
+				$sale_to = ($sale_to ? date("d-m-Y", (int)$sale_to) : null);
+				$today = date("Y-m-d");
+				
+				if (($sale_from == null || $sale_from < $today) && ($sale_to == null or $sale_to > $today)) {
+					$prod->sale_active = true;
+				}
+			}
+		}
 		
 		$prod->weight = get_post_meta($ID, '_weight', true);
 		$prod->length = get_post_meta($ID, '_length', true);

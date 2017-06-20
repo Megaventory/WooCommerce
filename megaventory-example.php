@@ -695,60 +695,18 @@ function test() {
 		}
 	}
 	*/
-	/*
-	echo "<br>--------<br>";
-	$taxes = Tax::wc_all();
-	var_dump($taxes);
-	echo "<br>--------<br>";
-	var_dump(Tax::wc_find($taxes[0]->WC_ID));
-	echo "<br>--------<br>";
-	var_dump(Tax::mv_all());
-	echo "<br>--------<br>";
-	var_dump(Tax::mv_find(4));
-	echo "<br>--------<br>";
-	var_dump(Tax::mv_find_by_name('aasd'));
 	
-	foreach ($taxes as $tax) {
-		echo "<br>///////////////////////</br>";
-		var_dump($tax->mv_save());
-		echo "<br>///////////////////////</br>";
+	foreach (Product::wc_all() as $prod) {
+		if ($prod->sale_price) {
+			$sale_from = (int)get_post_meta($prod->WC_ID, '_sale_price_dates_from', true);
+			$sale_to = (int)get_post_meta($prod->WC_ID, '_sale_price_dates_to', true);
+			
+			$sale_from = ($sale_from ? date("d-m-Y", $sale_from) : null); 
+			$sale_to = ($sale_to ? date("d-m-Y", $sale_to) : null);
+			
+			echo "<br> {$prod->SKU} | sale price: {$prod->sale_price} | FROM: {$sale_from} | TO: {$sale_to} | ACTIVE: {$prod->sale_active} <br>";
+		}
 	}
-	*/
-	//$tax = new Tax();
-	//$tax->name = "tax";
-	//$tax->rate = 20;
-	//$tax->description = "hello";
-	//$tax->mv_save();
-	//initialize_taxes();
-	
-	//initialize_taxes();
-	
-	//$t = new Tax();
-	//$t->name = "ooooo3";
-	//$t->rate = 79;
-	//$t->mv_save();
-	//$t->wc_save();
-	
-	//var_dump($t);
-	
-	/*
-	$tax1 = new Tax();
-	$tax1->name = "new mv tax4";
-	$tax1->description = "new mv tax desc";
-	$tax1->rate = 20.0;
-	$tax1->mv_save();
-	
-	$tax2 = new Tax();
-	$tax2->name = "new wc tax4";
-	$tax2->rate = 20.0;
-	$tax2->wc_save();
-	
-	echo "<br>-------- IDS --------<br>";
-	echo $tax1->MV_ID;
-	echo "<br>";
-	echo $tax2->WC_ID;
-	echo "<br>----------------------<br>";
-	*/
 	
 	echo '</div>';
 }

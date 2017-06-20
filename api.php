@@ -210,13 +210,14 @@
 		
 		$products_xml = '';
 		foreach ($order->get_items() as $item) {
-			$product = new WC_Product($item['product_id']);
+			//$product = new WC_Product($item['product_id']);
+			$product = Product::wc_find($item['product_id']);
 			$productstring = '<mvSalesOrderRow>';
-			$productstring .= '<SalesOrderRowProductSKU>' . $product->get_sku() . '</SalesOrderRowProductSKU>';
+			$productstring .= '<SalesOrderRowProductSKU>' . $product->SKU . '</SalesOrderRowProductSKU>';
 			$productstring .= '<SalesOrderRowQuantity>' . $item['quantity'] . '</SalesOrderRowQuantity>';
 			$productstring .= '<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>';
 			$productstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
-			$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . $product->get_regular_price() . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
+			$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . ($product->sale_active ? $product->sale_price : $product->regular_price) . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
 			$productstring .= ($tax ? '<SalesOrderRowTaxID>'.(string)$tax->MV_ID.'</SalesOrderRowTaxID>' : '');
 			$productstring .= '<SalesOrderRowTotalAmount>123456</SalesOrderRowTotalAmount>';
 			$productstring .= '</mvSalesOrderRow>';
