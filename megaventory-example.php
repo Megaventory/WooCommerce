@@ -317,15 +317,16 @@ function panel_init(){
 	/////// ERROR TABLE ///////
 	global $wpdb;
 	$table_name = $wpdb->prefix . "mvwc_errors"; 
-	$errors = $wpdb->get_results("SELECT * FROM $table_name;");
+	$errors = $wpdb->get_results("SELECT * FROM $table_name ORDER BY created_at DESC LIMIT 50;");
 	
 	//var_dump($errors);
 	
-	usort($errors, "error_cmp");
-	$errors = array_reverse($errors);
+	//usort($errors, "error_cmp");
+	//$errors = array_reverse($errors);
 	
 	$error_table = '
 		<h2>Error log</h2>
+		<div class="table-wrap">
 		<table id="error-log" class="wp-list-table widefat fixed striped posts">
 			<tr>
 				<th id="id">id</th>
@@ -354,11 +355,12 @@ function panel_init(){
 				$str .= '</tr>';
 				$error_table .= $str;
 			}
-	$error_table .= '</table>';
+	$error_table .= '</table></div>';
 	
 	$taxes = Tax::wc_all();
 	$tax_table = '
 		<h2>Taxes</h2>
+		<div class="table-wrap">
 		<table id="taxes" class="wp-list-table widefat fixed striped posts">
 			<tr>
 				<th id="id">id</th>
@@ -378,14 +380,13 @@ function panel_init(){
 				$tax_table .= $str;
 			}
 			
-	$tax_table .= "</table>";
+	$tax_table .= "</table></div>";
 	
 	global $correct_connection, $correct_currency, $correct_key;
 	$initialized = (bool)get_option("mv_initialized");
 	$html = '
 		<div class="mv-admin">
 		<h1>Megaventory</h1>
-		
 		<div class="mv-row row-main">
 			<div class="mv-col">
 				<h3>Status</h3>

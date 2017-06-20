@@ -148,6 +148,12 @@ div.mv-row.row-main {
 	text-align: left;
 }
 
+.mv-row .table-wrap {
+	width: 100%;
+	max-height: 500px;
+	overflow: auto;
+}
+
 #error-log #id {
 	width: 5%;
 }

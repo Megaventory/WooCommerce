@@ -20,7 +20,11 @@ class Product {
 	public $category;
 	public $type;
 	public $image_url;
+	
 	public $regular_price;
+	public $sale_price;
+	public $sale_active;
+	
 	public $length;
 	public $breadth;
 	public $height;
@@ -229,7 +233,13 @@ class Product {
 		$prod->description = $wc_prod->post_excerpt;
 		
 		$prod->SKU = get_post_meta($ID, '_sku', true);
+		
 		$prod->regular_price = get_post_meta($ID, '_regular_price', true);
+		$prod->sale_price = get_post_meta($ID, '_sale_price', true);
+		$sale_from = get_post_meta($ID, '_sale_price_dates_from', true);
+		$sale_to = get_post_meta($ID, '	_sale_price_dates_to', true);
+		$prod->sale_active = false; //////////////////////////////////////////////// calculate by dates!
+		
 		$prod->weight = get_post_meta($ID, '_weight', true);
 		$prod->length = get_post_meta($ID, '_length', true);
 		$prod->breadth = get_post_meta($ID, '_width', true);
