@@ -28,14 +28,39 @@ define('ALTERNATE_WP_CRON', true);
 $save_product_lock = false;
 $execute_lock = false; //this lock prevents all sync fro
 
-$correct_currency = true;
-$correct_connection = true;
+$correct_currency;
+$correct_connection;
+$correct_key;
+$err_messages = array();
+
+function sess_start() {
+    if (!session_id())
+		session_start();
+
+	if ($_SESSION["errs"] == null) { 
+		$_SESSION["errs"] = array();
+	} else if (count($_SESSION["errs"]) > 0) {
+		foreach ($_SESSION["errs"] as $err) {
+			register_error($err[0], $err[1]);
+		}
+		$_SESSION["errs"] = array();
+		wp_mail("mpanasiuk@megaventory.com", "jobwelldone", "jobdone");
+	}
+}
+add_action('init','sess_start');
+
+
 
  
 $err_messages = array();
 
 //////////////// PLUGIN INITIALIZATION //////////////////////////////////////////////////
 
+function register_error($str1, $str2) {
+	global $err_messages;
+	$message = array(__($str1, 'sample-text-domain'), __($str2));
+	array_push($err_messages, $message);
+}
 
 // main. This code is executed only if woocommerce is an installed and activated plugin.
 if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
@@ -51,27 +76,91 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	add_action('admin_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
 	//add_action('wp_enqueue_scripts', 'enqueue_style'); //for outside admin if needed, uncomment
 	
-	//if main currency of wc and mv are different, halt all sync!
-	global $correct_currency;
-	$correct_currency = get_default_currency() == get_option("woocommerce_currency");
-	if (!$correct_currency) {
-		add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
+	//halt sync?
+	global $correct_currency, $correct_connection, $correct_key;
+	$can_execute = true;
+	
+	$correct_connection = check_connectivity();
+	if ($can_execute and !$correct_connection) {
+		register_error('MEGAVENTORY ERROR! No connection to megaventory!', 'Check if Wordpress and Megaventory servers are online');
+		$can_execute = false;
 	}
 	
-	$can_execute = $correct_currency;
+	$correct_key = check_key();
+	if ($can_execute and !$correct_key) {
+		register_error("MEGAVENTORY Error! Invalid API KEY", "Please check if the API key is correct");
+		$can_execute = false;
+	}
+	
+	$correct_currency = get_default_currency() == get_option("woocommerce_currency");
+	if ($can_execute and !$correct_currency) {
+		register_error('MEGAVENTORY ERROR! Currencies in woocommerce and megaventory do not match! Megaventory plugin will halt until this issue is resolved!', 'If you are sure that the currency is correct, please refresh until this warning disappears.');
+		$can_execute = false;
+	}
+	
 	if ($can_execute) {
 		//placed order
 		add_action('woocommerce_thankyou', 'order_placed', 111, 1);
 
 		//on add / edit product
 		add_action('save_post', 'sync_on_product_save', 10, 3);
-		add_action( 'profile_update', 'sync_on_profile_update', 10, 2 );
+		add_action('profile_update', 'sync_on_profile_update', 10, 2);
+		
+		//tax
+		// add the action 
+		add_action('woocommerce_tax_rate_updated', 'on_tax_update', 10, 2); 
+		add_action('woocommerce_tax_rate_added', 'on_tax_update', 10, 2); 
 	} else {
 		$execute_lock = true;
 	}
+	add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
+} else { //no woocommerce detected
+	//untested
+	register_error('Woocommerce not detected', 'Megaventory plugin cannot operate without woocommerce');
+	add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
+}
+
+// define the woocommerce_tax_rate_updated callback 
+function on_tax_update($tax_rate_id, $tax_rate) { 
+	//wp_mail("mpanasiuk@megaventory.com", "old_tax", var_export($tax_rate, true));
+	//wp_mail("mpanasiuk@megaventory.com", "new_tax", var_export(Tax::wc_find($tax_rate_id), true));
 	
-	//wp_mail("bmodelski@megaventory.com", "product response", "HERE");
-	//Coupon::MV_initialise();
+	$tax = Tax::wc_find($tax_rate_id);
+	if (!$tax) return;
+	
+	$wc_taxes = Tax::wc_all();
+	
+	$can_save = true;
+	foreach ($wc_taxes as $wc_tax) {
+		if ($wc_tax->WC_ID == $tax->WC_ID) continue;
+		wp_mail("mpanasiuk@megaventory.com", "sesja", var_export($_SESSION, true));
+		
+		if ($wc_tax->name == $tax->name and (float)$wc_tax->rate == (float)$tax->rate and $wc_tax->WC_ID != $tax->WC_ID) { //if name is taken by different tax
+			$tax->wc_delete();
+			array_push($_SESSION["errs"], array("Cannot add a new tax with same name and rate", "Please try again with different details"));
+			wp_mail("mpanasiuk@megaventory.com", "sesja2", var_export($_SESSION, true));
+			return;
+		}
+	}
+	
+	//can add, but cannot change rate afterswards - keep updated with MV
+	$tax2 = null;
+	if ($tax->MV_ID != null or $tax2 = Tax::mv_find_by_name_and_rate($tax->name, $tax->rate)) {
+		if (!$tax2) 
+			$tax2 = Tax::mv_find($tax->MV_ID);
+		
+		$tax2->WC_ID = $tax->WC_ID;
+		$tax = $tax2;
+		$tax->wc_save();
+	} else { //creating new tax in MV
+		$saved = $tax->mv_save();
+		if (!$saved) {
+			$tax->wc_delete(); //not saved
+		}
+	}
+	
+	return;
+	
 }
 
 //link style.css
@@ -163,23 +252,14 @@ function column($column, $postid) {
 
 function plugin_setup_menu(){
 	//plugin tab
-	add_menu_page('Test Plugin Page', 'Test Plugin', 'manage_options', 'test-plugin', 'test_init');
+	add_menu_page('Megaventory plugin', 'Megaventory', 'manage_options', 'megaventory-plugin', 'panel_init', plugin_dir_url( __FILE__ ).'mv3.png');
 }
 
 //////////////////////////////// ADMIN PANEL ///////////////////////////////////////////////////////////////
 
 // admin panel
-function test_init(){
+function panel_init(){
 	/*
-	echo '<form id="sync-mv-wc" method="post">';
-	echo '<input type="checkbox" name="with_delete" /> with delete';
-	echo '<input type="hidden" name="sync-mv-wc" value="true" />';
-	echo '<input type="submit" value="Synchronize Products From MV to WC" />';
-	echo '</form>';
-
-	echo '<br><br>';
-	*/
-	
 	echo '<form id="sync-wc-mv" method="post">';
 	echo '<input type="checkbox" name="with_delete" /> with delete';
 	echo '<input type="hidden" name="sync-wc-mv" value="true" />';
@@ -215,6 +295,7 @@ function test_init(){
 	echo '<input type="hidden" name="test" value="true" />';
 	echo '<input type="submit" value="TEST" />';
 	echo '</form>';
+	
 	
 	
 	/////// ERROR TABLE ///////
@@ -258,6 +339,157 @@ function test_init(){
 			}
 	$table .= '</table>';
 	echo $table;
+	*/
+	
+	
+	/////// ERROR TABLE ///////
+	global $wpdb;
+	$table_name = $wpdb->prefix . "mvwc_errors"; 
+	$errors = $wpdb->get_results("SELECT * FROM $table_name;");
+	
+	//var_dump($errors);
+	
+	usort($errors, "error_cmp");
+	$errors = array_reverse($errors);
+	
+	$error_table = '
+		<h2>Error log</h2>
+		<table id="error-log" class="wp-list-table widefat fixed striped posts">
+			<tr>
+				<th id="id">id</th>
+				<th id="id">mv id</th>
+				<th id="id">wc id</th>
+				<th>Created at</th>
+				<th id="type">Error type</th>
+				<th>Entity name</th>
+				<th id="problem">Problem</th>
+				<th id="full-msg">Full message</th>
+				<th id="code">Code</th>
+			</tr>';
+			foreach ($errors as $error) {
+				$str = '<tr>';
+				
+				$str .= '<td>' . $error->id . '</td>';
+				$str .= '<td>' . $error->mv_id . '</td>';
+				$str .= '<td>' . $error->wc_id . '</td>';
+				$str .= '<td>' . $error->created_at . '</td>';
+				$str .= '<td>' . $error->type . '</td>';
+				$str .= '<td>' . $error->name . '</td>';
+				$str .= '<td>' . $error->problem . '</td>';
+				$str .= '<td>' . $error->message . '</td>';
+				$str .= '<td>' . $error->code . '</td>';
+				
+				$str .= '</tr>';
+				$error_table .= $str;
+			}
+	$error_table .= '</table>';
+	
+	$taxes = Tax::wc_all();
+	$tax_table = '
+		<h2>Taxes</h2>
+		<table id="taxes" class="wp-list-table widefat fixed striped posts">
+			<tr>
+				<th id="id">id</th>
+				<th>mv id</th>
+				<th>name</th>
+				<th>rate</th>
+			</tr>';
+			foreach ($taxes as $tax) {
+				$str = '<tr>';
+				
+				$str .= '<td>' . $tax->WC_ID . '</td>';
+				$str .= '<td>' . $tax->MV_ID . '</td>';
+				$str .= '<td>' . $tax->name . '</td>';
+				$str .= '<td>' . $tax->rate . '</td>';
+				
+				$str .= '</tr>';
+				$tax_table .= $str;
+			}
+			
+	$tax_table .= "</table>";
+	
+	global $correct_connection, $correct_currency, $correct_key;
+	$initialized = (bool)get_option("mv_initialized");
+	$html = '
+		<div class="mv-admin">
+		<h1>Megaventory</h1>
+		
+		<div class="mv-row row-main">
+			<div class="mv-col">
+				<h3>Status</h3>
+				<div class="mv-status">
+					<ul class="mv-status">
+						<li class="mv-li-left">Connection:</li><li>'.($correct_connection ? '&check;' : '&cross;').'</li>
+						<li class="mv-li-left">Key: </li><li>'.($correct_key ? '&check;' : '&cross;').'</li>
+						<li class="mv-li-left">Currency: </li><li>'.($correct_currency ? '&check;' : '&cross;').'</li>
+						<li class="mv-li-left">Initialized: </li><li>'.($initialized ? '&check;' : '&cross;').'</li>
+					</ul>
+				</div>
+			</div>
+			<div class="mv-col">
+				<h3>Setup</h3>
+				<div class="mv-row">
+					<div class="mv-form">
+						<form id="options" method="post">
+							<div class="mv-form-body">
+								<p>
+									<label for="api_key">Megaventory API key: </label>
+									<input type="text" name="api_key" value="' . get_api_key() . '"/>
+								</p>
+								</p>
+									<label for="api_key">Megaventory API host: </label>
+									<input type="text" name="api_host" value="' . get_api_host() . '"/>
+								</p>
+							</div>
+							<div class="mv-form-bottom">
+								<input type="submit" value="update"/>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+			<div class="mv-col">
+				<h3>Initialization</h3>
+				<div class="wrap-init">
+				
+					<form id="initialize" method="post">
+						<input type="hidden" name="initialize" value="true" />
+						<input type="submit" value="'.($initialized ? 'Reinitialize' : 'Initialize').'" />
+					</form>
+					<form id="sync-wc-mg" method="post">
+						<input type="hidden" name="sync-wc-mv" />
+						<input type="submit" value="Import Products from WC to MV" />
+					</form>
+					<form id="sync-clients" method="post">
+						<input type="hidden" name="sync-clients" value="true" />
+						<input type="submit" value="Import Clients from WC to MV" />
+					</form>
+				</div>
+			</div>
+		</div>
+		
+		<div class="mv-row row-main">
+			'.$error_table.'
+		</div>
+		
+		<div class="mv-row row-main">
+			'.$tax_table.'
+		</div>
+		
+		<div class="mv-row row-main">
+			<!--<div class="mv-col">-->
+				<form id="test" method="post">
+					<input type="hidden" name="test" value="true" />
+					<input type="submit" value="TEST" />
+				</form>
+			<!--</div>-->
+		</div>
+		
+		</div>
+	';
+	
+	echo $html;
+	
 }
 
 //error comparator - sort by date
@@ -271,21 +503,37 @@ function error_cmp($a, $b) {
 // otherwise, some wc variables are not correctly initialized
 if (isset($_POST['sync-mv-wc'])) {
 	add_action('init', 'synchronize_products_mv_wc');
-} else if (isset($_POST['sync-wc-mv'])) {
+}
+if (isset($_POST['sync-wc-mv'])) {
 	add_action('init', 'synchronize_products_wc_mv');
-} else if (isset($_POST['sync-clients'])) {
+}
+if (isset($_POST['sync-clients'])) {
 	add_action('init', 'synchronize_clients');
-} else if (isset($_POST['initialize'])) {
+}
+if (isset($_POST['initialize'])) {
 	add_action('init', 'initialize_integration');
-} else if (isset($_POST['test'])) {
+}
+if (isset($_POST['test'])) {
 	add_action('init', 'test');
-} else if (isset($_POST['api_key'])) {
+}
+if (isset($_POST['api_key'])) {
 	add_action('init', 'set_api_key');
+}
+if (isset($_POST['api_host'])) {
+	add_action('init', 'set_api_host');
 }
 
 function set_api_key() {
 	$key = $_POST['api_key'];	
 	update_option("mv_api_key", (string)$key);
+}
+
+function set_api_host() {
+	$host = $_POST['api_host'];	
+	if(substr($host, -1) != '/') {
+		$host .= '/';
+	}
+	update_option("mv_api_host", (string)$host);
 }
 
 ////////////////////// SYNC //////////////////////////////////////////
@@ -380,6 +628,63 @@ function synchronize_clients() {
 //initial integration of plugin
 //creates guest user
 //should map MV_IDs by SKU/////////////////////////////////////////////////////////////////////////////////////////////////
+function map_existing_products_by_SKU() {
+	$products = Product::wc_all();
+	
+	foreach ($products as $wc_product) {
+		$mv_product = Product::mv_find_by_sku($wc_product->SKU);
+		if ($mv_product) {
+			update_post_meta($wc_product->WC_ID, 'MV_ID', $mv_product->MV_ID);
+		}
+	}
+}
+
+function map_existing_clients_by_email() {
+	$clients = Client::wc_all();
+	
+	foreach ($clients as $wc_client) {
+		$mv_client = Client::mv_find_by_email($wc_client->email);
+		if ($mv_client) {
+			echo $mv_client->email;
+			update_user_meta($mv_client->MV_ID, 'MV_ID', $mv_client->MV_ID);
+		}
+	}
+}
+
+function initialize_taxes() {
+	$wc_taxes = Tax::wc_all();
+	$mv_taxes = Tax::mv_all();
+	
+	
+	foreach ($wc_taxes as $wc_tax) {
+		$mv_tax = null;
+		foreach ($mv_taxes as $tax) { //check if exists
+			if ($wc_tax->equals($tax)) {
+				$mv_tax = $tax;
+				break;
+			}
+		}
+		
+		if ($mv_tax != null and $wc_tax->rate == $mv_tax->rate) { //tax already exists in MV
+			//update in wc from mv
+			$mv_tax->WC_ID = $wc_tax->WC_ID;
+			$mv_tax->wc_save();
+			
+			echo "saving: ";
+			var_dump($mv_tax);
+			echo "<br>----------------<br>";
+		} else {
+			//save to mv from wc
+			$wc_tax->MV_ID = null;
+			$wc_tax->mv_save();
+		}
+	}
+	
+	var_dump($wc_taxes);
+	echo "<br>----------<br>";
+	var_dump($mv_names);
+}
+
 function initialize_integration() {
 	//Create guest client in wc if does not exist yet.
 	$user_name = "WooCommerce_Guest";
@@ -394,11 +699,17 @@ function initialize_integration() {
 	$wc_main = Client::wc_find($id);
 	$response = $wc_main->mv_save();
 	
+	map_existing_products_by_SKU();
+	map_existing_clients_by_email();
+	initialize_taxes();
+	
+	
 	//store id for reference
 	update_option("woocommerce_guest", (string)$wc_main->WC_ID);
+	update_option("mv_initialized", (string)true);
 }
 
-function test() {
+function test() {	
 	echo '<div style="margin:auto;width:50%">';
 	/*
 	foreach (Product::wc_all_with_variable() as $prod) {
@@ -430,15 +741,41 @@ function test() {
 		echo "<br>///////////////////////</br>";
 	}
 	*/
+	//$tax = new Tax();
+	//$tax->name = "tax";
+	//$tax->rate = 20;
+	//$tax->description = "hello";
+	//$tax->mv_save();
+	//initialize_taxes();
 	
-	$prod = Product::mv_find_by_sku('dvd-w-case-gdf1');
-	var_dump($prod);
-	echo "<br>-------------------------<br>";
-	$prod2 = Product::wc_find_by_SKU('dvd-w-case-gdf1');
-	var_dump($prod2);
-	echo "<br>-------------------------<br>";
+	//initialize_taxes();
 	
-	$prod2->mv_save();
+	//$t = new Tax();
+	//$t->name = "ooooo3";
+	//$t->rate = 79;
+	//$t->mv_save();
+	//$t->wc_save();
+	
+	//var_dump($t);
+	
+	/*
+	$tax1 = new Tax();
+	$tax1->name = "new mv tax4";
+	$tax1->description = "new mv tax desc";
+	$tax1->rate = 20.0;
+	$tax1->mv_save();
+	
+	$tax2 = new Tax();
+	$tax2->name = "new wc tax4";
+	$tax2->rate = 20.0;
+	$tax2->wc_save();
+	
+	echo "<br>-------- IDS --------<br>";
+	echo $tax1->MV_ID;
+	echo "<br>";
+	echo $tax2->WC_ID;
+	echo "<br>----------------------<br>";
+	*/
 	
 	echo '</div>';
 }
@@ -508,7 +845,7 @@ function pull_changes() {
 			global $save_product_lock;
 			$save_product_lock = true; //prevent changes from mv to be pushed back to mv again (prevent infinite loop of updates)
 			
-			if ($change["Action"] == "update" or $change["Action"] == "insert") { //new product created, or details changed
+			if ($change["Action"] == "update" /* only care about update | or $change["Action"] == "insert" */) { //new product created, or details changed
 				//get product new info
 				$product = Product::mv_find($change['EntityIDs']);
 				//save new info
@@ -626,6 +963,7 @@ function create_plugin_database_table() {
 
     #Check to see if the table exists already, if not, then create it
 
+	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     if($wpdb->get_var("show tables like '$wp_track_table'") != $wp_track_table) {
 		$table_name = $wpdb->prefix . "mvwc_errors"; 
 		$charset_collate = $wpdb->get_charset_collate();
@@ -643,9 +981,11 @@ function create_plugin_database_table() {
 		  PRIMARY KEY  (id)
 		) $charset_collate;";
 
-		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 		$return = dbDelta($sql);
     }
+	
+	$sql = "ALTER TABLE {$wpdb->prefix}woocommerce_tax_rates ADD mv_id INT;";
+	$return = $wpdb->query($sql);
 	
 }
 
@@ -676,11 +1016,26 @@ function reset_mv_data() {
 	}
 	
 	delete_option("mv_api_key");
+	delete_option("mv_api_host");
+	delete_option("mv_initialized");
+	
+	global $wpdb;
+	$sql = "ALTER TABLE {$wpdb->prefix}woocommerce_tax_rates DROP COLUMN mv_id;";
+	$return = $wpdb->query($sql);
 }
  
 register_deactivation_hook(__FILE__, 'remove_db_table');
 register_deactivation_hook(__FILE__, 'reset_mv_data');
 
 
+function sample_admin_notice__error() {
+	global $err_messages;
+	$class = 'notice notice-error';
+	
+	foreach ($err_messages as $msg) {
+		printf('<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr($class), esc_html($msg[0]), esc_html($msg[1]));
+		
+	} 
+}
 
 ?>

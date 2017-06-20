@@ -98,6 +98,15 @@ class Client {
 		return self::mv_convert($client['mvSupplierClients'][0]);
 	}
 	
+	public static function mv_find_by_email($email) {
+		$url = create_json_url_filter(self::$supplierclient_get_call, "SupplierClientEmail", "Equals", urlencode($email));
+		$client = json_decode(file_get_contents($url), true);
+		if (count($client['mvSupplierClients']) <= 0) {
+			return null;
+		}
+		return self::mv_convert($client['mvSupplierClients'][0]);
+	}
+	
 	private static function wc_convert($wc_client) {
 		$client = new Client();
 		$client->WC_ID = $wc_client->ID;

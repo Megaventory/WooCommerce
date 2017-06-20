@@ -6,6 +6,15 @@
 		return get_option("mv_api_key");
 	}
 	
+	function get_api_host() {
+		global $default_host;
+		$host = get_option("mv_api_host");
+		if (!$host) {
+			$host = $default_host;
+		}
+		return $host;
+	}
+	
 	function get_guest_mv_client() {
 		//$post = get_page_by_title("guest_id", ARRAY_A, "post");
 		//$id = $post['post_content'];
@@ -16,9 +25,11 @@
 		$client = Client::wc_find((int)get_option("woocommerce_guest"));
 		return $client; //$use $client->MV_ID
 	}
-
-	$url = "https://apitest.megaventory.com/json/reply/";
-	$xml_url = "https://apitest.megaventory.com/xml/reply/";
+	
+	$default_host = "https://apitest.megaventory.com/";
+	$host = get_api_host();
+	$url = $host."json/reply/";
+	$xml_url = $host."xml/reply/";
 	$API_KEY = get_api_key();
 	//$API_KEY = "b7d0cc59b72af1e5@m65192"; // DEV AND DEBUG ONLY
 	
@@ -82,6 +93,20 @@
 	function create_json_url_filter($call, $fieldName, $searchOperator, $searchValue) {
 		return create_json_url($call) . "&Filters={FieldName:" . $fieldName . ",SearchOperator:" . $searchOperator . ",SearchValue:" . $searchValue ."}";
 	}
+		
+	function create_json_url_filters($call, $args) {
+		$url = create_json_url($call) . "&Filters=[";
+		for ($i = 0; $i < count($args); $i++) {
+			$arg = $args[$i];
+			$url .= "{FieldName:" . $arg[0] . ",SearchOperator:" . $arg[1] . ",SearchValue:" . $arg[2] ."}";
+			if ($i + 1 < count($args)) { //not last element
+				$url .= ",";
+			}
+		}
+		$url .= "]";
+		
+		return $url;
+	}
 	
 	function send_xml($url, $xml_request) {
 		$ch = curl_init();
@@ -141,6 +166,48 @@
 		global $salesorder_update_call, $API_KEY;
 		$url = create_xml_url($salesorder_update_call);
 		
+		
+		
+		//tax - currently using just one
+		$taxes = array();
+		foreach($order->get_taxes() as $key => $tax) {
+			array_push($taxes, Tax::wc_find($tax->get_rate_id()));
+		}
+		
+		$tax = null;
+		if (count($taxes) == 1) {
+			$tax = $taxes[0];
+		} else if (count($taxes) > 1) {
+			//calculate total tax rate
+			$total_no_tax = $order->get_total() - $order->get_total_tax(); //difference tax and no tax
+			
+			
+			$rate = (float)$order->get_total_tax() / (float)$total_no_tax;
+			$rate *= 100.0; //to percent
+			$rate = round($rate, 2);
+			
+			$names = array();
+			for ($i = 0; $i < count($taxes); $i++) {
+				array_push($names, $taxes[$i]->name);
+			}
+			sort($names);
+			$name = implode("_", $names);
+			$name .= "__" . (string)$rate;
+			
+			$tax = Tax::mv_find_by_name($name);
+			if ($tax == null) {
+				$tax = new Tax();
+				$tax->name = $name;
+				$tax->description = "woocommerce generated tax";
+				$tax->rate = $rate;
+				$tax->mv_save();
+			}
+			
+			wp_mail("mpanasiuk@megaventory.com", "total tax", "rate: " . (string)$rate . " get_total: " . $order->get_total() . " get_total_tax: " . $order->get_total_tax());
+			wp_mail("mpanasiuk@megaventory.com", "total tax_name ", (string)$name);
+		}
+		wp_mail("mpanasiuk@megaventory.com", "orderplaced tax", var_export($order->data['total_tax'], true));
+		
 		$products_xml = '';
 		foreach ($order->get_items() as $item) {
 			$product = new WC_Product($item['product_id']);
@@ -150,9 +217,17 @@
 			$productstring .= '<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>';
 			$productstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
 			$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . $product->get_regular_price() . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
+			$productstring .= ($tax ? '<SalesOrderRowTaxID>'.(string)$tax->MV_ID.'</SalesOrderRowTaxID>' : '');
+			$productstring .= '<SalesOrderRowTotalAmount>123456</SalesOrderRowTotalAmount>';
 			$productstring .= '</mvSalesOrderRow>';
 			
 			$products_xml .= $productstring;
+			
+			//wp_mail("mpanasiuk@megaventory.com", "item", var_export($item, true));
+			//wp_mail("mpanasiuk@megaventory.com", "item2", $product->get_sku() . "  :  " . (string)((float)$product->get_regular_price() / (float)$item->get_data()['total_tax']));
+			
+			
+			
 		}
 		
 		$shipping_address['name'] = $order->get_shipping_first_name() . " " . $order->get_shipping_last_name();
@@ -248,6 +323,32 @@
 		
 		$data = file_get_contents($url);
 		return json_decode($data, true)['mvCurrencies'][0]['CurrencyCode'];
+	}
+	
+	function check_connectivity() {
+		global $host;
+		$host2 = $host;
+		$host2 = str_replace("https://", "", $host2);
+		$host2 = str_replace("http://", "", $host2);
+		$host2 = explode("/", $host2)[0];
+		
+		if($socket =@ fsockopen($host2, 80, $errno, $errstr, 30)) {
+			fclose($socket);
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	function check_key() {
+		global $API_KEY;
+		$data = pull_product_changes();
+		
+		if (!$API_KEY or $data == null or (int)$data['ResponseStatus']['ErrorCode'] == 401) {
+			return false;
+		} else {
+			return true;
+		}
 	}
 	
 ?>

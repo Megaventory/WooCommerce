@@ -312,6 +312,7 @@ class Product {
 			$wc_products = ($this->version == null) ? self::wc_all() : self::wc_all_with_variable();
 		}
 		
+		//find if SKU exists, if so, update instead of insert
 		if ($this->WC_ID == null) {
 			foreach ($wc_products as $wc_product) {
 				if ($this->SKU == $wc_product->SKU) {
