@@ -590,7 +590,13 @@ function new_discount($data, $postarr) {
 	}
 	
 	if ($coupon->MV_load_corresponding_obj_if_present()) {
-		register_error("Coupon already present in db.", "Coupon already present in MV database. (?MessageBox here: do you want to update it's description?). Old description: $coupon->description.");
+		if ($postarr['original_post_status'] == 'auto-draft') {
+			for ($i = 0; $i < 100; $i++ )
+				echo "PRINT SOME ERRORS HERE, you can't have a name overlapping with historical discount";
+			return null;
+		}
+		
+		register_error("Coupon already present in db.", "Coupon already present in MV database. (?MessageBox here: do you want to update it's description?). Old description: $coupon->description."); 
 		$coupon->description = $postarr['excerpt']; // - Overwrite loaded value with user input.
 													// - Should be whole content here, but for whatever 
 													// reason fields responsible for that in $data, 
