@@ -330,13 +330,14 @@ class Product {
 	}
 	
 	//only simple now
-	public function wc_save($wc_products = null) {
+	public function wc_save($wc_products = null, $create_upon_save = true) {
 		wp_mail("mpanasiuk@megaventory.com", "SAVING", "");
 		if ($wc_products == null) {
 			$wc_products = ($this->version == null) ? self::wc_all() : self::wc_all_with_variable();
 		}
 		
 		//find if SKU exists, if so, update instead of insert
+		//only insert if $create upon save
 		if ($this->WC_ID == null) {
 			foreach ($wc_products as $wc_product) {
 				if ($this->SKU == $wc_product->SKU) {
@@ -344,6 +345,10 @@ class Product {
 					break;
 				}
 			}	
+		}
+		
+		if ($this->WC_ID == null && !$create_upon_save) {
+			return false;
 		}
 		
 		//prevent null on empty
@@ -362,7 +367,7 @@ class Product {
 		
 	
 		//dont update variables title!
-		if ($this->WC_ID == null) { // look out. instead of always creating new, find one with same SKU and use that instead!
+		if ($this->WC_ID == null) { 
 			//create product
 			$args = array
 			(
@@ -473,7 +478,6 @@ class Product {
 			}
 		}
 		
-		$prod = self::mv_find_by_sku($this->SKU);
 		if ($prod) {
 			$this->MV_ID = $prod->MV_ID;
 			$this->mv_type = $prod->mv_type;

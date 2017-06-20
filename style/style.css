@@ -148,9 +148,15 @@ div.mv-row.row-main {
 	text-align: left;
 }
 
-.mv-row .table-wrap {
+.mv-row .error-wrap {
 	width: 100%;
 	max-height: 500px;
+	overflow: auto;
+}
+
+.mv-row .tax-wrap {
+	width: 100%;
+	max-height: 300px;
 	overflow: auto;
 }
 

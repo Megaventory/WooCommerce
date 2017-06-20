@@ -327,7 +327,7 @@ function panel_init(){
 	
 	$error_table = '
 		<h2>Error log</h2>
-		<div class="table-wrap">
+		<div class="error-wrap">
 		<table id="error-log" class="wp-list-table widefat fixed striped posts">
 			<tr>
 				<th id="id">id</th>
@@ -361,7 +361,7 @@ function panel_init(){
 	$taxes = Tax::wc_all();
 	$tax_table = '
 		<h2>Taxes</h2>
-		<div class="table-wrap">
+		<div class="tax-wrap">
 		<table id="taxes" class="wp-list-table widefat fixed striped posts">
 			<tr>
 				<th id="id">id</th>
@@ -781,7 +781,8 @@ function pull_changes() {
 				//get product new info
 				$product = Product::mv_find($change['EntityIDs']);
 				//save new info
-				$product->wc_save(); 
+				//only update synchronized prods so they are not added
+				$product->wc_save(null, false); 
 				
 			} else if ($change["Action"] == "delete") { //delete the product
 				//already deleted from mv
