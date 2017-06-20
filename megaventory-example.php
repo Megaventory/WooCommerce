@@ -18,7 +18,8 @@ require_once("error.php");
 require_once("product.php");
 require_once("client.php");
 require_once("tax.php");
-require_once("error.php");
+require_once("coupon.php");
+
 
 //normal cron would not work
 define('ALTERNATE_WP_CRON', true);
@@ -49,6 +50,9 @@ function sess_start() {
 add_action('init','sess_start');
 
 
+
+ 
+$err_messages = array();
 
 //////////////// PLUGIN INITIALIZATION //////////////////////////////////////////////////
 
@@ -163,6 +167,7 @@ function on_tax_update($tax_rate_id, $tax_rate) {
 function register_style() {
 	wp_register_style('mv_style', plugins_url('/style/style.css', __FILE__), false, '1.0.0', 'all');
 }
+
 function enqueue_style(){
 	wp_enqueue_style('mv_style');
 }
@@ -181,6 +186,36 @@ function add_mv_column($columns){
 
 	return $columns;
 }
+
+//ERROR handling
+function register_error($str1, $str2) {
+	global $err_messages;
+	$message = array(__($str1, 'sample-text-domain'), __($str2));
+	
+		
+	$err_messages = array();
+	array_push($err_messages, $message);
+}
+
+function sample_admin_notice__error() {
+	global $err_messages;
+	$class = 'notice notice-error';
+	
+	
+	foreach ($err_messages as $msg) {
+		printf('<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr($class), esc_html($msg[0]), esc_html($msg[1]));
+		
+		
+		/* ?>
+		<div class="notice notice-success is-dismissible">
+			<p><?php _e('Congratulations, you did it!', 'shapeSpace'); ?></p>
+		</div>
+		<?php  */
+	} 
+		
+}
+
+add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
 
 //MV stock column in products table
 function column($column, $postid) {
@@ -849,12 +884,81 @@ function pull_changes() {
 //on event, run pull_changes function
 add_action('pull_changes_event', 'pull_changes'); 
 
-//////////////////////////////////////// DB ////////////////////////////
 
+/////////////////////////////// COUPONS ///////////////////////////////////////
+
+function new_post($data, $postarr) { 
+	//If it's not a new coupon being added, don't influence the process
+	
+	if ((($data['post_type'] != 'shop_coupon') or ($data['post_status'] != 'publish')))
+		return $data;
+	
+	
+	//Rate of a coupon is compulsory in MV, thereby has to be in WC as well
+	if (empty($postarr['coupon_amount'])){ 
+		register_error("Coupon amount", "You have to specify rate of the coupon.");
+		return;
+	}
+	 
+	if ($postarr['coupon_amount'] <= 0) {
+		register_error("Coupon amount", "Coupon amount must be a positive number.");
+	}
+	
+	return new_discount($data, $postarr); 
+	
+}
+         
+add_filter('wp_insert_post_data', 'new_post', '99', 2); 
+
+function new_discount($data, $postarr) {
+	//create and add coupon to megaventory
+	
+	wp_mail("bmodelski@megaventory.com", "new_discount", var_export($postarr, true));
+	wp_mail("bmodelski@megaventory.com", "new_discount", var_export($data, true));
+	
+	$coupon = new Coupon;
+	$coupon->name = $postarr['post_title'];
+	$coupon->rate = $postarr['coupon_amount'];
+	
+	if (($postarr['discount_type'] == 'fixed_cart') or ($postarr['discount_type'] == 'fixed_product')) {
+		$coupon->type = 'fixed';
+	} else {
+		$coupon->type = 'percent';
+	}
+	
+	if ($coupon->MV_load_corresponding_obj_if_present()) {
+		if ($postarr['original_post_status'] == 'auto-draft') {
+			for ($i = 0; $i < 100; $i++ )
+				echo "PRINT SOME ERRORS HERE, you can't have a name overlapping with historical discount";
+			return null; 
+		}
+		
+		register_error("Coupon already present in db.", "Coupon already present in MV database. (?MessageBox here: do you want to update it's description?). Old description: $coupon->description."); 
+		$coupon->description = $postarr['excerpt']; // - Overwrite loaded value with user input.
+													// - Should be whole content here, but for whatever 
+													// reason fields responsible for that in $data, 
+													// $postarr are always empty.
+													
+		$coupon->rate = $postarr['coupon_amount'];  // If the discount is fixed, then rate can be edited.
+
+		$coupon->MV_update();
+	} else {
+		$coupon->description = $postarr['excerpt']; // 1. Overwrite loaded value.
+													// 2. Should be whole content here, but for whatever 
+													// reason fields responsible for that in $data, 
+													// $postarr are always empty.		
+		$coupon->MV_add();
+	}		 
+	return $data; 
+}
+
+
+
+//////////////////////////////////////// DB ////////////////////////////
 function create_plugin_database_table() {
     global $table_prefix, $wpdb;
 
-    $tblname = 'pin';
+    $tblname = 'pin'; 
     $wp_track_table = $table_prefix . "$tblname ";
 
     #Check to see if the table exists already, if not, then create it
@@ -879,7 +983,6 @@ function create_plugin_database_table() {
 
 		$return = dbDelta($sql);
     }
-	
 	
 	$sql = "ALTER TABLE {$wpdb->prefix}woocommerce_tax_rates ADD mv_id INT;";
 	$return = $wpdb->query($sql);
@@ -924,7 +1027,6 @@ function reset_mv_data() {
 register_deactivation_hook(__FILE__, 'remove_db_table');
 register_deactivation_hook(__FILE__, 'reset_mv_data');
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function sample_admin_notice__error() {
 	global $err_messages;
