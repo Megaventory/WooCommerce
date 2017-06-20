@@ -923,17 +923,6 @@ function create_plugin_database_table() {
 
 register_activation_hook(__FILE__, 'create_plugin_database_table');
  
-function remove_db_table() {
-    global $table_prefix, $wpdb;
-	
-	$table_name = $wpdb->prefix . "mvwc_errors"; 
-	
-	$sql = "DROP TABLE $table_name";
-	$wpdb->query($sql);
-	
-	wp_mail("mpanasiuk@megaventory.com", "db_table", "aaaaaa");
-}
-
 function reset_mv_data() {
 	wp_mail("mpanasiuk@megaventory.com", "mv_data", "bbbbbbb");
 	$products = Product::wc_all_with_variable();
@@ -954,9 +943,15 @@ function reset_mv_data() {
 	global $wpdb;
 	$sql = "ALTER TABLE {$wpdb->prefix}woocommerce_tax_rates DROP COLUMN mv_id;";
 	$return = $wpdb->query($sql);
+
+	$table_name = $wpdb->prefix . "mvwc_errors"; 
+	
+	$sql = "DROP TABLE $table_name";
+	$wpdb->query($sql);
+	
+	wp_mail("mpanasiuk@megaventory.com", "db_table", "aaaaaa");
 }
  
-register_uninstall_hook(__FILE__, 'remove_db_table');
 register_uninstall_hook(__FILE__, 'reset_mv_data');
 
 
