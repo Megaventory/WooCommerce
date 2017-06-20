@@ -153,6 +153,7 @@ function on_tax_update($tax_rate_id, $tax_rate) {
 		$tax = $tax2;
 		$tax->wc_save();
 	} else { //creating new tax in MV
+		$tax->description = "Woocommerce " . $tax->type . " tax";
 		$saved = $tax->mv_save();
 		if (!$saved) {
 			$tax->wc_delete(); //not saved
@@ -955,8 +956,8 @@ function reset_mv_data() {
 	$return = $wpdb->query($sql);
 }
  
-register_deactivation_hook(__FILE__, 'remove_db_table');
-register_deactivation_hook(__FILE__, 'reset_mv_data');
+register_uninstall_hook(__FILE__, 'remove_db_table');
+register_uninstall_hook(__FILE__, 'reset_mv_data');
 
 
 function sample_admin_notice__error() {
