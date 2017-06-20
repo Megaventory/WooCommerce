@@ -418,12 +418,12 @@ class Product {
 		//set other information
 		update_post_meta($this->WC_ID, '_visibility', 'visible');
 		update_post_meta($this->WC_ID, '_regular_price', $this->regular_price);
+		if ($this->sale_price) update_post_meta($this->WC_ID, '_sale_price', $this->sale_price);
 		update_post_meta($this->WC_ID, '_weight', $this->weight);
 		update_post_meta($this->WC_ID, '_length', $this->length);
 		update_post_meta($this->WC_ID, '_width', $this->breadth);
 		update_post_meta($this->WC_ID, '_height', $this->height);
 		update_post_meta($this->WC_ID, '_sku', $this->SKU);
-		update_post_meta($this->WC_ID, '_price', $this->regular_price);
 		update_post_meta($this->WC_ID, '_manage_stock', "yes");
 		update_post_meta($this->WC_ID, '_stock', (string)$this->stock_on_hand);
 		update_post_meta($this->WC_ID, '_stock_status', ($this->stock_on_hand > 0 ? "instock" : "outofstock"));

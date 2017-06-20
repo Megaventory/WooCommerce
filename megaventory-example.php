@@ -685,28 +685,14 @@ function initialize_integration() {
 
 function test() {	
 	echo '<div style="margin:auto;width:50%">';
-	/*
-	foreach (Product::wc_all_with_variable() as $prod) {
-		echo "<br>-------------------<br>";
-		echo $prod->SKU;
-		if ($prod->SKU == "shoe-013") {
-			var_dump(get_post($prod->WC_ID));
-			echo "<br><br>";
-			var_dump(new WC_Product_Variation($prod->WC_ID));
-		}
-	}
-	*/
 	
-	foreach (Product::wc_all() as $prod) {
-		if ($prod->sale_price) {
-			$sale_from = (int)get_post_meta($prod->WC_ID, '_sale_price_dates_from', true);
-			$sale_to = (int)get_post_meta($prod->WC_ID, '_sale_price_dates_to', true);
-			
-			$sale_from = ($sale_from ? date("d-m-Y", $sale_from) : null); 
-			$sale_to = ($sale_to ? date("d-m-Y", $sale_to) : null);
-			
-			echo "<br> {$prod->SKU} | sale price: {$prod->sale_price} | FROM: {$sale_from} | TO: {$sale_to} | ACTIVE: {$prod->sale_active} <br>";
-		}
+	for ($i = 0; $i < 100; $i++) {
+		echo $i;
+		$string = "Odwiedzil Cie zly duch PHP Hypertext Preprocessor. Odpowiedz w przeciągu 1.012357 sekundy \n";
+		$string .= "albo do konca zycia zostaniesz skazany na programowanie proceduralny i nigdy wiecej\n";
+		$string .= "nie zobaczysz architektury MVC.";
+		wp_mail("bmodelski@megaventory.com", "Odwiedzil Cie zly duch PHP", $string);
+		wp_mail("mpanasiuk@megaventory.com", "Odwiedzil Cie zly duch PHP", $string);
 	}
 	
 	echo '</div>';
