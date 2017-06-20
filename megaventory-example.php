@@ -187,34 +187,6 @@ function add_mv_column($columns){
 	return $columns;
 }
 
-//ERROR handling
-function register_error($str1, $str2) {
-	global $err_messages;
-	$message = array(__($str1, 'sample-text-domain'), __($str2));
-	
-		
-	$err_messages = array();
-	array_push($err_messages, $message);
-}
-
-function sample_admin_notice__error() {
-	global $err_messages;
-	$class = 'notice notice-error';
-	
-	
-	foreach ($err_messages as $msg) {
-		printf('<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr($class), esc_html($msg[0]), esc_html($msg[1]));
-		
-		
-		/* ?>
-		<div class="notice notice-success is-dismissible">
-			<p><?php _e('Congratulations, you did it!', 'shapeSpace'); ?></p>
-		</div>
-		<?php  */
-	} 
-		
-}
-
 add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
 
 //MV stock column in products table
