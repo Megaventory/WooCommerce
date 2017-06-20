@@ -593,7 +593,7 @@ function new_discount($data, $postarr) {
 		if ($postarr['original_post_status'] == 'auto-draft') {
 			for ($i = 0; $i < 100; $i++ )
 				echo "PRINT SOME ERRORS HERE, you can't have a name overlapping with historical discount";
-			return null;
+			return null; 
 		}
 		
 		register_error("Coupon already present in db.", "Coupon already present in MV database. (?MessageBox here: do you want to update it's description?). Old description: $coupon->description."); 
@@ -611,7 +611,7 @@ function new_discount($data, $postarr) {
 													// reason fields responsible for that in $data, 
 													// $postarr are always empty.		
 		$coupon->MV_add();
-	}		
+	}		 
 	return $data; 
 }
 
@@ -621,7 +621,7 @@ function new_discount($data, $postarr) {
 function create_plugin_database_table() {
     global $table_prefix, $wpdb;
 
-    $tblname = 'pin';
+    $tblname = 'pin'; 
     $wp_track_table = $table_prefix . "$tblname ";
 
     #Check to see if the table exists already, if not, then create it

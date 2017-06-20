@@ -42,7 +42,7 @@ class Coupon {
 		  '<ProductSKU>' . $this->name . '</ProductSKU>' .
 		  '<includeReferencedObjects>false</includeReferencedObjects>' .
 		'</ProductGet>';
-		return $query;
+		return $query; 
 	}
 	
 	public static function MV_initialise() {
@@ -67,7 +67,7 @@ class Coupon {
 
 			if (empty($xml['mvDiscounts']))
 				return false;
-			else {
+			else { 
 				$this->MV_ID = $xml['mvDiscounts']['mvDiscount']['DiscountID'];
 				$this->description = $xml['mvDiscounts']['mvDiscount']['DiscountDescription'];
 				return true;
