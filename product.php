@@ -11,7 +11,7 @@ require_once("error.php");
 class Product {
 	public $WC_ID;
 	public $MV_ID;
-	public $name;
+	public $name; 
 	public $SKU;
 	public $EAN;
 	public $description;

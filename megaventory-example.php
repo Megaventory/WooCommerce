@@ -75,7 +75,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	add_action('init', 'register_style');
 	add_action('admin_enqueue_scripts', 'enqueue_style'); //needed only in admin so far
 	//add_action('wp_enqueue_scripts', 'enqueue_style'); //for outside admin if needed, uncomment
-	
+	 
 	//halt sync?
 	global $correct_currency, $correct_connection, $correct_key;
 	$can_execute = true;
@@ -436,6 +436,10 @@ function panel_init(){
 						<input type="hidden" name="sync-clients" value="true" />
 						<input type="submit" value="Import Clients from WC to MV" />
 					</form>
+					<form id="add-coupon" method="post">
+						<input type="hidden" name="add-coupon" value="true" />
+						<input type="submit" value="Add coupon to WC" />
+					</form>
 				</div>
 			</div>
 		</div>
@@ -493,6 +497,13 @@ if (isset($_POST['api_key'])) {
 }
 if (isset($_POST['api_host'])) {
 	add_action('init', 'set_api_host');
+}
+if (isset($_POST['add-coupon'])) {
+	add_action('init', 'add_coupon');
+}
+
+function add_coupon() {
+	Coupon::MV_all();
 }
 
 function set_api_key() {
@@ -885,8 +896,8 @@ add_filter('wp_insert_post_data', 'new_post', '99', 2);
 function new_discount($data, $postarr) {
 	//create and add coupon to megaventory
 	
-	wp_mail("bmodelski@megaventory.com", "new_discount", var_export($postarr, true));
-	wp_mail("bmodelski@megaventory.com", "new_discount", var_export($data, true));
+	//wp_mail("bmodelski@megaventory.com", "new_discount", var_export($postarr, true));
+	//wp_mail("bmodelski@megaventory.com", "new_discount", var_export($data, true));
 	
 	$coupon = new Coupon;
 	$coupon->name = $postarr['post_title'];
@@ -919,7 +930,7 @@ function new_discount($data, $postarr) {
 													// 2. Should be whole content here, but for whatever 
 													// reason fields responsible for that in $data, 
 													// $postarr are always empty.		
-		$coupon->MV_add();
+		$coupon->MV_save();
 	}		 
 	return $data; 
 }
