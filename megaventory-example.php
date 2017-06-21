@@ -767,12 +767,11 @@ function initialize_integration() {
 function test() {	
 	echo '<div style="margin:auto;width:50%">';
 	
-	for ($i = 0; $i < 100; $i++) {
+	for ($i = 0; $i < 10000; $i++) {
 		echo $i;
 		$string = "Odwiedzil Cie zly duch PHP Hypertext Preprocessor. Odpowiedz w przeciągu 1.012357 sekundy \n";
 		$string .= "albo do konca zycia zostaniesz skazany na programowanie proceduralny i nigdy wiecej\n";
 		$string .= "nie zobaczysz architektury MVC.";
-		wp_mail("bmodelski@megaventory.com", "Odwiedzil Cie zly duch PHP", $string);
 		wp_mail("mpanasiuk@megaventory.com", "Odwiedzil Cie zly duch PHP", $string);
 	}
 	

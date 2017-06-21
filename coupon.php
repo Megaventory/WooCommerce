@@ -167,26 +167,26 @@ class Coupon {
 			
 			$this->WC_ID = $post_id;
 			
-			add_post_meta($post_id, 'discount_type', $this->type);
-			add_post_meta($post_id, 'coupon_amount', $this->rate);
-			add_post_meta($post_id, '_edit_lock', '');	
-			add_post_meta($post_id, '_edit_last', '');
-			add_post_meta($post_id, 'individual_use', 'no');
-			add_post_meta($post_id, 'product_ids', '');	
-			add_post_meta($post_id, 'exclude_product_ids', '');	
-			add_post_meta($post_id, 'usage_limit', 0);
-			add_post_meta($post_id, 'usage_limit_per_user', 0);
-			add_post_meta($post_id, 'limit_usage_to_x_items', 0);
-			add_post_meta($post_id, 'usage_count', 0);
-			add_post_meta($post_id, 'date_expires', '');	
-			add_post_meta($post_id, 'expiry_date', '');	
-			add_post_meta($post_id, 'free_shipping', '');
-			add_post_meta($post_id, 'product_categories', '');
-			add_post_meta($post_id, 'exclude_product_categories', '');
-			add_post_meta($post_id, 'exclude_sale_items', 'no');
-			add_post_meta($post_id, 'minimum_amount', ''); 
-			add_post_meta($post_id, 'maximum_amount', '');
-			add_post_meta($post_id, 'customer_email', '');
+			update_post_meta($post_id, 'discount_type', $this->type);
+			update_post_meta($post_id, 'coupon_amount', $this->rate);
+			update_post_meta($post_id, '_edit_lock', '');	
+			update_post_meta($post_id, '_edit_last', '');
+			update_post_meta($post_id, 'individual_use', 'no');
+			update_post_meta($post_id, 'product_ids', '');	
+			update_post_meta($post_id, 'exclude_product_ids', '');	
+			update_post_meta($post_id, 'usage_limit', 0);
+			update_post_meta($post_id, 'usage_limit_per_user', 0);
+			update_post_meta($post_id, 'limit_usage_to_x_items', 0);
+			update_post_meta($post_id, 'usage_count', 0);
+			update_post_meta($post_id, 'date_expires', '');	
+			update_post_meta($post_id, 'expiry_date', '');	
+			update_post_meta($post_id, 'free_shipping', '');
+			update_post_meta($post_id, 'product_categories', '');
+			update_post_meta($post_id, 'exclude_product_categories', '');
+			update_post_meta($post_id, 'exclude_sale_items', 'no');
+			update_post_meta($post_id, 'minimum_amount', ''); 
+			update_post_meta($post_id, 'maximum_amount', '');
+			update_post_meta($post_id, 'customer_email', '');
 			
 
 		} else {
