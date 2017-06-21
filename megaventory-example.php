@@ -436,9 +436,9 @@ function panel_init(){
 						<input type="hidden" name="sync-clients" value="true" />
 						<input type="submit" value="Import Clients from WC to MV" />
 					</form>
-					<form id="add-coupon" method="post">
-						<input type="hidden" name="add-coupon" value="true" />
-						<input type="submit" value="Add coupon to WC" />
+					<form id="sync-coupons" method="post">
+						<input type="hidden" name="sync-coupons" value="true" />
+						<input type="submit" value="Synchronize coupons" />
 					</form>
 				</div>
 			</div>
@@ -498,12 +498,26 @@ if (isset($_POST['api_key'])) {
 if (isset($_POST['api_host'])) {
 	add_action('init', 'set_api_host');
 }
-if (isset($_POST['add-coupon'])) {
-	add_action('init', 'add_coupon');
+if (isset($_POST['sync-coupons'])) {
+	add_action('init', 'sync_coupons');
 }
 
-function add_coupon() {
-	Coupon::MV_all();
+function sync_coupons() {		
+	remove_filter('wp_insert_post_data', 'new_post', 99, 2); 
+	
+	register_error("Synchronization MV to WC.", Coupon::MV_to_WC());
+	$coupons = Coupon::WC_all();
+	
+	$all = 0;
+	$added = 0;
+	
+	foreach ($coupons as $coupon) {
+		$all = $all + 1;
+		if ($coupon->MV_save())
+			$added = $added + 1;
+	}
+	register_error("Synchronization WC to MV.", "Added " . $added . " coupons out of " . $all . " discounts found in WC.");
+	add_filter('wp_insert_post_data', 'new_post', 99, 2); 
 }
 
 function set_api_key() {
@@ -872,7 +886,6 @@ add_action('pull_changes_event', 'pull_changes');
 
 function new_post($data, $postarr) { 
 	//If it's not a new coupon being added, don't influence the process
-	
 	if ((($data['post_type'] != 'shop_coupon') or ($data['post_status'] != 'publish')))
 		return $data;
 	
@@ -880,24 +893,25 @@ function new_post($data, $postarr) {
 	//Rate of a coupon is compulsory in MV, thereby has to be in WC as well
 	if (empty($postarr['coupon_amount'])){ 
 		register_error("Coupon amount", "You have to specify rate of the coupon.");
-		return;
+		$data['post_status'] = 'draft';
+		return $data;
 	}
 	 
-	if ($postarr['coupon_amount'] <= 0) {
-		register_error("Coupon amount", "Coupon amount must be a positive number.");
+	if (($postarr['coupon_amount'] <= 0) or ($postarr['coupon_amount'] > 100)) {
+		register_error("Coupon amount", "Coupon amount must be a positive number smaller or equal to 100.");
+		$data['post_status'] = 'draft';
+		return $data;
 	}
 	
 	return new_discount($data, $postarr); 
-	
 }
          
-add_filter('wp_insert_post_data', 'new_post', '99', 2); 
+add_filter('wp_insert_post_data', 'new_post', 99, 2); 
 
 function new_discount($data, $postarr) {
 	//create and add coupon to megaventory
 	
-	//wp_mail("bmodelski@megaventory.com", "new_discount", var_export($postarr, true));
-	//wp_mail("bmodelski@megaventory.com", "new_discount", var_export($data, true));
+	wp_mail("bmodelski@megaventory.com", "new_discount", var_export($data, true));
 	
 	$coupon = new Coupon;
 	$coupon->name = $postarr['post_title'];
@@ -910,27 +924,35 @@ function new_discount($data, $postarr) {
 	}
 	
 	if ($coupon->MV_load_corresponding_obj_if_present()) {
-		if ($postarr['original_post_status'] == 'auto-draft') {
-			for ($i = 0; $i < 100; $i++ )
-				echo "PRINT SOME ERRORS HERE, you can't have a name overlapping with historical discount";
-			return null; 
-		}
 		
-		register_error("Coupon already present in db.", "Coupon already present in MV database. (?MessageBox here: do you want to update it's description?). Old description: $coupon->description."); 
-		$coupon->description = $postarr['excerpt']; // - Overwrite loaded value with user input.
-													// - Should be whole content here, but for whatever 
-													// reason fields responsible for that in $data, 
-													// $postarr are always empty.
-													
-		$coupon->rate = $postarr['coupon_amount'];  // If the discount is fixed, then rate can be edited.
+		wp_mail("bmodelski@megaventory.com", "new_discount", "IN AS FOUND");
+		if ($postarr['original_post_status'] == 'auto-draft') {
+			register_error("Code restricted", "Coupon " . $coupon->name . " with " . $coupon->rate . " rate is already present in Megaventory and can be copied here only through synchronisation (available in Megaventory plugin)."); 			
+			$data['post_status'] = 'draft';
+		} else {
+			register_error("Coupon " . $coupon->name . " already present in MV db.", "Coupon already present in MV database. Its old description: " . $coupon->description . " will be updated to " . $postarr['post_excerpt'] . "."); 
+			$coupon->description = $postarr['post_excerpt']; // - Overwrite loaded value with user input.
+														// - Should be whole content here, but for whatever 
+														// reason fields responsible for that in $data, 
+														// $postarr are always empty.
+														
+								
+			$coupon->rate = $postarr['coupon_amount'];  // If the discount is fixed, then rate can be edited.
 
-		$coupon->MV_update();
+			$coupon->MV_update();
+		}
 	} else {
-		$coupon->description = $postarr['excerpt']; // 1. Overwrite loaded value.
+		
+		$coupon->description = $postarr['post_excerpt']; // 1. Overwrite loaded value.
 													// 2. Should be whole content here, but for whatever 
 													// reason fields responsible for that in $data, 
 													// $postarr are always empty.		
-		$coupon->MV_save();
+		if ($coupon->MV_save()) {
+			register_error("Synchronization", "Coupon " . $coupon->name . " has been added to Megaventory.");
+		} else {
+			register_error("Code restricted", "Coupon " . $coupon->name . " had already been added to your Megaventory account and then deleted. Unfortunately this name ccanot be reused. Please choose a different one."); 
+			$data['post_status'] = 'draft';
+		}
 	}		 
 	return $data; 
 }
