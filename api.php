@@ -347,9 +347,10 @@
 	
 	function check_key() {
 		global $API_KEY;
-		$data = pull_product_changes();
+		$url = create_json_url("ApiKeyGet");
+		$data = json_decode(file_get_contents($url), true);
 		
-		if (!$API_KEY or $data == null or (int)$data['ResponseStatus']['ErrorCode'] == 401) {
+		if ((int)$data['ResponseStatus']['ErrorCode'] == 401) {
 			return false;
 		} else {
 			return true;
