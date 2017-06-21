@@ -142,7 +142,7 @@
 			';
 		return $prefix . $data . $suffix;
 	}
-	
+	 
 	function remove_integration_update($id) {
 		global $integration_delete_call;
 		$url = create_json_url($integration_delete_call) . "&IntegrationUpdateIDToDelete=" . urlencode($id);

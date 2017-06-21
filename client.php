@@ -58,7 +58,7 @@ class Client {
 			array_push($clients, $client);
 		}
 		
-		return $clients;
+		return $clients; 
 	}
 	
 	public static function mv_all() {

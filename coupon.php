@@ -33,6 +33,167 @@ class Coupon {
 		return !empty($xml['mvProducts']);
 	}	
 	
+	public static function WC_all() {
+		global $wpdb;
+		$results = $wpdb->get_results('
+				SELECT 
+					wp_t3bdty_posts.ID as id, 
+					wp_t3bdty_posts.post_title as name, 
+					wp_t3bdty_posts.post_excerpt as description,
+					meta1.meta_value as rate, 
+					meta2.meta_value as discount_type 
+				FROM 
+					wp_t3bdty_posts, 
+					wp_t3bdty_postmeta as meta1, 
+					wp_t3bdty_postmeta as meta2 
+				WHERE wp_t3bdty_posts.post_type = \'shop_coupon\' 
+					AND wp_t3bdty_posts.post_status = \'publish\' 
+					AND meta1.meta_key = \'coupon_amount\' 
+					AND meta1.post_id = wp_t3bdty_posts.ID
+					AND meta2.meta_key = \'discount_type\' 
+					AND	meta2.post_id = meta1.post_id'
+				, ARRAY_A );
+		
+		$coupons = array();
+		
+			
+		foreach ($results as $number => $buffer) {
+				$coupon = new Coupon;
+				
+				$coupon->name = $buffer['name'];
+				$coupon->rate = $buffer['rate'];
+				$coupon->description = $buffer['description'];
+				$coupon->type = $buffer['discount_type'];
+				array_push($coupons, $coupon);
+		}
+		
+		return $coupons;
+	}
+	
+	public static function WC_all_as_name_rate() {
+		global $wpdb;
+		$results = $wpdb->get_results( 'SELECT wp_t3bdty_posts.ID as id, wp_t3bdty_posts.post_title as name, wp_t3bdty_postmeta.meta_value as rate FROM wp_t3bdty_posts, wp_t3bdty_postmeta WHERE wp_t3bdty_posts.post_type = \'shop_coupon\' AND wp_t3bdty_posts.post_status = \'publish\' AND wp_t3bdty_postmeta.meta_key = \'coupon_amount\' AND wp_t3bdty_postmeta.post_id = wp_t3bdty_posts.ID', ARRAY_A );
+		
+		$coupons = array();
+		
+		//initialise our "hashtable"
+		foreach ($results as $number => $coupon) {
+			$coupons[ $coupon['name'] ] = array();
+		}
+			
+		foreach ($results as $number => $coupon) {
+			if (!in_array( $coupon['rate'], $coupons[ $coupon['name'] ], true))
+				array_push($coupons[ $coupon['name'] ], $coupon['rate']);
+		}
+		
+		return $coupons;
+	}
+	
+	public static function MV_to_WC() {
+		
+		$current_coupons = self::WC_all_as_name_rate();
+		
+		$xml = send_xml(self::$MV_URL_discount_get, 
+			self::XML_get_all_from_discounts());	
+		
+		$all = 0;
+		$added = 0;
+		
+		//because we don't want to try to add the coupons received from MV to MV again
+		
+		foreach ($xml['mvDiscounts']['mvDiscount'] as $key => $discount) {
+			$all = $all + 1;
+			
+			//check if coupon already in WC, if yes then skip			
+			if ((array_key_exists($discount['DiscountName'], $current_coupons)) and 
+					(in_array( $discount['DiscountValue'], $current_coupons[ $discount['DiscountName'] ], true)))
+				continue;
+			
+			
+			$coupon = new Coupon;
+			$coupon->name = $discount['DiscountName'];
+			if ($discount['DiscountDescription'] == array()) 
+				$discount['DiscountDescription'] = "";
+			$coupon->description = $discount['DiscountDescription'];
+			
+			$coupon->rate = $discount['DiscountValue'];
+			$coupon->MV_ID = $discount['DiscountID'];
+			$coupon->type = 'percent';
+			
+			
+			$result = $coupon->WC_save();
+			if (($result != -1) and ($result != -2)) {
+				$added = $added + 1;	
+			}
+		}
+		
+		$result = "Added " . $added . " percent coupons out of " . $all . " percent discounts found in MV.";
+		if ($added < $all) 
+			$result = $result . " All other either were already in WooCommerce or overlap with existing names.";	
+				
+		return $result;
+	}
+	
+	public function WC_save() {
+		// Initialize the page ID to -1. This indicates no action has been taken.
+		$post_id = -1;
+
+		// Setup the author, slug, and title for the post
+		$author_id = get_current_user_id();
+
+		// If the page doesn't already exist, then create it
+		if( null == get_page_by_title( $title ) ) {
+
+			// Set the post ID so that we know the post was created successfully
+			$post_id = wp_insert_post(					
+				array (
+					'post_author' => 2,
+				    'post_content' => '',
+				    'post_content_filtered' => '',
+				    'post_title' => $this->name,
+				    'post_excerpt' => $this->description,
+				    'post_status' => 'publish',
+				    'post_type' => 'shop_coupon',
+				    'comment_status' => 'closed',
+					'user_ID' => 2,
+					'excerpt' =>  $this->description,
+					'discount_type' => $this->type,
+					'coupon_amount' => $this->rate,
+					'filter' => 'db',
+				)
+			);
+			
+			$this->WC_ID = $post_id;
+			
+			add_post_meta($post_id, 'discount_type', $this->type);
+			add_post_meta($post_id, 'coupon_amount', $this->rate);
+			add_post_meta($post_id, '_edit_lock', '');	
+			add_post_meta($post_id, '_edit_last', '');
+			add_post_meta($post_id, 'individual_use', 'no');
+			add_post_meta($post_id, 'product_ids', '');	
+			add_post_meta($post_id, 'exclude_product_ids', '');	
+			add_post_meta($post_id, 'usage_limit', 0);
+			add_post_meta($post_id, 'usage_limit_per_user', 0);
+			add_post_meta($post_id, 'limit_usage_to_x_items', 0);
+			add_post_meta($post_id, 'usage_count', 0);
+			add_post_meta($post_id, 'date_expires', '');	
+			add_post_meta($post_id, 'expiry_date', '');	
+			add_post_meta($post_id, 'free_shipping', '');
+			add_post_meta($post_id, 'product_categories', '');
+			add_post_meta($post_id, 'exclude_product_categories', '');
+			add_post_meta($post_id, 'exclude_sale_items', 'no');
+			add_post_meta($post_id, 'minimum_amount', ''); 
+			add_post_meta($post_id, 'maximum_amount', '');
+			add_post_meta($post_id, 'customer_email', '');
+			
+
+		} else {
+				// -2 to indicate that the page with the title already exists
+				$post_id = -2;
+		} // end if
+		return $post_id;
+	} 
+	
 	
 	private function XML_get_obj_with_same_name_if_present_product() {
 		$query = 
@@ -45,20 +206,6 @@ class Coupon {
 		return $query; 
 	}
 	
-	public static function MV_initialise() {
-		$response = send_xml(self::$MV_URL_category_update,
-			self::XML_create_discounts_category());
-			
-		
-		//What if product category existed in the past and can't be created, but needs to be undeleted?
-		if ($response['mvProductCategory']['ResponseStatus']['ErrorCode'] == 500) { 
-			//AFAIK api does not allow that atm:
-			//	to undelete I need an ID, but ProductCategoryGet does not find deleted categories. 
-		}
-		/*wp_mail("bmodelski@megaventory.com", "product response", var_export($response, true));
-		wp_mail("bmodelski@megaventory.com", "product response", var_export(self::XML_create_discounts_category(), true));
-		wp_mail("bmodelski@megaventory.com", "product response", var_export(self::$MV_URL_category_update, true));*/
-	}
 	
 	public function MV_load_corresponding_obj_if_present() {
 		if ($this->type == 'percent') {
@@ -107,7 +254,15 @@ class Coupon {
 		return $query;
 	}
 	
-	private static function XML_create_discounts_category() {
+	private function XML_get_all_from_discounts() {
+		$query = 
+			'<DiscountGet xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types">' .
+			  '<APIKEY>' . get_api_key() . '</APIKEY>' .
+			'</DiscountGet>';
+		return $query;
+	}
+	
+	private function XML_create_discounts_category() {
 		$query = 
 			'<ProductCategoryUpdate xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types">' .
 			  '<APIKEY>' . get_api_key() . '</APIKEY>' .
@@ -159,12 +314,19 @@ class Coupon {
 		return $query;
 	}
 	
-	public function MV_add() {
+	public function MV_save() {
+		
+		
 		if ($this->type == 'percent') {
-			send_xml(self::$MV_URL_discount_update, self::XML_add_to_mv_percent());
+			$result = send_xml(self::$MV_URL_discount_update, self::XML_add_to_mv_percent());
 		} else {
-			$xml = send_xml(self::$MV_URL_product_update, self::XML_add_to_mv_fixed());
+			$result = send_xml(self::$MV_URL_product_update, self::XML_add_to_mv_fixed());
 		}   
+		
+		if ($result['ResponseStatus']['ErrorCode'] == '0')
+			return True; //if <ErrorCode... was found, then save failed. 
+		else
+			return False;
 	}
 	
 	private function XML_add_to_mv_percent() {
@@ -183,7 +345,6 @@ class Coupon {
 	}
 	
 	public function MV_update() {			
-			wp_mail("bmodelski@megaventory.com", "coupon", "inside MV_add");
 		if ($this->type == 'percent') {
 			$result = send_xml(self::$MV_URL_discount_update, self::XML_update_in_mv_percent());
 		} else {
