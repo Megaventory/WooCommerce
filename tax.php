@@ -13,6 +13,8 @@ class Tax {
 	public $description;
 	public $rate;
 	
+	public $type;
+	
 	private static $tax_get_call = "TaxGet";
 	private static $tax_update_call = "TaxUpdate";
 	
@@ -71,6 +73,11 @@ class Tax {
 		
 		$tax->rate = (float)$wc_tax['tax_rate'];
 		$tax->name = $wc_tax['tax_rate_name'];
+		
+		$tax->type = $wc_tax['tax_rate_class'];
+		if ($tax->type == null) {
+			$tax->type = 'standard-rate';
+		}
 				
 		return $tax;
 	}

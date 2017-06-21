@@ -82,7 +82,7 @@
 	// create URL using the API key and call
 	function create_json_url($call) {
 		global $url, $API_KEY;
-		return $url . $call . "?APIKEY=" . $API_KEY;
+		return $url . $call . "?APIKEY=" . urlencode($API_KEY);
 	}
 	
 	function create_xml_url($call) {
@@ -91,7 +91,7 @@
 	}
 	
 	function create_json_url_filter($call, $fieldName, $searchOperator, $searchValue) {
-		return create_json_url($call) . "&Filters={FieldName:" . $fieldName . ",SearchOperator:" . $searchOperator . ",SearchValue:" . $searchValue ."}";
+		return create_json_url($call) . "&Filters={FieldName:" . urlencode($fieldName) . ",SearchOperator:" . urlencode($searchOperator) . ",SearchValue:" . urlencode($searchValue) ."}";
 	}
 		
 	function create_json_url_filters($call, $args) {
@@ -168,62 +168,67 @@
 		
 		
 		
-		//tax - currently using just one
-		$taxes = array();
-		foreach($order->get_taxes() as $key => $tax) {
-			array_push($taxes, Tax::wc_find($tax->get_rate_id()));
-		}
-		
-		$tax = null;
-		if (count($taxes) == 1) {
-			$tax = $taxes[0];
-		} else if (count($taxes) > 1) {
-			//calculate total tax rate
-			$total_no_tax = $order->get_total() - $order->get_total_tax(); //difference tax and no tax
-			
-			
-			$rate = (float)$order->get_total_tax() / (float)$total_no_tax;
-			$rate *= 100.0; //to percent
-			$rate = round($rate, 2);
-			
-			$names = array();
-			for ($i = 0; $i < count($taxes); $i++) {
-				array_push($names, $taxes[$i]->name);
-			}
-			sort($names);
-			$name = implode("_", $names);
-			$name .= "__" . (string)$rate;
-			
-			$tax = Tax::mv_find_by_name($name);
-			if ($tax == null) {
-				$tax = new Tax();
-				$tax->name = $name;
-				$tax->description = "woocommerce generated tax";
-				$tax->rate = $rate;
-				$tax->mv_save();
-			}
-			
-			wp_mail("mpanasiuk@megaventory.com", "total tax", "rate: " . (string)$rate . " get_total: " . $order->get_total() . " get_total_tax: " . $order->get_total_tax());
-			wp_mail("mpanasiuk@megaventory.com", "total tax_name ", (string)$name);
-		}
 		wp_mail("mpanasiuk@megaventory.com", "orderplaced tax", var_export($order->data['total_tax'], true));
 		
 		$products_xml = '';
 		foreach ($order->get_items() as $item) {
-			$product = new WC_Product($item['product_id']);
+			$product = Product::wc_find($item['product_id']);
+			$price = ($product->sale_active ? $product->sale_price : $product->regular_price);
+			//interpret product tax
+			$taxes = array();
+			foreach($item->get_data()['taxes']['total'] as $id => $rate) {
+				array_push($taxes, Tax::wc_find($id));
+			}
+			
+			$tax = null;
+			if (count($taxes) == 1) {
+				$tax = $taxes[0];
+			} else if (count($taxes) > 1) {
+				//calculate total tax rate
+				$total_no_tax = $price; //$order->get_total() - $order->get_total_tax(); //difference tax and no tax
+				$rate = ((float)$item->get_data()['total_tax'] / (float)$item->get_quantity()) / (float)$total_no_tax;
+				$rate *= 100.0; //to percent
+				$rate = round($rate, 2);
+				
+				$names = array();
+				for ($i = 0; $i < count($taxes); $i++) {
+					array_push($names, $taxes[$i]->name);
+				}
+				sort($names);
+				$name = implode("_", $names);
+				$name .= "__" . (string)$rate;
+				
+				$tax = Tax::mv_find_by_name($name);
+				if ($tax == null) {
+					$tax = new Tax();
+					$tax->name = $name;
+					$tax->description = "woocommerce multiple tax";
+					$tax->rate = $rate;
+					$tax->mv_save();
+				}
+				
+				wp_mail("mpanasiuk@megaventory.com", "total tax", "rate: " . (string)$rate . " get_total: " . $order->get_total() . " get_total_tax: " . $order->get_total_tax());
+				wp_mail("mpanasiuk@megaventory.com", "total tax_name ", (string)$name);
+			}
+
 			$productstring = '<mvSalesOrderRow>';
-			$productstring .= '<SalesOrderRowProductSKU>' . $product->get_sku() . '</SalesOrderRowProductSKU>';
-			$productstring .= '<SalesOrderRowQuantity>' . $item['quantity'] . '</SalesOrderRowQuantity>';
+			$productstring .= '<SalesOrderRowProductSKU>' . $product->SKU . '</SalesOrderRowProductSKU>';
+			$productstring .= '<SalesOrderRowQuantity>' . $item->get_quantity() . '</SalesOrderRowQuantity>';
 			$productstring .= '<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>';
 			$productstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
-			$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . $product->get_regular_price() . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
+			$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . $price . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
 			$productstring .= ($tax ? '<SalesOrderRowTaxID>'.(string)$tax->MV_ID.'</SalesOrderRowTaxID>' : '');
 			$productstring .= '<SalesOrderRowTotalAmount>123456</SalesOrderRowTotalAmount>';
 			$productstring .= '</mvSalesOrderRow>';
 			
 			$products_xml .= $productstring;
 			
-			//wp_mail("mpanasiuk@megaventory.com", "item", var_export($item, true));
+			wp_mail("mpanasiuk@megaventory.com", "item", var_export($item, true));
+			
+			$string = "name: " . $product->SKU . "\n";
+			$string .= "total-tax: " . $item->get_data()['total_tax'] . "\n";
+			$string .= "taxes: " . var_export($item->get_data()['taxes'], true). "\n";
+			wp_mail("mpanasiuk@megaventory.com", "tax", $string);
 			//wp_mail("mpanasiuk@megaventory.com", "item2", $product->get_sku() . "  :  " . (string)((float)$product->get_regular_price() / (float)$item->get_data()['total_tax']));
 			
 			
@@ -342,9 +347,11 @@
 	
 	function check_key() {
 		global $API_KEY;
-		$data = pull_product_changes();
+		$url = create_json_url("ApiKeyGet");
+		$data = json_decode(file_get_contents($url), true);
 		
-		if (!$API_KEY or $data == null or (int)$data['ResponseStatus']['ErrorCode'] == 401) {
+		$code = (int)$data['ResponseStatus']['ErrorCode'];
+		if ($code == 401 || $code == 500) { //401-wrong key | 500-no key
 			return false;
 		} else {
 			return true;

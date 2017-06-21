@@ -20,7 +20,11 @@ class Product {
 	public $category;
 	public $type;
 	public $image_url;
+	
 	public $regular_price;
+	public $sale_price;
+	public $sale_active;
+	
 	public $length;
 	public $breadth;
 	public $height;
@@ -229,7 +233,27 @@ class Product {
 		$prod->description = $wc_prod->post_excerpt;
 		
 		$prod->SKU = get_post_meta($ID, '_sku', true);
+		
+		//prices
 		$prod->regular_price = get_post_meta($ID, '_regular_price', true);
+		$prod->sale_price = get_post_meta($ID, '_sale_price', true);
+		$sale_from = get_post_meta($ID, '_sale_price_dates_from', true);
+		$sale_to = get_post_meta($ID, '_sale_price_dates_to', true);
+		
+		if ($prod->sale_price) {
+			if(!$sale_from && !$sale_to) {
+				$prod->sale_active = true;
+			} else {
+				$sale_from = ($sale_from ? date("d-m-Y", (int)$sale_from) : null); 
+				$sale_to = ($sale_to ? date("d-m-Y", (int)$sale_to) : null);
+				$today = date("Y-m-d");
+				
+				if (($sale_from == null || $sale_from < $today) && ($sale_to == null or $sale_to > $today)) {
+					$prod->sale_active = true;
+				}
+			}
+		}
+		
 		$prod->weight = get_post_meta($ID, '_weight', true);
 		$prod->length = get_post_meta($ID, '_length', true);
 		$prod->breadth = get_post_meta($ID, '_width', true);
@@ -306,13 +330,14 @@ class Product {
 	}
 	
 	//only simple now
-	public function wc_save($wc_products = null) {
+	public function wc_save($wc_products = null, $create_upon_save = true) {
 		wp_mail("mpanasiuk@megaventory.com", "SAVING", "");
 		if ($wc_products == null) {
 			$wc_products = ($this->version == null) ? self::wc_all() : self::wc_all_with_variable();
 		}
 		
 		//find if SKU exists, if so, update instead of insert
+		//only insert if $create upon save
 		if ($this->WC_ID == null) {
 			foreach ($wc_products as $wc_product) {
 				if ($this->SKU == $wc_product->SKU) {
@@ -320,6 +345,10 @@ class Product {
 					break;
 				}
 			}	
+		}
+		
+		if ($this->WC_ID == null && !$create_upon_save) {
+			return false;
 		}
 		
 		//prevent null on empty
@@ -338,7 +367,7 @@ class Product {
 		
 	
 		//dont update variables title!
-		if ($this->WC_ID == null) { // look out. instead of always creating new, find one with same SKU and use that instead!
+		if ($this->WC_ID == null) { 
 			//create product
 			$args = array
 			(
@@ -389,12 +418,12 @@ class Product {
 		//set other information
 		update_post_meta($this->WC_ID, '_visibility', 'visible');
 		update_post_meta($this->WC_ID, '_regular_price', $this->regular_price);
+		if ($this->sale_price) update_post_meta($this->WC_ID, '_sale_price', $this->sale_price);
 		update_post_meta($this->WC_ID, '_weight', $this->weight);
 		update_post_meta($this->WC_ID, '_length', $this->length);
 		update_post_meta($this->WC_ID, '_width', $this->breadth);
 		update_post_meta($this->WC_ID, '_height', $this->height);
 		update_post_meta($this->WC_ID, '_sku', $this->SKU);
-		update_post_meta($this->WC_ID, '_price', $this->regular_price);
 		update_post_meta($this->WC_ID, '_manage_stock', "yes");
 		update_post_meta($this->WC_ID, '_stock', (string)$this->stock_on_hand);
 		update_post_meta($this->WC_ID, '_stock_status', ($this->stock_on_hand > 0 ? "instock" : "outofstock"));
@@ -449,7 +478,6 @@ class Product {
 			}
 		}
 		
-		$prod = self::mv_find_by_sku($this->SKU);
 		if ($prod) {
 			$this->MV_ID = $prod->MV_ID;
 			$this->mv_type = $prod->mv_type;

@@ -24,6 +24,8 @@ require_once("coupon.php");
 //normal cron would not work
 define('ALTERNATE_WP_CRON', true);
 
+$mv_admin_slug = 'megaventory-plugin';
+
 //when lock is true, edited product will not update mv products
 $save_product_lock = false;
 $execute_lock = false; //this lock prevents all sync fro
@@ -31,36 +33,32 @@ $execute_lock = false; //this lock prevents all sync fro
 $correct_currency;
 $correct_connection;
 $correct_key;
-$err_messages = array();
 
 function sess_start() {
     if (!session_id())
 		session_start();
 
 	if ($_SESSION["errs"] == null) { 
-		$_SESSION["errs"] = array();
-	} else if (count($_SESSION["errs"]) > 0) {
-		foreach ($_SESSION["errs"] as $err) {
-			register_error($err[0], $err[1]);
-		}
-		$_SESSION["errs"] = array();
-		wp_mail("mpanasiuk@megaventory.com", "jobwelldone", "jobdone");
+		//$_SESSION["errs"] = array();
 	}
 }
 add_action('init','sess_start');
 
 
 
- 
-$err_messages = array();
-
 //////////////// PLUGIN INITIALIZATION //////////////////////////////////////////////////
-
+$errs = array();
 function register_error($str1, $str2) {
-	global $err_messages;
+	global $errs;
 	$message = array(__($str1, 'sample-text-domain'), __($str2));
-	array_push($err_messages, $message);
+	array_push($errs, $message);
 }
+
+function errors_to_session() {
+	global $errs;
+	$_SESSION["errs"] = $errs;
+}
+add_action('init', 'errors_to_session');
 
 // main. This code is executed only if woocommerce is an installed and activated plugin.
 if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
@@ -77,26 +75,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	//add_action('wp_enqueue_scripts', 'enqueue_style'); //for outside admin if needed, uncomment
 	 
 	//halt sync?
-	global $correct_currency, $correct_connection, $correct_key;
-	$can_execute = true;
-	
-	$correct_connection = check_connectivity();
-	if ($can_execute and !$correct_connection) {
-		register_error('MEGAVENTORY ERROR! No connection to megaventory!', 'Check if Wordpress and Megaventory servers are online');
-		$can_execute = false;
-	}
-	
-	$correct_key = check_key();
-	if ($can_execute and !$correct_key) {
-		register_error("MEGAVENTORY Error! Invalid API KEY", "Please check if the API key is correct");
-		$can_execute = false;
-	}
-	
-	$correct_currency = get_default_currency() == get_option("woocommerce_currency");
-	if ($can_execute and !$correct_currency) {
-		register_error('MEGAVENTORY ERROR! Currencies in woocommerce and megaventory do not match! Megaventory plugin will halt until this issue is resolved!', 'If you are sure that the currency is correct, please refresh until this warning disappears.');
-		$can_execute = false;
-	}
+	$can_execute = check_status();
 	
 	if ($can_execute) {
 		//placed order
@@ -118,6 +97,36 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	//untested
 	register_error('Woocommerce not detected', 'Megaventory plugin cannot operate without woocommerce');
 	add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
+}
+
+function check_status() {
+	global $correct_currency, $correct_connection, $correct_key;
+	
+	$correct_connection = check_connectivity();
+	if (!$correct_connection) {
+		register_error('MEGAVENTORY ERROR! No connection to megaventory!', 'Check if Wordpress and Megaventory servers are online');
+		return false;
+	}
+	
+	$correct_key = check_key();
+	if (!$correct_key) {
+		register_error("MEGAVENTORY Error! Invalid API KEY", "Please check if the API key is correct");
+		return false;
+	}
+	
+	$correct_currency = get_default_currency() == get_option("woocommerce_currency");
+	if (!$correct_currency) {
+		register_error('MEGAVENTORY ERROR! Currencies in woocommerce and megaventory do not match! Megaventory plugin will halt until this issue is resolved!', 'If you are sure that the currency is correct, please refresh until this warning disappears.');
+		return false;
+	}
+	
+	$initialized = (bool)get_option("mv_initialized");
+	if (!$initialized) {
+		register_error('Megaventory is not initialzied!', 'The plugin will not work correctly before it is initialized');
+		return false;
+	}
+	
+	return true;
 }
 
 // define the woocommerce_tax_rate_updated callback 
@@ -153,6 +162,7 @@ function on_tax_update($tax_rate_id, $tax_rate) {
 		$tax = $tax2;
 		$tax->wc_save();
 	} else { //creating new tax in MV
+		$tax->description = "Woocommerce " . $tax->type . " tax";
 		$saved = $tax->mv_save();
 		if (!$saved) {
 			$tax->wc_delete(); //not saved
@@ -224,7 +234,8 @@ function column($column, $postid) {
 
 function plugin_setup_menu(){
 	//plugin tab
-	add_menu_page('Megaventory plugin', 'Megaventory', 'manage_options', 'megaventory-plugin', 'panel_init', plugin_dir_url( __FILE__ ).'mv3.png');
+	global $mv_admin_slug;
+	add_menu_page('Megaventory plugin', 'Megaventory', 'manage_options', $mv_admin_slug, 'panel_init', plugin_dir_url( __FILE__ ).'mv3.png');
 }
 
 //////////////////////////////// ADMIN PANEL ///////////////////////////////////////////////////////////////
@@ -317,15 +328,16 @@ function panel_init(){
 	/////// ERROR TABLE ///////
 	global $wpdb;
 	$table_name = $wpdb->prefix . "mvwc_errors"; 
-	$errors = $wpdb->get_results("SELECT * FROM $table_name;");
+	$errors = $wpdb->get_results("SELECT * FROM $table_name ORDER BY created_at DESC LIMIT 50;");
 	
 	//var_dump($errors);
 	
-	usort($errors, "error_cmp");
-	$errors = array_reverse($errors);
+	//usort($errors, "error_cmp");
+	//$errors = array_reverse($errors);
 	
 	$error_table = '
 		<h2>Error log</h2>
+		<div class="error-wrap">
 		<table id="error-log" class="wp-list-table widefat fixed striped posts">
 			<tr>
 				<th id="id">id</th>
@@ -354,11 +366,12 @@ function panel_init(){
 				$str .= '</tr>';
 				$error_table .= $str;
 			}
-	$error_table .= '</table>';
+	$error_table .= '</table></div>';
 	
 	$taxes = Tax::wc_all();
 	$tax_table = '
 		<h2>Taxes</h2>
+		<div class="tax-wrap">
 		<table id="taxes" class="wp-list-table widefat fixed striped posts">
 			<tr>
 				<th id="id">id</th>
@@ -378,14 +391,13 @@ function panel_init(){
 				$tax_table .= $str;
 			}
 			
-	$tax_table .= "</table>";
+	$tax_table .= "</table></div>";
 	
 	global $correct_connection, $correct_currency, $correct_key;
 	$initialized = (bool)get_option("mv_initialized");
 	$html = '
 		<div class="mv-admin">
 		<h1>Megaventory</h1>
-		
 		<div class="mv-row row-main">
 			<div class="mv-col">
 				<h3>Status</h3>
@@ -402,7 +414,8 @@ function panel_init(){
 				<h3>Setup</h3>
 				<div class="mv-row">
 					<div class="mv-form">
-						<form id="options" method="post">
+						<form id="options" method="post" action="'.esc_url(admin_url('admin-post.php')).'">
+							<input type="hidden" name="action" value="megaventory">
 							<div class="mv-form-body">
 								<p>
 									<label for="api_key">Megaventory API key: </label>
@@ -424,15 +437,18 @@ function panel_init(){
 				<h3>Initialization</h3>
 				<div class="wrap-init">
 				
-					<form id="initialize" method="post">
+					<form id="initialize" method="post" action="'.esc_url(admin_url('admin-post.php')).'">
+						<input type="hidden" name="action" value="megaventory">
 						<input type="hidden" name="initialize" value="true" />
 						<input type="submit" value="'.($initialized ? 'Reinitialize' : 'Initialize').'" />
 					</form>
-					<form id="sync-wc-mg" method="post">
+					<form id="sync-wc-mg" method="post" action="'.esc_url(admin_url('admin-post.php')).'">
+						<input type="hidden" name="action" value="megaventory">
 						<input type="hidden" name="sync-wc-mv" />
 						<input type="submit" value="Import Products from WC to MV" />
 					</form>
-					<form id="sync-clients" method="post">
+					<form id="sync-clients" method="post" action="'.esc_url(admin_url('admin-post.php')).'">
+						<input type="hidden" name="action" value="megaventory">
 						<input type="hidden" name="sync-clients" value="true" />
 						<input type="submit" value="Import Clients from WC to MV" />
 					</form>
@@ -454,7 +470,8 @@ function panel_init(){
 		
 		<div class="mv-row row-main">
 			<!--<div class="mv-col">-->
-				<form id="test" method="post">
+				<form id="test" method="post" action="'.esc_url(admin_url('admin-post.php')).'">
+					<input type="hidden" name="action" value="megaventory">
 					<input type="hidden" name="test" value="true" />
 					<input type="submit" value="TEST" />
 				</form>
@@ -464,9 +481,45 @@ function panel_init(){
 		</div>
 	';
 	
+	echo '
+		<form action="'.esc_url(admin_url('admin-post.php')).'" method="post">
+			<input type="hidden" name="action" value="megaventory">
+			<input type="submit" />
+		</form>
+	
+	';
+	
 	echo $html;
 	
 }
+function do_post() {
+	global $mv_admin_slug;
+	
+	if (isset($_POST['sync-mv-wc'])) {
+		synchronize_products_mv_wc();
+	}
+	if (isset($_POST['sync-wc-mv'])) {
+		synchronize_products_wc_mv();
+	}
+	if (isset($_POST['sync-clients'])) {
+		synchronize_clients();
+	}
+	if (isset($_POST['initialize'])) {
+		initialize_integration();
+	}
+	if (isset($_POST['test'])) {
+		test();
+	}
+	if (isset($_POST['api_key'])) {
+		set_api_key($_POST['api_key']);
+	}
+	if (isset($_POST['api_host'])) {
+		set_api_host($_POST['api_host']);
+	}
+	register_error("AAAAAAAAA", "AAAAAAAAAAA");
+	wp_redirect(admin_url('admin.php')."?page=".$mv_admin_slug);
+}
+add_action('admin_post_megaventory', 'do_post');
 
 //error comparator - sort by date
 function error_cmp($a, $b) {
@@ -476,7 +529,8 @@ function error_cmp($a, $b) {
 
 // sync button clicked
 // code will only run correctly on 'init' hook
-// otherwise, some wc variables are not correctly initialized
+// otherwise, some wc variables are not correctly initialized";
+/*
 if (isset($_POST['sync-mv-wc'])) {
 	add_action('init', 'synchronize_products_mv_wc');
 }
@@ -498,6 +552,7 @@ if (isset($_POST['api_key'])) {
 if (isset($_POST['api_host'])) {
 	add_action('init', 'set_api_host');
 }
+*/
 if (isset($_POST['sync-coupons'])) {
 	add_action('init', 'sync_coupons');
 }
@@ -523,13 +578,11 @@ function sync_coupons() {
 	add_filter('wp_insert_post_data', 'new_post', 99, 2); 
 }
 
-function set_api_key() {
-	$key = $_POST['api_key'];	
+function set_api_key($key) {
 	update_option("mv_api_key", (string)$key);
 }
 
-function set_api_host() {
-	$host = $_POST['api_host'];	
+function set_api_host($host) {
 	if(substr($host, -1) != '/') {
 		$host .= '/';
 	}
@@ -711,71 +764,15 @@ function initialize_integration() {
 
 function test() {	
 	echo '<div style="margin:auto;width:50%">';
-	/*
-	foreach (Product::wc_all_with_variable() as $prod) {
-		echo "<br>-------------------<br>";
-		echo $prod->SKU;
-		if ($prod->SKU == "shoe-013") {
-			var_dump(get_post($prod->WC_ID));
-			echo "<br><br>";
-			var_dump(new WC_Product_Variation($prod->WC_ID));
-		}
+	
+	for ($i = 0; $i < 100; $i++) {
+		echo $i;
+		$string = "Odwiedzil Cie zly duch PHP Hypertext Preprocessor. Odpowiedz w przeciągu 1.012357 sekundy \n";
+		$string .= "albo do konca zycia zostaniesz skazany na programowanie proceduralny i nigdy wiecej\n";
+		$string .= "nie zobaczysz architektury MVC.";
+		wp_mail("bmodelski@megaventory.com", "Odwiedzil Cie zly duch PHP", $string);
+		wp_mail("mpanasiuk@megaventory.com", "Odwiedzil Cie zly duch PHP", $string);
 	}
-	*/
-	/*
-	echo "<br>--------<br>";
-	$taxes = Tax::wc_all();
-	var_dump($taxes);
-	echo "<br>--------<br>";
-	var_dump(Tax::wc_find($taxes[0]->WC_ID));
-	echo "<br>--------<br>";
-	var_dump(Tax::mv_all());
-	echo "<br>--------<br>";
-	var_dump(Tax::mv_find(4));
-	echo "<br>--------<br>";
-	var_dump(Tax::mv_find_by_name('aasd'));
-	
-	foreach ($taxes as $tax) {
-		echo "<br>///////////////////////</br>";
-		var_dump($tax->mv_save());
-		echo "<br>///////////////////////</br>";
-	}
-	*/
-	//$tax = new Tax();
-	//$tax->name = "tax";
-	//$tax->rate = 20;
-	//$tax->description = "hello";
-	//$tax->mv_save();
-	//initialize_taxes();
-	
-	//initialize_taxes();
-	
-	//$t = new Tax();
-	//$t->name = "ooooo3";
-	//$t->rate = 79;
-	//$t->mv_save();
-	//$t->wc_save();
-	
-	//var_dump($t);
-	
-	/*
-	$tax1 = new Tax();
-	$tax1->name = "new mv tax4";
-	$tax1->description = "new mv tax desc";
-	$tax1->rate = 20.0;
-	$tax1->mv_save();
-	
-	$tax2 = new Tax();
-	$tax2->name = "new wc tax4";
-	$tax2->rate = 20.0;
-	$tax2->wc_save();
-	
-	echo "<br>-------- IDS --------<br>";
-	echo $tax1->MV_ID;
-	echo "<br>";
-	echo $tax2->WC_ID;
-	echo "<br>----------------------<br>";
-	*/
 	
 	echo '</div>';
 }
@@ -820,6 +817,7 @@ add_filter('cron_schedules', 'schedule');
 
 // The WP Cron event callback function'
 function pull_changes() {
+	/*
 	global $execute_lock;
 	if ($execute_lock) { //log info about sync being prevented
 		$args = array
@@ -829,6 +827,11 @@ function pull_changes() {
 			'type' => "fatal"
 		);
 		$er = new MVWC_Error($args);
+		return;
+	}
+	*/
+	if (!check_connectivity()) {
+		register_error("MV auto sync failed", "no connection to MV api server");
 		return;
 	}
 	
@@ -849,7 +852,8 @@ function pull_changes() {
 				//get product new info
 				$product = Product::mv_find($change['EntityIDs']);
 				//save new info
-				$product->wc_save(); 
+				//only update synchronized prods so they are not added
+				$product->wc_save(null, false); 
 				
 			} else if ($change["Action"] == "delete") { //delete the product
 				//already deleted from mv
@@ -997,17 +1001,6 @@ function create_plugin_database_table() {
 
 register_activation_hook(__FILE__, 'create_plugin_database_table');
  
-function remove_db_table() {
-    global $table_prefix, $wpdb;
-	
-	$table_name = $wpdb->prefix . "mvwc_errors"; 
-	
-	$sql = "DROP TABLE $table_name";
-	$wpdb->query($sql);
-	
-	wp_mail("mpanasiuk@megaventory.com", "db_table", "aaaaaa");
-}
-
 function reset_mv_data() {
 	wp_mail("mpanasiuk@megaventory.com", "mv_data", "bbbbbbb");
 	$products = Product::wc_all_with_variable();
@@ -1028,20 +1021,27 @@ function reset_mv_data() {
 	global $wpdb;
 	$sql = "ALTER TABLE {$wpdb->prefix}woocommerce_tax_rates DROP COLUMN mv_id;";
 	$return = $wpdb->query($sql);
+
+	$table_name = $wpdb->prefix . "mvwc_errors"; 
+	
+	$sql = "DROP TABLE $table_name";
+	$wpdb->query($sql);
+	
+	wp_mail("mpanasiuk@megaventory.com", "db_table", "aaaaaa");
 }
  
-register_deactivation_hook(__FILE__, 'remove_db_table');
-register_deactivation_hook(__FILE__, 'reset_mv_data');
+register_uninstall_hook(__FILE__, 'reset_mv_data');
 
 
 function sample_admin_notice__error() {
-	global $err_messages;
 	$class = 'notice notice-error';
 	
-	foreach ($err_messages as $msg) {
-		printf('<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr($class), esc_html($msg[0]), esc_html($msg[1]));
-		
-	} 
+	if ($_SESSION["errs"] != null && count($_SESSION["errs"]) > 0) {
+		foreach ($_SESSION["errs"] as $err) {
+			printf('<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr($class), esc_html($err[0]), esc_html($err[1]));
+		}
+		$_SESSION["errs"] = array();
+	}
 }
 
 ?>
