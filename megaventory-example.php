@@ -33,36 +33,32 @@ $execute_lock = false; //this lock prevents all sync fro
 $correct_currency;
 $correct_connection;
 $correct_key;
-$err_messages = array();
 
 function sess_start() {
     if (!session_id())
 		session_start();
 
 	if ($_SESSION["errs"] == null) { 
-		$_SESSION["errs"] = array();
-	} else if (count($_SESSION["errs"]) > 0) {
-		foreach ($_SESSION["errs"] as $err) {
-			register_error($err[0], $err[1]);
-		}
-		$_SESSION["errs"] = array();
-		wp_mail("mpanasiuk@megaventory.com", "jobwelldone", "jobdone");
+		//$_SESSION["errs"] = array();
 	}
 }
 add_action('init','sess_start');
 
 
 
- 
-$err_messages = array();
-
 //////////////// PLUGIN INITIALIZATION //////////////////////////////////////////////////
-
+$errs = array();
 function register_error($str1, $str2) {
-	global $err_messages;
+	global $errs;
 	$message = array(__($str1, 'sample-text-domain'), __($str2));
-	array_push($err_messages, $message);
+	array_push($errs, $message);
 }
+
+function errors_to_session() {
+	global $errs;
+	$_SESSION["errs"] = $errs;
+}
+add_action('init', 'errors_to_session');
 
 // main. This code is executed only if woocommerce is an installed and activated plugin.
 if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
@@ -79,26 +75,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	//add_action('wp_enqueue_scripts', 'enqueue_style'); //for outside admin if needed, uncomment
 	
 	//halt sync?
-	global $correct_currency, $correct_connection, $correct_key;
-	$can_execute = true;
-	
-	$correct_connection = check_connectivity();
-	if ($can_execute and !$correct_connection) {
-		register_error('MEGAVENTORY ERROR! No connection to megaventory!', 'Check if Wordpress and Megaventory servers are online');
-		$can_execute = false;
-	}
-	
-	$correct_key = check_key();
-	if ($can_execute and !$correct_key) {
-		register_error("MEGAVENTORY Error! Invalid API KEY", "Please check if the API key is correct");
-		$can_execute = false;
-	}
-	
-	$correct_currency = get_default_currency() == get_option("woocommerce_currency");
-	if ($can_execute and !$correct_currency) {
-		register_error('MEGAVENTORY ERROR! Currencies in woocommerce and megaventory do not match! Megaventory plugin will halt until this issue is resolved!', 'If you are sure that the currency is correct, please refresh until this warning disappears.');
-		$can_execute = false;
-	}
+	$can_execute = check_status();
 	
 	if ($can_execute) {
 		//placed order
@@ -120,6 +97,30 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	//untested
 	register_error('Woocommerce not detected', 'Megaventory plugin cannot operate without woocommerce');
 	add_action('admin_notices', 'sample_admin_notice__error'); //warning about error
+}
+
+function check_status() {
+	global $correct_currency, $correct_connection, $correct_key;
+	
+	$correct_connection = check_connectivity();
+	if (!$correct_connection) {
+		register_error('MEGAVENTORY ERROR! No connection to megaventory!', 'Check if Wordpress and Megaventory servers are online');
+		return false;
+	}
+	
+	$correct_key = check_key();
+	if (!$correct_key) {
+		register_error("MEGAVENTORY Error! Invalid API KEY", "Please check if the API key is correct");
+		return false;
+	}
+	
+	$correct_currency = get_default_currency() == get_option("woocommerce_currency");
+	if (!$correct_currency) {
+		register_error('MEGAVENTORY ERROR! Currencies in woocommerce and megaventory do not match! Megaventory plugin will halt until this issue is resolved!', 'If you are sure that the currency is correct, please refresh until this warning disappears.');
+		return false;
+	}
+	
+	return true;
 }
 
 // define the woocommerce_tax_rate_updated callback 
@@ -407,7 +408,8 @@ function panel_init(){
 				<h3>Setup</h3>
 				<div class="mv-row">
 					<div class="mv-form">
-						<form id="options" method="post">
+						<form id="options" method="post" action="'.esc_url(admin_url('admin-post.php')).'">
+							<input type="hidden" name="action" value="megaventory">
 							<div class="mv-form-body">
 								<p>
 									<label for="api_key">Megaventory API key: </label>
@@ -429,15 +431,18 @@ function panel_init(){
 				<h3>Initialization</h3>
 				<div class="wrap-init">
 				
-					<form id="initialize" method="post">
+					<form id="initialize" method="post" action="'.esc_url(admin_url('admin-post.php')).'">
+						<input type="hidden" name="action" value="megaventory">
 						<input type="hidden" name="initialize" value="true" />
 						<input type="submit" value="'.($initialized ? 'Reinitialize' : 'Initialize').'" />
 					</form>
-					<form id="sync-wc-mg" method="post">
+					<form id="sync-wc-mg" method="post" action="'.esc_url(admin_url('admin-post.php')).'">
+						<input type="hidden" name="action" value="megaventory">
 						<input type="hidden" name="sync-wc-mv" />
 						<input type="submit" value="Import Products from WC to MV" />
 					</form>
-					<form id="sync-clients" method="post">
+					<form id="sync-clients" method="post" action="'.esc_url(admin_url('admin-post.php')).'">
+						<input type="hidden" name="action" value="megaventory">
 						<input type="hidden" name="sync-clients" value="true" />
 						<input type="submit" value="Import Clients from WC to MV" />
 					</form>
@@ -455,7 +460,8 @@ function panel_init(){
 		
 		<div class="mv-row row-main">
 			<!--<div class="mv-col">-->
-				<form id="test" method="post">
+				<form id="test" method="post" action="'.esc_url(admin_url('admin-post.php')).'">
+					<input type="hidden" name="action" value="megaventory">
 					<input type="hidden" name="test" value="true" />
 					<input type="submit" value="TEST" />
 				</form>
@@ -477,14 +483,30 @@ function panel_init(){
 	
 }
 function do_post() {
-    /**
-     * At this point, $_GET/$_POST variable are available
-     *
-     * We can do our normal processing here
-     */ 
 	global $mv_admin_slug;
-	wp_mail("mpanasiuk@megaventory.com", " P O S S TTTTT", "tt");
 	
+	if (isset($_POST['sync-mv-wc'])) {
+		add_action('init', 'synchronize_products_mv_wc');
+	}
+	if (isset($_POST['sync-wc-mv'])) {
+		add_action('init', 'synchronize_products_wc_mv');
+	}
+	if (isset($_POST['sync-clients'])) {
+		add_action('init', 'synchronize_clients');
+	}
+	if (isset($_POST['initialize'])) {
+		add_action('init', 'initialize_integration');
+	}
+	if (isset($_POST['test'])) {
+		add_action('init', 'test');
+	}
+	if (isset($_POST['api_key'])) {
+		set_api_key($_POST['api_key']);
+	}
+	if (isset($_POST['api_host'])) {
+		set_api_host($_POST['api_host']);
+	}
+	register_error("AAAAAAAAA", "AAAAAAAAAAA");
 	wp_redirect(admin_url('admin.php')."?page=".$mv_admin_slug);
 }
 add_action('admin_post_megaventory', 'do_post');
@@ -498,7 +520,7 @@ function error_cmp($a, $b) {
 // sync button clicked
 // code will only run correctly on 'init' hook
 // otherwise, some wc variables are not correctly initialized";
-
+/*
 if (isset($_POST['sync-mv-wc'])) {
 	add_action('init', 'synchronize_products_mv_wc');
 }
@@ -520,14 +542,12 @@ if (isset($_POST['api_key'])) {
 if (isset($_POST['api_host'])) {
 	add_action('init', 'set_api_host');
 }
-
-function set_api_key() {
-	$key = $_POST['api_key'];	
+*/
+function set_api_key($key) {
 	update_option("mv_api_key", (string)$key);
 }
 
-function set_api_host() {
-	$host = $_POST['api_host'];	
+function set_api_host($host) {
 	if(substr($host, -1) != '/') {
 		$host .= '/';
 	}
@@ -762,6 +782,7 @@ add_filter('cron_schedules', 'schedule');
 
 // The WP Cron event callback function'
 function pull_changes() {
+	/*
 	global $execute_lock;
 	if ($execute_lock) { //log info about sync being prevented
 		$args = array
@@ -771,6 +792,11 @@ function pull_changes() {
 			'type' => "fatal"
 		);
 		$er = new MVWC_Error($args);
+		return;
+	}
+	*/
+	if (!check_connectivity()) {
+		register_error("MV auto sync failed", "no connection to MV api server");
 		return;
 	}
 	
@@ -967,13 +993,14 @@ register_uninstall_hook(__FILE__, 'reset_mv_data');
 
 
 function sample_admin_notice__error() {
-	global $err_messages;
 	$class = 'notice notice-error';
 	
-	foreach ($err_messages as $msg) {
-		printf('<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr($class), esc_html($msg[0]), esc_html($msg[1]));
-		
-	} 
+	if ($_SESSION["errs"] != null && count($_SESSION["errs"]) > 0) {
+		foreach ($_SESSION["errs"] as $err) {
+			printf('<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr($class), esc_html($err[0]), esc_html($err[1]));
+		}
+		$_SESSION["errs"] = array();
+	}
 }
 
 ?>
