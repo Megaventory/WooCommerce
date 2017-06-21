@@ -35,23 +35,24 @@ class Coupon {
 	
 	public static function WC_all() {
 		global $wpdb;
-		$results = $wpdb->get_results('
+		$prefix = $wpdb->prefix;
+		$results = $wpdb->get_results("
 				SELECT 
-					wp_t3bdty_posts.ID as id, 
-					wp_t3bdty_posts.post_title as name, 
-					wp_t3bdty_posts.post_excerpt as description,
+					{$prefix}posts.ID as id, 
+					{$prefix}posts.post_title as name, 
+					{$prefix}posts.post_excerpt as description,
 					meta1.meta_value as rate, 
 					meta2.meta_value as discount_type 
 				FROM 
-					wp_t3bdty_posts, 
-					wp_t3bdty_postmeta as meta1, 
-					wp_t3bdty_postmeta as meta2 
-				WHERE wp_t3bdty_posts.post_type = \'shop_coupon\' 
-					AND wp_t3bdty_posts.post_status = \'publish\' 
-					AND meta1.meta_key = \'coupon_amount\' 
-					AND meta1.post_id = wp_t3bdty_posts.ID
-					AND meta2.meta_key = \'discount_type\' 
-					AND	meta2.post_id = meta1.post_id'
+					{$prefix}posts, 
+					{$prefix}postmeta as meta1, 
+					{$prefix}postmeta as meta2 
+				WHERE {$prefix}posts.post_type = 'shop_coupon' 
+					AND {$prefix}posts.post_status = 'publish' 
+					AND meta1.meta_key = 'coupon_amount' 
+					AND meta1.post_id = {$prefix}posts.ID
+					AND meta2.meta_key = 'discount_type' 
+					AND	meta2.post_id = meta1.post_id"
 				, ARRAY_A );
 		
 		$coupons = array();
@@ -72,7 +73,8 @@ class Coupon {
 	
 	public static function WC_all_as_name_rate() {
 		global $wpdb;
-		$results = $wpdb->get_results( 'SELECT wp_t3bdty_posts.ID as id, wp_t3bdty_posts.post_title as name, wp_t3bdty_postmeta.meta_value as rate FROM wp_t3bdty_posts, wp_t3bdty_postmeta WHERE wp_t3bdty_posts.post_type = \'shop_coupon\' AND wp_t3bdty_posts.post_status = \'publish\' AND wp_t3bdty_postmeta.meta_key = \'coupon_amount\' AND wp_t3bdty_postmeta.post_id = wp_t3bdty_posts.ID', ARRAY_A );
+		$prefix = $wpdb->prefix;
+		$results = $wpdb->get_results( "SELECT {$prefix}posts.ID as id, {$prefix}posts.post_title as name, {$prefix}postmeta.meta_value as rate FROM {$prefix}posts, {$prefix}postmeta WHERE {$prefix}posts.post_type = 'shop_coupon' AND {$prefix}posts.post_status = 'publish' AND {$prefix}postmeta.meta_key = 'coupon_amount' AND {$prefix}postmeta.post_id = {$prefix}posts.ID", ARRAY_A );
 		
 		$coupons = array();
 		

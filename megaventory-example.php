@@ -452,7 +452,8 @@ function panel_init(){
 						<input type="hidden" name="sync-clients" value="true" />
 						<input type="submit" value="Import Clients from WC to MV" />
 					</form>
-					<form id="sync-coupons" method="post">
+					<form id="sync-coupons" method="post" action="'.esc_url(admin_url('admin-post.php')).'">
+						<input type="hidden" name="action" value="megaventory">
 						<input type="hidden" name="sync-coupons" value="true" />
 						<input type="submit" value="Synchronize coupons" />
 					</form>
@@ -516,6 +517,9 @@ function do_post() {
 	if (isset($_POST['api_host'])) {
 		set_api_host($_POST['api_host']);
 	}
+	if (isset($_POST['sync-coupons'])) {
+		sync_coupons();
+	}
 	register_error("AAAAAAAAA", "AAAAAAAAAAA");
 	wp_redirect(admin_url('admin.php')."?page=".$mv_admin_slug);
 }
@@ -553,9 +557,6 @@ if (isset($_POST['api_host'])) {
 	add_action('init', 'set_api_host');
 }
 */
-if (isset($_POST['sync-coupons'])) {
-	add_action('init', 'sync_coupons');
-}
 
 function sync_coupons() {		
 	remove_filter('wp_insert_post_data', 'new_post', 99, 2); 
@@ -665,6 +666,7 @@ function synchronize_products_wc_mv() {
 
 //push clients from mv to wc
 function synchronize_clients() {
+	register_error("aaaaaaaaaa", "AAAAAAAAAAAAAAAA");
 	// synchronize with delete?
 	$with_delete = isset($_POST['with_delete']);
 	//do delete later - discuss with Kostis if it is necessary
