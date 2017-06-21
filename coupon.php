@@ -122,13 +122,14 @@ class Coupon {
 			
 			
 			$result = $coupon->WC_save();
-			if (($result != -1) and ($result != -2)) 
+			if (($result != -1) and ($result != -2)) {
 				$added = $added + 1;	
+			}
 		}
 		
 		$result = "Added " . $added . " percent coupons out of " . $all . " percent discounts found in MV.";
 		if ($added < $all) 
-			$result = $result . " All other either were already in WooCommerce or have overlapping names.";	
+			$result = $result . " All other either were already in WooCommerce or overlap with existing names.";	
 				
 		return $result;
 	}
@@ -314,16 +315,18 @@ class Coupon {
 	}
 	
 	public function MV_save() {
+		
+		
 		if ($this->type == 'percent') {
 			$result = send_xml(self::$MV_URL_discount_update, self::XML_add_to_mv_percent());
 		} else {
 			$result = send_xml(self::$MV_URL_product_update, self::XML_add_to_mv_fixed());
 		}   
 		
-		if (strpos($result, "<d2p1:ErrorCode>500</d2p1:ErrorCode>") !== False)
-			return False; //if <ErrorCode... was found, then save failed. 
+		if ($result['ResponseStatus']['ErrorCode'] == '0')
+			return True; //if <ErrorCode... was found, then save failed. 
 		else
-			return True;
+			return False;
 	}
 	
 	private function XML_add_to_mv_percent() {

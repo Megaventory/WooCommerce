@@ -512,11 +512,14 @@ function sync_coupons() {
 	$added = 0;
 	
 	foreach ($coupons as $coupon) {
+		
 		$all = $all + 1;
-		if ($coupon->MV_save())
+		if ($coupon->MV_save()) {
 			$added = $added + 1;
+		}
+		
 	}
-	register_error("Synchronization WC to MV.", "Added " . $added . " coupons out of " . $all . " discounts found in WC.");
+	register_error("Synchronization WC to MV.", "Added " . $added . " coupons out of " . $all . " discounts found in WC. All other either were already in Megaventroy or have overlap with existing records.");
 	add_filter('wp_insert_post_data', 'new_post', 99, 2); 
 }
 
@@ -911,7 +914,7 @@ add_filter('wp_insert_post_data', 'new_post', 99, 2);
 function new_discount($data, $postarr) {
 	//create and add coupon to megaventory
 	
-	wp_mail("bmodelski@megaventory.com", "new_discount", var_export($data, true));
+	//wp_mail("bmodelski@megaventory.com", "new_discount", var_export($data, true));
 	
 	$coupon = new Coupon;
 	$coupon->name = $postarr['post_title'];
@@ -923,20 +926,18 @@ function new_discount($data, $postarr) {
 		$coupon->type = 'percent';
 	}
 	
+	
 	if ($coupon->MV_load_corresponding_obj_if_present()) {
-		
-		wp_mail("bmodelski@megaventory.com", "new_discount", "IN AS FOUND");
 		if ($postarr['original_post_status'] == 'auto-draft') {
-			register_error("Code restricted", "Coupon " . $coupon->name . " with " . $coupon->rate . " rate is already present in Megaventory and can be copied here only through synchronisation (available in Megaventory plugin)."); 			
+			register_error("Code restricted", "Coupon " . $coupon->name . " with " . $coupon->rate . " rate is already present in Megaventory and can be copied here only through synchronisation (available in Megaventory plugin).");
 			$data['post_status'] = 'draft';
 		} else {
 			register_error("Coupon " . $coupon->name . " already present in MV db.", "Coupon already present in MV database. Its old description: " . $coupon->description . " will be updated to " . $postarr['post_excerpt'] . "."); 
 			$coupon->description = $postarr['post_excerpt']; // - Overwrite loaded value with user input.
 														// - Should be whole content here, but for whatever 
 														// reason fields responsible for that in $data, 
-														// $postarr are always empty.
-														
-								
+														// $postarr are always empty.			
+	
 			$coupon->rate = $postarr['coupon_amount'];  // If the discount is fixed, then rate can be edited.
 
 			$coupon->MV_update();
