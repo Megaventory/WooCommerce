@@ -186,7 +186,7 @@
 			} else if (count($taxes) > 1) {
 				//calculate total tax rate
 				$total_no_tax = $price; //$order->get_total() - $order->get_total_tax(); //difference tax and no tax
-				$rate = (float)$item->get_data()['total_tax'] / (float)$total_no_tax;
+				$rate = ((float)$item->get_data()['total_tax'] / (float)$item->get_quantity()) / (float)$total_no_tax;
 				$rate *= 100.0; //to percent
 				$rate = round($rate, 2);
 				
@@ -213,7 +213,7 @@
 
 			$productstring = '<mvSalesOrderRow>';
 			$productstring .= '<SalesOrderRowProductSKU>' . $product->SKU . '</SalesOrderRowProductSKU>';
-			$productstring .= '<SalesOrderRowQuantity>' . $item['quantity'] . '</SalesOrderRowQuantity>';
+			$productstring .= '<SalesOrderRowQuantity>' . $item->get_quantity() . '</SalesOrderRowQuantity>';
 			$productstring .= '<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>';
 			$productstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
 			$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . $price . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
