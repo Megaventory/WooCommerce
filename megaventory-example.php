@@ -120,6 +120,12 @@ function check_status() {
 		return false;
 	}
 	
+	$initialized = (bool)get_option("mv_initialized");
+	if (!$initialized) {
+		register_error('Megaventory is not initialzied!', 'The plugin will not work correctly before it is initialized');
+		return false;
+	}
+	
 	return true;
 }
 
@@ -486,19 +492,19 @@ function do_post() {
 	global $mv_admin_slug;
 	
 	if (isset($_POST['sync-mv-wc'])) {
-		add_action('init', 'synchronize_products_mv_wc');
+		synchronize_products_mv_wc();
 	}
 	if (isset($_POST['sync-wc-mv'])) {
-		add_action('init', 'synchronize_products_wc_mv');
+		synchronize_products_wc_mv();
 	}
 	if (isset($_POST['sync-clients'])) {
-		add_action('init', 'synchronize_clients');
+		synchronize_clients();
 	}
 	if (isset($_POST['initialize'])) {
-		add_action('init', 'initialize_integration');
+		initialize_integration();
 	}
 	if (isset($_POST['test'])) {
-		add_action('init', 'test');
+		test();
 	}
 	if (isset($_POST['api_key'])) {
 		set_api_key($_POST['api_key']);

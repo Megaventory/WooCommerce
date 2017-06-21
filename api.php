@@ -82,7 +82,7 @@
 	// create URL using the API key and call
 	function create_json_url($call) {
 		global $url, $API_KEY;
-		return $url . $call . "?APIKEY=" . $API_KEY;
+		return $url . $call . "?APIKEY=" . urlencode($API_KEY);
 	}
 	
 	function create_xml_url($call) {
@@ -91,7 +91,7 @@
 	}
 	
 	function create_json_url_filter($call, $fieldName, $searchOperator, $searchValue) {
-		return create_json_url($call) . "&Filters={FieldName:" . $fieldName . ",SearchOperator:" . $searchOperator . ",SearchValue:" . $searchValue ."}";
+		return create_json_url($call) . "&Filters={FieldName:" . urlencode($fieldName) . ",SearchOperator:" . urlencode($searchOperator) . ",SearchValue:" . urlencode($searchValue) ."}";
 	}
 		
 	function create_json_url_filters($call, $args) {
@@ -350,7 +350,8 @@
 		$url = create_json_url("ApiKeyGet");
 		$data = json_decode(file_get_contents($url), true);
 		
-		if ((int)$data['ResponseStatus']['ErrorCode'] == 401) {
+		$code = (int)$data['ResponseStatus']['ErrorCode'];
+		if ($code == 401 || $code == 500) { //401-wrong key | 500-no key
 			return false;
 		} else {
 			return true;
