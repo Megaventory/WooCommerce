@@ -24,6 +24,8 @@ require_once("coupon.php");
 //normal cron would not work
 define('ALTERNATE_WP_CRON', true);
 
+$mv_admin_slug = 'megaventory-plugin';
+
 //when lock is true, edited product will not update mv products
 $save_product_lock = false;
 $execute_lock = false; //this lock prevents all sync fro
@@ -225,7 +227,8 @@ function column($column, $postid) {
 
 function plugin_setup_menu(){
 	//plugin tab
-	add_menu_page('Megaventory plugin', 'Megaventory', 'manage_options', 'megaventory-plugin', 'panel_init', plugin_dir_url( __FILE__ ).'mv3.png');
+	global $mv_admin_slug;
+	add_menu_page('Megaventory plugin', 'Megaventory', 'manage_options', $mv_admin_slug, 'panel_init', plugin_dir_url( __FILE__ ).'mv3.png');
 }
 
 //////////////////////////////// ADMIN PANEL ///////////////////////////////////////////////////////////////
@@ -462,9 +465,29 @@ function panel_init(){
 		</div>
 	';
 	
+	echo '
+		<form action="'.esc_url(admin_url('admin-post.php')).'" method="post">
+			<input type="hidden" name="action" value="megaventory">
+			<input type="submit" />
+		</form>
+	
+	';
+	
 	echo $html;
 	
 }
+function do_post() {
+    /**
+     * At this point, $_GET/$_POST variable are available
+     *
+     * We can do our normal processing here
+     */ 
+	global $mv_admin_slug;
+	wp_mail("mpanasiuk@megaventory.com", " P O S S TTTTT", "tt");
+	
+	wp_redirect(admin_url('admin.php')."?page=".$mv_admin_slug);
+}
+add_action('admin_post_megaventory', 'do_post');
 
 //error comparator - sort by date
 function error_cmp($a, $b) {
@@ -474,7 +497,8 @@ function error_cmp($a, $b) {
 
 // sync button clicked
 // code will only run correctly on 'init' hook
-// otherwise, some wc variables are not correctly initialized
+// otherwise, some wc variables are not correctly initialized";
+
 if (isset($_POST['sync-mv-wc'])) {
 	add_action('init', 'synchronize_products_mv_wc');
 }
