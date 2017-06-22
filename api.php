@@ -167,8 +167,16 @@
 		$url = create_xml_url($salesorder_update_call);
 		
 		
-		
 		wp_mail("mpanasiuk@megaventory.com", "orderplaced tax", var_export($order->data['total_tax'], true));
+		wp_mail("mpanasiuk@megaventory.com", "REQUEST", var_export($_REQUEST, true));
+		wp_mail("mpanasiuk@megaventory.com", "POST", var_export($_POST, true));
+		wp_mail("mpanasiuk@megaventory.com", "GET", var_export($_GET, true));
+		
+		$order_coupons = $order->get_used_coupons();
+		$temp = array();
+		foreach ($order_coupons as $coupon_id) {
+			
+		}
 		
 		$products_xml = '';
 		foreach ($order->get_items() as $item) {
@@ -197,12 +205,13 @@
 				sort($names);
 				$name = implode("_", $names);
 				$name .= "__" . (string)$rate;
+				$hash = hash('md5', $name);
 				
-				$tax = Tax::mv_find_by_name($name);
+				$tax = Tax::mv_find_by_name($hash);
 				if ($tax == null) {
 					$tax = new Tax();
-					$tax->name = $name;
-					$tax->description = "woocommerce multiple tax";
+					$tax->name = $hash;
+					$tax->description = $name;
 					$tax->rate = $rate;
 					$tax->mv_save();
 				}

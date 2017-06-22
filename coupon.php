@@ -61,6 +61,7 @@ class Coupon {
 		foreach ($results as $number => $buffer) {
 				$coupon = new Coupon;
 				
+				
 				$coupon->name = $buffer['name'];
 				$coupon->rate = $buffer['rate'];
 				$coupon->description = $buffer['description'];
@@ -69,6 +70,42 @@ class Coupon {
 		}
 		
 		return $coupons;
+	}
+	
+	public static function WC_find($id) {
+		global $wpdb;
+		$prefix = $wpdb->prefix;
+		$results = $wpdb->get_results("
+				SELECT 
+					{$prefix}posts.ID as id, 
+					{$prefix}posts.post_title as name, 
+					{$prefix}posts.post_excerpt as description,
+					meta1.meta_value as rate, 
+					meta2.meta_value as discount_type 
+				FROM 
+					{$prefix}posts, 
+					{$prefix}postmeta as meta1, 
+					{$prefix}postmeta as meta2 
+				WHERE {$prefix}posts.post_type = 'shop_coupon' 
+					AND {$prefix}posts.ID = {$id}
+					AND {$prefix}posts.post_status = 'publish' 
+					AND meta1.meta_key = 'coupon_amount' 
+					AND meta1.post_id = {$prefix}posts.ID
+					AND meta2.meta_key = 'discount_type' 
+					AND	meta2.post_id = meta1.post_id"
+				, ARRAY_A );
+		
+		if (count($results) == 0) return null;
+		$buffer = $results[0];
+		
+		$coupon = new Coupon;
+		
+		$coupon->name = $buffer['name'];
+		$coupon->rate = $buffer['rate'];
+		$coupon->description = $buffer['description'];
+		$coupon->type = $buffer['discount_type'];
+		
+		return $coupon;
 	}
 	
 	public static function WC_all_as_name_rate() {

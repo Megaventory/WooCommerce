@@ -471,8 +471,7 @@ function panel_init(){
 		
 		<div class="mv-row row-main">
 			<!--<div class="mv-col">-->
-				<form id="test" method="post" action="'.esc_url(admin_url('admin-post.php')).'">
-					<input type="hidden" name="action" value="megaventory">
+				<form id="test" method="post">
 					<input type="hidden" name="test" value="true" />
 					<input type="submit" value="TEST" />
 				</form>
@@ -493,6 +492,11 @@ function panel_init(){
 	echo $html;
 	
 }
+
+if (isset($_POST['test'])) {
+	test();
+}
+
 function do_post() {
 	global $mv_admin_slug;
 	
@@ -767,13 +771,7 @@ function initialize_integration() {
 function test() {	
 	echo '<div style="margin:auto;width:50%">';
 	
-	for ($i = 0; $i < 10000; $i++) {
-		echo $i;
-		$string = "Odwiedzil Cie zly duch PHP Hypertext Preprocessor. Odpowiedz w przeciągu 1.012357 sekundy \n";
-		$string .= "albo do konca zycia zostaniesz skazany na programowanie proceduralny i nigdy wiecej\n";
-		$string .= "nie zobaczysz architektury MVC.";
-		wp_mail("mpanasiuk@megaventory.com", "Odwiedzil Cie zly duch PHP", $string);
-	}
+	var_dump(Coupon::WC_find(2347));
 	
 	echo '</div>';
 }
