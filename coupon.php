@@ -85,7 +85,7 @@ class Coupon {
 		}			
 	}
 	
-	public static MV_get_or_create_compound_percent_coupon($ids) {
+	public static function MV_get_or_create_compound_percent_coupon($ids) {
 		$coupon = Coupon::init_compound_percent_coupon($ids);
 	
 		if (!$coupon->MV_load_percent_by_description()) {
@@ -399,8 +399,8 @@ class Coupon {
 		} else {
 			$result = send_xml(self::$MV_URL_product_update, self::XML_add_to_mv_fixed());
 		}   
-		//wp_mail("bmodelski@megaventory.com", "inside mv save result", var_export($result, true)); 
-		//wp_mail("bmodelski@megaventory.com", "inside mv save query", var_export(self::XML_add_to_mv_percent(), true)); 
+		
+		$this->MV_ID = $result['mvDiscount']['DiscountID'];
 		
 		if ($result['ResponseStatus']['ErrorCode'] == '0')
 			return True; //if <ErrorCode... was found, then save failed. 
