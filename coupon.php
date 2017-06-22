@@ -56,11 +56,10 @@ class Coupon {
 				, ARRAY_A );
 		
 		$coupons = array();
-		
-			
+
 		foreach ($results as $number => $buffer) {
 				$coupon = new Coupon;
-				
+				$coupon->WC_ID = $buffer['id'];
 				$coupon->name = $buffer['name'];
 				$coupon->rate = $buffer['rate'];
 				$coupon->description = $buffer['description'];
@@ -69,6 +68,26 @@ class Coupon {
 		}
 		
 		return $coupons;
+	}
+	
+	public function MV_load_by_description($description) {
+		
+	}
+	
+	private static function XML_load_by_description() {
+		$query = '<DiscountGet xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types">' . 
+			  '<Filters xmlns="http://schemas.datacontract.org/2004/07/MegaventoryAPI.ServiceModel">' . 
+				'<Filter>' .
+				  '<AndOr>And</AndOr>' .
+				  '<FieldName>DiscountDescription</FieldName>' .
+				  '<SearchOperator>Equals</SearchOperator>' . 
+				  '<SearchValue>' . $this->rate . '</SearchValue>' .
+				'</Filter>' .
+			  '</Filters>' . 
+			  '<APIKEY>' . get_api_key() . '</APIKEY>' . 
+			'</DiscountGet>';
+
+		return $query;
 	}
 	
 	public static function WC_all_as_name_rate() {
@@ -89,6 +108,41 @@ class Coupon {
 		}
 		
 		return $coupons;
+	}
+	
+	public static function init_compound_percent_coupon($coupons_ids) {
+		$used_coupons = array();
+		$all = self::WC_all();
+		foreach ($all as $coupon) {
+			if (in_array($coupon->WC_ID, $coupons_ids)) {
+				array_push($used_coupons, $coupon);
+			}
+		}
+		
+		$names = array();
+		$final_rate = 0;
+		foreach ($used_coupons as $coupon) {
+			array_push($names, $coupon->name);
+			$final_rate += $coupon->rate;
+		}
+		
+		if ($final_rate > 100) 
+			$final_rate = 100;
+		
+		sort($names);
+		
+		$compound_coupon = new Coupon;
+		$compound_coupon->description = "compound_coupon";
+		$compound_coupon->name = "comp-" . round(microtime(true) * 1000);
+		$compound_coupon->rate = $final_rate;
+		$compound_coupon->type = 'percent';
+		
+		foreach($names as $name) {
+			$compound_coupon->description .= '_';
+			$compound_coupon->description .= $name;
+		}
+	
+		return $compound_coupon;
 	}
 	
 	public static function MV_to_WC() {
@@ -213,18 +267,19 @@ class Coupon {
 		if ($this->type == 'percent') {
 			$xml = send_xml(self::$MV_URL_discount_get,
 				self::XML_get_obj_with_same_name_rate_pair_present());
-
-			if (empty($xml['mvDiscounts']))
+			
+			if (empty($xml['mvDiscounts'])) {				
 				return false;
-			else { 
+			} else {  			
 				$this->MV_ID = $xml['mvDiscounts']['mvDiscount']['DiscountID'];
 				$this->description = $xml['mvDiscounts']['mvDiscount']['DiscountDescription'];
 				return true;
 			}			
 		} else {
+			
 			$xml = send_xml(self::$MV_URL_product_get,
 				self::XML_get_obj_with_same_name_if_present_product());
-			
+				
 			if (empty($xml['mvProducts']))
 				return false;
 			else {
@@ -324,6 +379,8 @@ class Coupon {
 		} else {
 			$result = send_xml(self::$MV_URL_product_update, self::XML_add_to_mv_fixed());
 		}   
+		wp_mail("bmodelski@megaventory.com", "inside mv save result", var_export($result, true)); 
+		wp_mail("bmodelski@megaventory.com", "inside mv save query", var_export(self::XML_add_to_mv_percent(), true)); 
 		
 		if ($result['ResponseStatus']['ErrorCode'] == '0')
 			return True; //if <ErrorCode... was found, then save failed. 

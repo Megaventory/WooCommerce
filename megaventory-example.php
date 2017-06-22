@@ -558,11 +558,23 @@ if (isset($_POST['api_host'])) {
 }
 */
 
-function sync_coupons() {		
+function sync_coupons() {	
+	
+	$coupon = Coupon::init_compound_percent_coupon(array(880, 881, 902));
+	
+	if (!$coupon->MV_load_corresponding_obj_if_present()) {
+		$coupon->MV_save();
+	}
+	
+	//wp_mail("bmodelski@megaventory.com", "sync coupons", var_export($coupon, true));
+	
+	
+	/*
 	remove_filter('wp_insert_post_data', 'new_post', 99, 2); 
 	
 	register_error("Synchronization MV to WC.", Coupon::MV_to_WC());
 	$coupons = Coupon::WC_all();
+	
 	
 	$all = 0;
 	$added = 0;
@@ -576,8 +588,8 @@ function sync_coupons() {
 		
 	}
 	register_error("Synchronization WC to MV.", "Added " . $added . " coupons out of " . $all . " discounts found in WC. All other either were already in Megaventroy or have overlap with existing records.");
-	add_filter('wp_insert_post_data', 'new_post', 99, 2); 
-}
+	add_filter('wp_insert_post_data', 'new_post', 99, 2); */
+} 
 
 function set_api_key($key) {
 	update_option("mv_api_key", (string)$key);
@@ -600,9 +612,7 @@ function sync_on_product_save($post_id, $post, $update) {
 		if ($save_product_lock) return; //locked, don't do this
 		$product = Product::wc_find($post_id);
 		if ($product->SKU == null) return; //no details yet provided, no need to save (will only cause errors at this point)
-		wp_mail("mpanasiuk@megaventory.com", "product saving", var_export($product, true));
 		$response = $product->mv_save();
-		wp_mail("mpanasiuk@megaventory.com", "product response", var_export($response, true));
 	}
 }
 
