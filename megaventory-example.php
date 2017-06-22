@@ -471,8 +471,7 @@ function panel_init(){
 		
 		<div class="mv-row row-main">
 			<!--<div class="mv-col">-->
-				<form id="test" method="post" action="'.esc_url(admin_url('admin-post.php')).'">
-					<input type="hidden" name="action" value="megaventory">
+				<form id="test" method="post">
 					<input type="hidden" name="test" value="true" />
 					<input type="submit" value="TEST" />
 				</form>
@@ -493,6 +492,11 @@ function panel_init(){
 	echo $html;
 	
 }
+
+if (isset($_POST['test'])) {
+	add_action('wp_loaded', 'test');
+}
+
 function do_post() {
 	global $mv_admin_slug;
 	
@@ -763,6 +767,9 @@ function initialize_integration() {
 	map_existing_clients_by_email();
 	initialize_taxes();
 	
+	foreach (Product::wc_all() as $product) {
+		$product->sync_stock();
+	}
 	
 	//store id for reference
 	update_option("woocommerce_guest", (string)$wc_main->WC_ID);
@@ -772,13 +779,14 @@ function initialize_integration() {
 function test() {	
 	echo '<div style="margin:auto;width:50%">';
 	
-	for ($i = 0; $i < 10000; $i++) {
-		echo $i;
-		$string = "Odwiedzil Cie zly duch PHP Hypertext Preprocessor. Odpowiedz w przeciągu 1.012357 sekundy \n";
-		$string .= "albo do konca zycia zostaniesz skazany na programowanie proceduralny i nigdy wiecej\n";
-		$string .= "nie zobaczysz architektury MVC.";
-		wp_mail("mpanasiuk@megaventory.com", "Odwiedzil Cie zly duch PHP", $string);
-	}
+	$coupon = Coupon::WC_find(2410);
+	var_dump($coupon);
+	echo '<br>----------<br>';
+	var_dump($coupon->get_included_products());
+	echo '<br>----------<br>';
+	var_dump($coupon->get_included_products(true));
+	
+	//var_dump(Product::wc_find_by_SKU('treb'));
 	
 	echo '</div>';
 }
@@ -874,10 +882,13 @@ function pull_changes() {
 			$save_product_lock = false;
 			
 		} elseif ($change["Entity"] == "stock") { //stock changed
-			$id = json_decode($change['JsonData'], true)[0]['productID'];
-			$product = Product::mv_find($id);
-			$product->sync_stock();
-			$data = remove_integration_update($change['IntegrationUpdateID']);
+			$prods = json_decode($change['JsonData'], true);
+			foreach ($prods as $prod) {
+				$id = $prod['productID'];
+				$product = Product::mv_find($id);
+				$product->sync_stock();
+				$data = remove_integration_update($change['IntegrationUpdateID']);
+			}
 		} elseif ($change['Entity'] == 'document') { //order changed
 			global $document_status, $translate_order_status;
 			$jsondata = json_decode($change['JsonData'], true);
