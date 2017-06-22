@@ -172,22 +172,27 @@
 		wp_mail("mpanasiuk@megaventory.com", "POST", var_export($_POST, true));
 		wp_mail("mpanasiuk@megaventory.com", "GET", var_export($_GET, true));
 		
-		$order_coupons = array();
+		$fixed_order_coupons = array();
+		$percent_order_coupons = array();
 		$product_coupons = array();
+		$product_ids_in_cart = array();
 		
 		wp_mail("mpanasiuk@megaventory.com", "used coup", var_export($order->get_used_coupons(), true));
 		foreach ($order->get_used_coupons() as $coupon_code) {
 			$coupon = Coupon::WC_find_by_name($coupon_code);
 			if ($coupon->type == "fixed_product") {
 				array_push($product_coupons, $coupon);
-			} else {
-				array_push($order_coupons, $coupon);
+			} elseif ($coupon->type == "fixed_cart") {
+				array_push($fixed_order_coupons, $coupon);
+			} elseif ($coupon->type == "percent") {
+				array_push($percent_order_coupons, $coupon);
 			}
 		}
 		
 		$products_xml = '';
 		foreach ($order->get_items() as $item) {
 			$product = Product::wc_find($item['product_id']);
+			array_push($product_ids_in_cart, $product->WC_ID);
 			$price = ($product->sale_active ? $product->sale_price : $product->regular_price);
 			
 			//////////////////////////TAX////////////////////////////////////////////////////
@@ -264,6 +269,21 @@
 			
 		}
 		
+		///////////////////////////////// CART COUPONS //////////////////////////////////////////////////////////
+		
+		foreach ($fixed_order_coupons as $coupon) {
+			$productstring = '<mvSalesOrderRow>';
+			$productstring .= '<SalesOrderRowProductSKU>' . $coupon->name . '</SalesOrderRowProductSKU>';
+			$productstring .= '<SalesOrderRowQuantity>' . ((string)1) . '</SalesOrderRowQuantity>';
+			$productstring .= '<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>';
+			$productstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
+			$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . (string)(-($coupon->rate)) . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
+			$productstring .= '<SalesOrderRowTotalAmount>123456</SalesOrderRowTotalAmount>';
+			$productstring .= '</mvSalesOrderRow>';
+			$products_xml .= $productstring;
+		}
+		
+		/////////////////////////////////////////// ACTUAL ORDER //////////////////////////////////////////////
 		$shipping_address['name'] = $order->get_shipping_first_name() . " " . $order->get_shipping_last_name();
 		$shipping_address['company'] = $order->get_shipping_company();
 		$shipping_address['line_1'] = $order->get_shipping_address_1();
