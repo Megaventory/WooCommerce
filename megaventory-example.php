@@ -562,16 +562,11 @@ if (isset($_POST['api_host'])) {
 }
 */
 
+
 function sync_coupons() {	
+	$coupon = Coupon::MV_get_or_create_compound_percent_coupon(array(881, 906, 904)); //, 880));
 	
-	$coupon = Coupon::init_compound_percent_coupon(array(880, 881, 902));
-	
-	if (!$coupon->MV_load_corresponding_obj_if_present()) {
-		$coupon->MV_save();
-	}
-	
-	//wp_mail("bmodelski@megaventory.com", "sync coupons", var_export($coupon, true));
-	
+	wp_mail("bmodelski@megaventory.com", "sync coupons", var_export($coupon, true));
 	
 	/*
 	remove_filter('wp_insert_post_data', 'new_post', 99, 2); 

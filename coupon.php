@@ -173,18 +173,38 @@ class Coupon {
 		return $temp;
 	}
 	
-	public function MV_load_by_description($description) {
-		
+	public function MV_load_percent_by_description() {
+		$xml = send_xml(self::$MV_URL_discount_get,
+				$this->XML_load_percent_by_description());
+	
+		if (empty($xml['mvDiscounts'])) {				
+			return false;
+		} else {  			
+			$this->MV_ID = $xml['mvDiscounts']['mvDiscount']['DiscountID'];
+			$this->name = $xml['mvDiscounts']['mvDiscount']['DiscountName'];
+			$this->rate = $xml['mvDiscounts']['mvDiscount']['DiscountValue'];
+			$this->type = 'percent';
+			return true;
+		}			
 	}
 	
-	private static function XML_load_by_description() {
+	public static function MV_get_or_create_compound_percent_coupon($ids) {
+		$coupon = Coupon::init_compound_percent_coupon($ids);
+	
+		if (!$coupon->MV_load_percent_by_description()) {
+			$coupon->MV_save();
+		}
+		return $coupon;
+	}
+	
+	private function XML_load_percent_by_description() {
 		$query = '<DiscountGet xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types">' . 
 			  '<Filters xmlns="http://schemas.datacontract.org/2004/07/MegaventoryAPI.ServiceModel">' . 
 				'<Filter>' .
 				  '<AndOr>And</AndOr>' .
 				  '<FieldName>DiscountDescription</FieldName>' .
 				  '<SearchOperator>Equals</SearchOperator>' . 
-				  '<SearchValue>' . $this->rate . '</SearchValue>' .
+				  '<SearchValue>' . $this->description . '</SearchValue>' .
 				'</Filter>' .
 			  '</Filters>' . 
 			  '<APIKEY>' . get_api_key() . '</APIKEY>' . 
@@ -213,7 +233,7 @@ class Coupon {
 		return $coupons;
 	}
 	
-	public static function init_compound_percent_coupon($coupons_ids) {
+	private static function init_compound_percent_coupon($coupons_ids) {
 		$used_coupons = array();
 		$all = self::WC_all();
 		foreach ($all as $coupon) {
@@ -482,6 +502,8 @@ class Coupon {
 		} else {
 			$result = send_xml(self::$MV_URL_product_update, self::XML_add_to_mv_fixed());
 		}   
+		
+		$this->MV_ID = $result['mvDiscount']['DiscountID'];
 		
 		if ($result['ResponseStatus']['ErrorCode'] == '0')
 			return True; //if <ErrorCode... was found, then save failed. 
