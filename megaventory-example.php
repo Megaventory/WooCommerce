@@ -494,7 +494,7 @@ function panel_init(){
 }
 
 if (isset($_POST['test'])) {
-	test();
+	add_action('wp_loaded', 'test');
 }
 
 function do_post() {
@@ -772,6 +772,9 @@ function initialize_integration() {
 	map_existing_clients_by_email();
 	initialize_taxes();
 	
+	foreach (Product::wc_all() as $product) {
+		$product->sync_stock();
+	}
 	
 	//store id for reference
 	update_option("woocommerce_guest", (string)$wc_main->WC_ID);
@@ -781,7 +784,14 @@ function initialize_integration() {
 function test() {	
 	echo '<div style="margin:auto;width:50%">';
 	
-	var_dump(Coupon::WC_find(2347));
+	$coupon = Coupon::WC_find(2410);
+	var_dump($coupon);
+	echo '<br>----------<br>';
+	var_dump($coupon->get_included_products());
+	echo '<br>----------<br>';
+	var_dump($coupon->get_included_products(true));
+	
+	//var_dump(Product::wc_find_by_SKU('treb'));
 	
 	echo '</div>';
 }
@@ -877,10 +887,13 @@ function pull_changes() {
 			$save_product_lock = false;
 			
 		} elseif ($change["Entity"] == "stock") { //stock changed
-			$id = json_decode($change['JsonData'], true)[0]['productID'];
-			$product = Product::mv_find($id);
-			$product->sync_stock();
-			$data = remove_integration_update($change['IntegrationUpdateID']);
+			$prods = json_decode($change['JsonData'], true);
+			foreach ($prods as $prod) {
+				$id = $prod['productID'];
+				$product = Product::mv_find($id);
+				$product->sync_stock();
+				$data = remove_integration_update($change['IntegrationUpdateID']);
+			}
 		} elseif ($change['Entity'] == 'document') { //order changed
 			global $document_status, $translate_order_status;
 			$jsondata = json_decode($change['JsonData'], true);

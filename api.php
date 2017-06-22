@@ -172,16 +172,25 @@
 		wp_mail("mpanasiuk@megaventory.com", "POST", var_export($_POST, true));
 		wp_mail("mpanasiuk@megaventory.com", "GET", var_export($_GET, true));
 		
-		$order_coupons = $order->get_used_coupons();
-		$temp = array();
-		foreach ($order_coupons as $coupon_id) {
-			
+		$order_coupons = array();
+		$product_coupons = array();
+		
+		wp_mail("mpanasiuk@megaventory.com", "used coup", var_export($order->get_used_coupons(), true));
+		foreach ($order->get_used_coupons() as $coupon_code) {
+			$coupon = Coupon::WC_find_by_name($coupon_code);
+			if ($coupon->type == "fixed_product") {
+				array_push($product_coupons, $coupon);
+			} else {
+				array_push($order_coupons, $coupon);
+			}
 		}
 		
 		$products_xml = '';
 		foreach ($order->get_items() as $item) {
 			$product = Product::wc_find($item['product_id']);
 			$price = ($product->sale_active ? $product->sale_price : $product->regular_price);
+			
+			//////////////////////////TAX////////////////////////////////////////////////////
 			//interpret product tax
 			$taxes = array();
 			foreach($item->get_data()['taxes']['total'] as $id => $rate) {
@@ -216,10 +225,9 @@
 					$tax->mv_save();
 				}
 				
-				wp_mail("mpanasiuk@megaventory.com", "total tax", "rate: " . (string)$rate . " get_total: " . $order->get_total() . " get_total_tax: " . $order->get_total_tax());
-				wp_mail("mpanasiuk@megaventory.com", "total tax_name ", (string)$name);
 			}
-
+			
+			////////////////////////////XML//////////////////////////////////////////////////////////////
 			$productstring = '<mvSalesOrderRow>';
 			$productstring .= '<SalesOrderRowProductSKU>' . $product->SKU . '</SalesOrderRowProductSKU>';
 			$productstring .= '<SalesOrderRowQuantity>' . $item->get_quantity() . '</SalesOrderRowQuantity>';
@@ -232,15 +240,27 @@
 			
 			$products_xml .= $productstring;
 			
-			wp_mail("mpanasiuk@megaventory.com", "item", var_export($item, true));
+			////////////////////////////COUPON///////////////////////////////////////////////////////////
+			foreach ($product_coupons as $coupon) {
+				$apply = apply_coupon($product, $coupon);
+				if ($apply) {
+					$productstring = '<mvSalesOrderRow>';
+					$productstring .= '<SalesOrderRowProductSKU>' . $coupon->name . '</SalesOrderRowProductSKU>';
+					$productstring .= '<SalesOrderRowQuantity>' . $item->get_quantity() . '</SalesOrderRowQuantity>';
+					$productstring .= '<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>';
+					$productstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
+					$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . (string)(-($coupon->rate)) . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
+					$productstring .= '<SalesOrderRowTotalAmount>123456</SalesOrderRowTotalAmount>';
+					$productstring .= '</mvSalesOrderRow>';
+					$products_xml .= $productstring;
+				}
+			}
+			
 			
 			$string = "name: " . $product->SKU . "\n";
 			$string .= "total-tax: " . $item->get_data()['total_tax'] . "\n";
 			$string .= "taxes: " . var_export($item->get_data()['taxes'], true). "\n";
-			wp_mail("mpanasiuk@megaventory.com", "tax", $string);
-			//wp_mail("mpanasiuk@megaventory.com", "item2", $product->get_sku() . "  :  " . (string)((float)$product->get_regular_price() / (float)$item->get_data()['total_tax']));
-			
-			
+
 			
 		}
 		
@@ -299,37 +319,18 @@
 		return $data;
 	}
 	
-	//if someone dealt with php and xml and still claims that php is not an utter piece of junk
-	//he should be prevented from ever programming again
-	function xml2js($xmlnode) {
-		$root = (func_num_args() > 1 ? false : true);
-		$jsnode = array();
-
-		if (!$root) {
-			if (count($xmlnode->attributes()) > 0){
-				$jsnode["$"] = array();
-				foreach($xmlnode->attributes() as $key => $value)
-					$jsnode["$"][$key] = (string)$value;
-			}
-
-			$textcontent = trim((string)$xmlnode);
-			if (count($textcontent) > 0)
-				$jsnode["_"] = $textcontent;
-
-			foreach ($xmlnode->children() as $childxmlnode) {
-				$childname = $childxmlnode->getName();
-				if (!array_key_exists($childname, $jsnode))
-					$jsnode[$childname] = array();
-				array_push($jsnode[$childname], xml2js($childxmlnode, true));
-			}
-			return $jsnode;
-		} else {
-			$nodename = $xmlnode->getName();
-			$jsnode[$nodename] = array();
-			array_push($jsnode[$nodename], xml2js($xmlnode, true));
-			return json_encode($jsnode);
-		}
-	}  
+	function apply_coupon($product, $coupon) {
+		if ($coupon->type != "fixed_product")
+			return false;
+		
+		$incl_ids = $coupon->get_included_products(true);
+		$included_empty = count($incl_ids) <= 0;
+		$included = in_array($product->WC_ID, $incl_ids);
+		$excluded = in_array($product->WC_ID, $coupon->get_excluded_products(true));
+		
+		return (!$excluded and ($included_empty or $included));	
+	}
+	
 	
 	function get_default_currency() {
 		global $currency_get_call;

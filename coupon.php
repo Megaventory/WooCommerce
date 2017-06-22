@@ -99,12 +99,78 @@ class Coupon {
 		
 		$coupon = new Coupon;
 		
+		$coupon->WC_ID = $buffer['id'];
 		$coupon->name = $buffer['name'];
 		$coupon->rate = $buffer['rate'];
 		$coupon->description = $buffer['description'];
 		$coupon->type = $buffer['discount_type'];
 		
 		return $coupon;
+	}
+	
+	public static function WC_find_by_name($name) {
+		global $wpdb;
+		$prefix = $wpdb->prefix;
+		$results = $wpdb->get_results("
+				SELECT 
+					{$prefix}posts.ID as id, 
+					{$prefix}posts.post_title as name, 
+					{$prefix}posts.post_excerpt as description,
+					meta1.meta_value as rate, 
+					meta2.meta_value as discount_type 
+				FROM 
+					{$prefix}posts, 
+					{$prefix}postmeta as meta1, 
+					{$prefix}postmeta as meta2 
+				WHERE {$prefix}posts.post_type = 'shop_coupon' 
+					AND {$prefix}posts.post_title = '{$name}'
+					AND {$prefix}posts.post_status = 'publish' 
+					AND meta1.meta_key = 'coupon_amount' 
+					AND meta1.post_id = {$prefix}posts.ID
+					AND meta2.meta_key = 'discount_type' 
+					AND	meta2.post_id = meta1.post_id"
+				, ARRAY_A );
+		
+		if (count($results) == 0) return null;
+		$buffer = $results[0];
+		
+		$coupon = new Coupon;
+		
+		$coupon->WC_ID = $buffer['id'];
+		$coupon->name = $buffer['name'];
+		$coupon->rate = $buffer['rate'];
+		$coupon->description = $buffer['description'];
+		$coupon->type = $buffer['discount_type'];
+		
+		return $coupon;
+	}
+	
+	public function get_excluded_products($by_ids = false) {
+		$ids = get_post_meta($this->WC_ID, 'exclude_product_ids', true); //returns string of foreign keys separated by coma OH THE HORROR
+		if (!$ids) return array();
+		
+		$temp = array();
+		foreach (explode(',', $ids) as $id) {
+			$id = (int)$id;
+			$to_push = ($by_ids ? $id : Product::wc_find($id));
+			array_push($temp, $to_push);
+		}
+		
+		return $temp;
+	}	
+	
+	public function get_included_products($by_ids = false) {
+		$ids = get_post_meta($this->WC_ID, 'product_ids', true); //returns string of foreign keys separated by coma OH THE HORROR
+		if (!$ids) return array();
+		
+		$temp = array();
+		foreach (explode(',', $ids) as $id) {
+			$id = (int)$id;
+			$to_push = ($by_ids ? $id : Product::wc_find($id));
+			array_push($temp, $to_push);
+		}
+		
+		return $temp;
 	}
 	
 	public function MV_load_by_description($description) {
@@ -416,8 +482,6 @@ class Coupon {
 		} else {
 			$result = send_xml(self::$MV_URL_product_update, self::XML_add_to_mv_fixed());
 		}   
-		wp_mail("bmodelski@megaventory.com", "inside mv save result", var_export($result, true)); 
-		wp_mail("bmodelski@megaventory.com", "inside mv save query", var_export(self::XML_add_to_mv_percent(), true)); 
 		
 		if ($result['ResponseStatus']['ErrorCode'] == '0')
 			return True; //if <ErrorCode... was found, then save failed. 

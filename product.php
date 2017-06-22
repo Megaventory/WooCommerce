@@ -258,7 +258,8 @@ class Product {
 		$prod->length = get_post_meta($ID, '_length', true);
 		$prod->breadth = get_post_meta($ID, '_width', true);
 		$prod->height = get_post_meta($ID, '_height', true);
-		$prod->category = wp_get_object_terms($ID, 'product_cat')[0]->name; // primary category ????????
+		$cs = wp_get_object_terms($ID, 'product_cat');
+		if (count($cs) > 0) $prod->category = $cs[0]->name; // primary category ????????
 		$img = wp_get_attachment_image_src(get_post_thumbnail_id($ID));
 		if ($img[0]) {
 			$prod->image_url = $img[0];
@@ -267,8 +268,7 @@ class Product {
 		$prod->stock_on_hand = (int)get_post_meta($ID, '_stock', true);
 		$prod->mv_qty = get_post_meta($ID, '_mv_qty', true);
 		
-		
-		$var = new WC_Product_Variable($prod->WC_ID);
+		echo $prod->WC_ID;
 		$t = (wp_get_object_terms($prod->WC_ID, 'product_type')[0]->name);
 		if ($t == "grouped") {
 			$prod->type = "grouped";
