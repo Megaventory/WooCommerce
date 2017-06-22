@@ -558,15 +558,9 @@ if (isset($_POST['api_host'])) {
 }
 */
 
+
 function sync_coupons() {	
-	
-	$coupon = Coupon::init_compound_percent_coupon(array(880, 881, 902));
-	
-	if (!$coupon->MV_load_corresponding_obj_if_present()) {
-		$coupon->MV_save();
-	}
-	
-	//wp_mail("bmodelski@megaventory.com", "sync coupons", var_export($coupon, true));
+	Coupon::MV_get_or_create_compound_coupon(array(881, 880, 902));
 	
 	
 	/*
