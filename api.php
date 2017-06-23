@@ -21,7 +21,7 @@
 		//$client = Client::mv_find($id);
 		//return $client;
 		echo "FINDING CLIENT";
-		var_dump((int)get_option("woocommerce_guest")); 
+		var_dump((int)get_option("woocommerce_guest"));
 		$client = Client::wc_find((int)get_option("woocommerce_guest"));
 		return $client; //$use $client->MV_ID
 	}
@@ -288,6 +288,7 @@
 					$productstring .= '<SalesOrderRowShippedQuantity>0</SalesOrderRowShippedQuantity>';
 					$productstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
 					$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . (string)(-($coupon->rate)) . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
+					$productstring .= ($tax ? '<SalesOrderRowTaxID>'.(string)$tax->MV_ID.'</SalesOrderRowTaxID>' : '');
 					$productstring .= '<SalesOrderRowTotalAmount>123456</SalesOrderRowTotalAmount>';
 					$productstring .= '</mvSalesOrderRow>';
 					$products_xml .= $productstring;
@@ -379,7 +380,7 @@
 		if (!$coupon->type or $coupon->type == "fixed_cart")
 			return false;
 		
-		if (!$coupon->applies_to_sales() and $product->sale_active())
+		if (!$coupon->applies_to_sales() and $product->sale_active)
 			return false;
 		
 		$incl_ids = $coupon->get_included_products(true);

@@ -319,9 +319,9 @@ class Product {
 		//mv vestion should be | var1, var2, var3
 		$version = $var_prod->get_name();
 		$version = str_replace(" ", "", $version); //remove whitespaces
-		$version = explode("-", $version)[1]; //disregard name 
+		$version = explode("-", $version)[1]; //disregard name
 		//$version = explode(",", $version);
-		//$version = implode("/", $version); 
+		//$version = implode("/", $version);
 		$version = str_replace(",", "/", $version);
 		
 		$prod->version = $version;

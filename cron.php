@@ -17,7 +17,7 @@ function cron_deactivation(){
     if(wp_next_scheduled('pull_stock_event')){
         wp_clear_scheduled_hook('pull_stock_event');
     }
-} 
+}
 
 // every 5 mins
 function schedule($schedules) {

@@ -27,7 +27,7 @@ class MVWC_Error {
 		return $this->full_msg;
 	}
 	
-	public function save() { 
+	public function save() {
 		global $tablename, $wpdb;
 		$charset_collate = $wpdb->get_charset_collate();
 		

@@ -310,22 +310,16 @@ class Coupon {
 			$coupon->name = $discount['DiscountName'];
 			if ($discount['DiscountDescription'] == array()) 
 				$discount['DiscountDescription'] = "";
-			
 			$coupon->description = $discount['DiscountDescription'];
+			
 			$coupon->rate = $discount['DiscountValue'];
 			$coupon->MV_ID = $discount['DiscountID'];
 			$coupon->type = 'percent';
 			
-			wp_mail("bmodelski@megaventory.com", "substr", substr($coupon->description, 0, 16) );
-			wp_mail("bmodelski@megaventory.com", "substr", var_export(substr($coupon->description, 0, 16) == "compound_coupon_", true) ); 
 			
-			if (substr($coupon->description, 0, 16) == "compound_coupon_") {  
-				$all = $all - 1;
-			} else {				
-				$result = $coupon->WC_save();
-				if (($result != -1) and ($result != -2)) {
-					$added = $added + 1;	
-				}
+			$result = $coupon->WC_save();
+			if (($result != -1) and ($result != -2)) {
+				$added = $added + 1;	
 			}
 		}
 		
