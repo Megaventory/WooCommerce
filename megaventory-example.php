@@ -778,15 +778,28 @@ function initialize_integration() {
 
 function test() {	
 	echo '<div style="margin:auto;width:50%">';
-	
-	$coupon = Coupon::WC_find(2410);
-	var_dump($coupon);
-	echo '<br>----------<br>';
-	var_dump($coupon->get_included_products());
-	echo '<br>----------<br>';
-	var_dump($coupon->get_included_products(true));
-	
+	/*
+	foreach (Product::wc_all() as $prod) {
+		echo $prod->SKU . "<br>";
+		var_dump($prod->wc_get_prod_categories());
+		echo "<br>";
+		var_dump($prod->wc_get_prod_categories($by = 'id'));
+		echo "<br>";
+		var_dump($prod->wc_get_prod_categories($by = 'name'));
+		echo "<br><br>";
+	}
+	*/
 	//var_dump(Product::wc_find_by_SKU('treb'));
+	
+	foreach (Coupon::WC_all() as $coupon) {
+		echo $coupon->name . "<br>";
+		var_dump($coupon->get_excluded_products_categories());
+		echo "<br>";
+		var_dump($coupon->get_included_products_categories());
+		echo "<br>";
+		var_dump($coupon->applies_to_sales());
+		echo "<br><br>";
+	}
 	
 	echo '</div>';
 }

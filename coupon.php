@@ -173,6 +173,23 @@ class Coupon {
 		return $temp;
 	}
 	
+	public function get_included_products_categories($by_ids = false) {
+		$ids = get_post_meta($this->WC_ID, 'product_categories', true); //returns string of foreign keys separated by coma OH THE HORROR
+		
+		
+		return $ids;//$this->array_unserialize($ids);
+	}	
+	
+	public function get_excluded_products_categories($by_ids = false) {
+		$ids = get_post_meta($this->WC_ID, 'exclude_product_categories', true); //returns string of foreign keys separated by coma OH THE HORROR
+		
+		return $ids;//$this->array_unserialize($ids);
+	}
+	
+	public function applies_to_sales() {
+		return !(get_post_meta($this->WC_ID, 'exclude_sale_items', true) == 'yes');
+	}
+	
 	public function MV_load_percent_by_description() {
 		$xml = send_xml(self::$MV_URL_discount_get,
 				$this->XML_load_percent_by_description());

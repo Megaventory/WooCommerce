@@ -180,6 +180,7 @@
 		wp_mail("mpanasiuk@megaventory.com", "used coup", var_export($order->get_used_coupons(), true));
 		foreach ($order->get_used_coupons() as $coupon_code) {
 			$coupon = Coupon::WC_find_by_name($coupon_code);
+			wp_mail("mpanasiuk@megaventory.com", "by name coup", var_export($coupon, true));
 			if ($coupon->type == "fixed_product") {
 				array_push($product_coupons, $coupon);
 			} elseif ($coupon->type == "fixed_cart") {
@@ -232,6 +233,32 @@
 				
 			}
 			
+			//PERCENTAGE COUPONS/////////////////////////////////////////////////////////////
+			$eligible_percentage_coupons = array();
+			foreach ($percent_order_coupons as $coupon) {
+				if (apply_coupon($product, $coupon))
+					array_push($eligible_percentage_coupons, $coupon);
+			}
+			
+			wp_mail("mpanasiuk@megaventory.com", "PERVENTAGE DISCS", var_export($percent_order_coupons, true));
+			wp_mail("mpanasiuk@megaventory.com", "ELIGIBLE DISCS", var_export($eligible_percentage_coupons, true));
+			
+			$discount = null;
+			if (count($eligible_percentage_coupons) == 1) {
+				$discount = $eligible_percentage_coupons[0];
+				$discount->MV_load_corresponding_obj_if_present();
+			} elseif (count($eligible_percentage_coupons) > 1) {
+				//create compound;
+				wp_mail("mpanasiuk@megaventory.com", "PERVENTAGE DISCS", var_export($eligible_percentage_coupons, true));
+				$ids = array();
+				foreach ($eligible_percentage_coupons as $coupon) {
+					array_push($ids, $coupon->WC_ID);
+				}
+				$discount = Coupon::MV_get_or_create_compound_percent_coupon($ids);
+			} 
+			
+			wp_mail("mpanasiuk@megaventory.com", "COMPOUND CUPON", var_export($discount, true));
+			
 			////////////////////////////XML//////////////////////////////////////////////////////////////
 			$productstring = '<mvSalesOrderRow>';
 			$productstring .= '<SalesOrderRowProductSKU>' . $product->SKU . '</SalesOrderRowProductSKU>';
@@ -240,6 +267,7 @@
 			$productstring .= '<SalesOrderRowInvoicedQuantity>0</SalesOrderRowInvoicedQuantity>';
 			$productstring .= '<SalesOrderRowUnitPriceWithoutTaxOrDiscount>' . $price . '</SalesOrderRowUnitPriceWithoutTaxOrDiscount>';
 			$productstring .= ($tax ? '<SalesOrderRowTaxID>'.(string)$tax->MV_ID.'</SalesOrderRowTaxID>' : '');
+			$productstring .= ($discount ? '<SalesOrderRowDiscountID>'.(string)$discount->MV_ID.'</SalesOrderRowDiscountID>' : '');
 			$productstring .= '<SalesOrderRowTotalAmount>123456</SalesOrderRowTotalAmount>';
 			$productstring .= '</mvSalesOrderRow>';
 			
@@ -262,6 +290,8 @@
 			}
 			
 			
+			
+			
 			$string = "name: " . $product->SKU . "\n";
 			$string .= "total-tax: " . $item->get_data()['total_tax'] . "\n";
 			$string .= "taxes: " . var_export($item->get_data()['taxes'], true). "\n";
@@ -282,6 +312,7 @@
 			$productstring .= '</mvSalesOrderRow>';
 			$products_xml .= $productstring;
 		}
+		
 		
 		/////////////////////////////////////////// ACTUAL ORDER //////////////////////////////////////////////
 		$shipping_address['name'] = $order->get_shipping_first_name() . " " . $order->get_shipping_last_name();
@@ -340,7 +371,10 @@
 	}
 	
 	function apply_coupon($product, $coupon) {
-		if ($coupon->type != "fixed_product")
+		if (!$coupon->type or $coupon->type == "fixed_cart")
+			return false;
+		
+		if (!$coupon->applies_to_sales() and $product->sale_active())
 			return false;
 		
 		$incl_ids = $coupon->get_included_products(true);
@@ -348,7 +382,17 @@
 		$included = in_array($product->WC_ID, $incl_ids);
 		$excluded = in_array($product->WC_ID, $coupon->get_excluded_products(true));
 		
-		return (!$excluded and ($included_empty or $included));	
+		//$apply = (!$excluded and ($included_empty or $included));	
+		
+		$categories = $product->wc_get_prod_categories($by='id');
+		$incl_ids_cat = $coupon->get_included_products_categories(true);
+		$included_empty_cat = count($incl_ids_cat) <= 0;
+		$included_cat = in_array($product->WC_ID, $incl_ids_cat);
+		$excluded_cat = in_array($product->WC_ID, $coupon->get_excluded_products_categories(true));
+		
+		//$apply_cat = (!$excluded_cat and ($included_empty_cat or $included_cat));	
+		
+		return (($included_empty or $included) or (($included_empty_cat and $included_empty) or $included_cat)) and (!$excluded and !$excluded_cat);
 	}
 	
 	

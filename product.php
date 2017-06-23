@@ -329,6 +329,26 @@ class Product {
 		return $prod;
 	}
 	
+	public function wc_get_prod_categories($by = null) {
+		$cats = wp_get_object_terms($this->WC_ID, 'product_cat');
+		
+		if ($by == null) {
+			return $cats;
+		} elseif (strtolower($by) == "id") {
+			$temp = array();
+			foreach ($cats as $cat) {
+				array_push($temp, $cat->term_id);
+			}
+			return $temp;
+		} elseif (strtolower($by) == "name") {
+			$temp = array();
+			foreach ($cats as $cat) {
+			 array_push($temp, $cat->name);
+			}
+			return $temp;
+		 }
+	}
+	
 	//only simple now
 	public function wc_save($wc_products = null, $create_upon_save = true) {
 		wp_mail("mpanasiuk@megaventory.com", "SAVING", "");
