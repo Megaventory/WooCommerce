@@ -21,7 +21,7 @@
 		//$client = Client::mv_find($id);
 		//return $client;
 		echo "FINDING CLIENT";
-		var_dump((int)get_option("woocommerce_guest"));
+		var_dump((int)get_option("woocommerce_guest")); 
 		$client = Client::wc_find((int)get_option("woocommerce_guest"));
 		return $client; //$use $client->MV_ID
 	}
