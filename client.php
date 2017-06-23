@@ -161,7 +161,7 @@ class Client {
 	}
 	
 	public function mv_save() {
-		$url = create_xml_url(self::$supplierclient_update_call);
+		$url = create_xml_url(self::$supplierclient_update_call); 
 		$xml_request = $this->generate_update_xml();
 		echo "<br>SENDING: <br>";
 		echo htmlentities($xml_request);
