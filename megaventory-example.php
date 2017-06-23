@@ -166,6 +166,8 @@ function on_tax_update($tax_rate_id, $tax_rate) {
 		$saved = $tax->mv_save();
 		if (!$saved) {
 			$tax->wc_delete(); //not saved
+		} else {
+			$tax->wc_save(); //save with new mv_id
 		}
 	}
 	

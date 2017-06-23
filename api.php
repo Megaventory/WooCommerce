@@ -194,44 +194,6 @@
 		foreach ($order->get_items() as $item) {
 			$product = Product::wc_find($item['product_id']);
 			array_push($product_ids_in_cart, $product->WC_ID);
-			$price = ($product->sale_active ? $product->sale_price : $product->regular_price);
-			
-			//////////////////////////TAX////////////////////////////////////////////////////
-			//interpret product tax
-			$taxes = array();
-			foreach($item->get_data()['taxes']['total'] as $id => $rate) {
-				array_push($taxes, Tax::wc_find($id));
-			}
-			
-			$tax = null;
-			if (count($taxes) == 1) {
-				$tax = $taxes[0];
-			} else if (count($taxes) > 1) {
-				//calculate total tax rate
-				$total_no_tax = $price; //$order->get_total() - $order->get_total_tax(); //difference tax and no tax
-				$rate = ((float)$item->get_data()['total_tax'] / (float)$item->get_quantity()) / (float)$total_no_tax;
-				$rate *= 100.0; //to percent
-				$rate = round($rate, 2);
-				
-				$names = array();
-				for ($i = 0; $i < count($taxes); $i++) {
-					array_push($names, $taxes[$i]->name);
-				}
-				sort($names);
-				$name = implode("_", $names);
-				$name .= "__" . (string)$rate;
-				$hash = hash('md5', $name);
-				
-				$tax = Tax::mv_find_by_name($hash);
-				if ($tax == null) {
-					$tax = new Tax();
-					$tax->name = $hash;
-					$tax->description = $name;
-					$tax->rate = $rate;
-					$tax->mv_save();
-				}
-				
-			}
 			
 			//PERCENTAGE COUPONS/////////////////////////////////////////////////////////////
 			$eligible_percentage_coupons = array();
@@ -256,6 +218,49 @@
 				}
 				$discount = Coupon::MV_get_or_create_compound_percent_coupon($ids);
 			} 
+			
+			$price = ($product->sale_active ? $product->sale_price : $product->regular_price);
+			//////////////////////////TAX////////////////////////////////////////////////////
+			//interpret product tax
+			$taxes = array();
+			foreach($item->get_data()['taxes']['total'] as $id => $rate) {
+				array_push($taxes, Tax::wc_find($id));
+			}
+			
+			$tax = null;
+			if (count($taxes) == 1) {
+				$tax = $taxes[0];
+			} else if (count($taxes) > 1) {
+				//calculate total tax rate
+				//$total_no_tax = $item->get_data()['total'] - $item->get_data()['total_tax'];//$price; //$order->get_total() - $order->get_total_tax(); //difference tax and no tax
+				$total_no_tax = $price;
+				if ($discount) $total_no_tax *= (1.0-($discount->rate/100));
+				
+				$total_tax = ((float)$item->get_data()['total_tax'] / (float)$item->get_quantity());
+				wp_mail("mpanasiuk@megaventory.com", "h e n l o", "totaltax: " . $total_tax . "total_no_tax: " . $total_no_tax);
+				$rate = $total_tax / (float)$total_no_tax;
+				$rate *= 100.0; //to percent
+				$rate = round($rate, 2);
+				
+				$names = array();
+				for ($i = 0; $i < count($taxes); $i++) {
+					array_push($names, $taxes[$i]->name);
+				}
+				sort($names);
+				$name = implode("_", $names);
+				$name .= "__" . (string)$rate;
+				$hash = hash('md5', $name);
+				
+				$tax = Tax::mv_find_by_name($hash);
+				if ($tax == null) {
+					$tax = new Tax();
+					$tax->name = $hash;
+					$tax->description = $name;
+					$tax->rate = $rate;
+					$tax->mv_save();
+				}
+				
+			}
 			
 			wp_mail("mpanasiuk@megaventory.com", "COMPOUND CUPON", var_export($discount, true));
 			
