@@ -84,6 +84,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 		//on add / edit product
 		add_action('save_post', 'sync_on_product_save', 10, 3);
 		add_action('profile_update', 'sync_on_profile_update', 10, 2);
+		add_action('user_register', 'sync_on_profile_create', 10, 1);
 		
 		//tax
 		// add the action 
@@ -622,6 +623,13 @@ function sync_on_profile_update($user_id, $old_user_data) {
 	$user->mv_save();
 }
 
+function sync_on_profile_create($user_id) {
+	//sync_on_profile_update($user_id, null);
+	wp_mail("mpanasiuk@megaventory.com", "R E G I S T E R", "R E G I S T E R");
+	$user = Client::wc_find($user_id);
+	$user->mv_save();
+}
+
 
 //synchronize from mv to wc. This is deprecated and should be deleted on release
 function synchronize_products_mv_wc() {
@@ -812,7 +820,10 @@ function order_placed($order_id){
 	
 	$id = $order->get_customer_id();
 	$client = Client::wc_find($id);
-	if ($client == null) { //get guest
+	if ($client && $client->MV_ID == null) {
+		$client->mv_save(); //make sure id exists
+	}
+	if ($client == null || $client->MV_ID == null) { //get guest
 		$client = get_guest_mv_client();
 	}
 	
