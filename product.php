@@ -268,7 +268,6 @@ class Product {
 		$prod->stock_on_hand = (int)get_post_meta($ID, '_stock', true);
 		$prod->mv_qty = get_post_meta($ID, '_mv_qty', true);
 		
-		echo $prod->WC_ID;
 		$t = (wp_get_object_terms($prod->WC_ID, 'product_type')[0]->name);
 		if ($t == "grouped") {
 			$prod->type = "grouped";
@@ -351,7 +350,6 @@ class Product {
 	
 	//only simple now
 	public function wc_save($wc_products = null, $create_upon_save = true) {
-		wp_mail("mpanasiuk@megaventory.com", "SAVING", "");
 		if ($wc_products == null) {
 			$wc_products = ($this->version == null) ? self::wc_all() : self::wc_all_with_variable();
 		}
@@ -427,7 +425,6 @@ class Product {
 		if ($this->category != null and count(wp_get_object_terms($this->WC_ID, 'product_cat')) <= 0) {
 			$category_id = $this->wc_get_category_id_by_name($this->category, true);
 			if ($category_id) {
-				echo "setting category";
 				wp_set_object_terms($this->WC_ID, $category_id, 'product_cat');
 			}
 		}
@@ -452,14 +449,9 @@ class Product {
 			update_post_meta($this->WC_ID, '_variation_description', $this->description);
 		}
 		
-		
-		//echo "<br>" . $product->stock_on_hand;
-		
 		$this->attach_image();
 		
 		update_post_meta($this->WC_ID, "MV_ID", $this->MV_ID);
-		
-		wp_mail("mpanasiuk@megaventory.com", "AMEN", "");
 		
 		return true;
 	}
@@ -487,13 +479,9 @@ class Product {
 			$categories = self::mv_get_categories();
 		}
 		
-		echo "UPDATING CATEGORY: " . $this->category . "<br>";
 		if ($this->category != null) {
 			$category_id = array_search($this->category, $categories);
-			var_dump($category_id);
-			echo " cat_ID<br>";
 			if (!$category_id) { //need to create new category
-				echo "lest create cat: " . $this->category . "<br>;";
 				$category_id = self::mv_create_category($this->category);
 			}
 		}
@@ -512,12 +500,6 @@ class Product {
 		
 		$data = send_xml($url, $xml_request);
 		
-		var_dump($this);
-		echo "<br>- - - - - - - - - - - - - - -      - - - - - - - -<br>";
-		var_dump(htmlentities($xml_request));
-		echo "<br>- - - - - - - - - - - - - - -      - - - - - - - -<br>";
-		var_dump($data);
-		
 		if ($data['InternalErrorCode'] == "ProductSKUAlreadyDeleted") {
 			$this->MV_ID = $data['entityID'];
 			$undelete_url = create_json_url(self::$product_undelete_call);
@@ -529,13 +511,9 @@ class Product {
 			$data = send_xml($url, $xml_request);
 		}
 		
-		wp_mail('mpanasiuk@megaventory.com', "producct save", var_export($xml_request, true));
-		wp_mail('mpanasiuk@megaventory.com', "producct savehhh", var_export($data, true));
 		
 		if (count($data['mvProduct']) <= 0) { //not saved
 			$this->log_error('Product not saved to MV', $data['InternalErrorCode'], -1);
-			wp_mail("mpanasiuk@megaventory.com", "AAAAAAAAAAAA", "AAAAggfjfuAAAAAAAAH");
-			//$this->log_error('Product not saved to MV', 'Grouped products cannot be saved to MV', -1, 'warning');
 			return false;
 		}
 		
@@ -546,8 +524,6 @@ class Product {
 		if (count($this->variations) > 0) {
 			foreach ($this->variations as $id) {
 				$prod = self::wc_variable_convert($id, $this);
-				echo "<br>//////////////////////////////////////////////////////<br>";
-				var_dump($prod->mv_save());
 			}
 		}
 		
@@ -594,7 +570,7 @@ class Product {
 				}
 			}
 		}
-		wp_mail("mpanasiuk@megaventory.com", "TEMAT", var_export($this, true));
+		
 		wp_delete_post($this->WC_ID);
 	}
 	
@@ -675,7 +651,6 @@ class Product {
 	}
 	
 	private function wc_get_category_id_by_name($name, $with_create = false) {
-		echo "getting  ID BY NAME";
 		$product_categories = self::wc_get_categories();
 		$category_id = array();
 		foreach($product_categories as $item) {
@@ -712,14 +687,12 @@ class Product {
 	}
 
 	public static function mv_create_category($name) {
-		echo "finally creating: " . $name . "<br>";
 		$create_url = create_json_url(self::$category_update_call);
 		$url = $create_url . "&mvProductCategory={ProductCategoryName:" . urlencode($name) . "}";
 		$response = json_decode(file_get_contents($url), true);
 		
 		if ($response['InternalErrorCode'] == "CategoryWasDeleted") { //needs to be undeleted
 			$id = $response['entityID'];
-			echo "UNDELETING" . $id . "<br>";
 			$undelete_url = create_json_url(self::$category_undelete_call);
 			$url = $undelete_url . "&ProductCategoryIDToUndelete=" . urlencode($id);
 			$response = json_decode(file_get_contents($url), true);
@@ -728,11 +701,6 @@ class Product {
 				$response['mvProductCategory']['ProductCategoryID'] = $id;
 			}
 		}
-		
-		echo "response: ";
-		var_dump($response);
-		
-		echo "returning: " . $response['mvProductCategory']['ProductCategoryID'] . "<br>";
 		
 		return (array_key_exists('mvProductCategory', $response)) ? $response['mvProductCategory']['ProductCategoryID'] : null;
 	}

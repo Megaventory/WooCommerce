@@ -163,8 +163,6 @@ class Client {
 	public function mv_save() {
 		$url = create_xml_url(self::$supplierclient_update_call);
 		$xml_request = $this->generate_update_xml();
-		echo "<br>SENDING: <br>";
-		echo htmlentities($xml_request);
 		
 		$data = send_xml($url, $xml_request);
 		
@@ -182,22 +180,16 @@ class Client {
 		
 		if ($data['InternalErrorCode'] == "SupplierClientNameAlreadyExists") {
 			$mv_client = self::mv_find($data['entityID']);
-			echo "MVCLIENT: "; var_dump($mv_client);
 			//$client->MV_ID = $mv_client->MV_ID;
-			echo "<br> COMPARING " . $this->email . " : " . $mv_client->email;
 			if ($this->email == $mv_client->email) { //same person
 				$this->MV_ID = $mv_client->MV_ID;
 				$this->contact_name = $mv_client->contact_name;
 				
 				$xml_request = $this->generate_update_xml();
-				echo "<br>SENDING: <br>";
-				echo htmlentities($xml_request);
 				$data = send_xml($url, $xml_request);
 			} else { //different person
 				$this->contact_name = $this->contact_name . " - " . $this->email;
 				$xml_request = $this->generate_update_xml();
-				echo "<br>SENDING: <br>";
-				echo htmlentities($xml_request);
 				$data = send_xml($url, $xml_request);
 				
 				if ($undeleted) {
@@ -217,8 +209,6 @@ class Client {
 			return false;
 		}
 		
-		echo "<br> RESPONSE: <br>";
-		var_dump($data);
 		return $data;
 	}
 	

@@ -132,9 +132,6 @@ function check_status() {
 
 // define the woocommerce_tax_rate_updated callback 
 function on_tax_update($tax_rate_id, $tax_rate) { 
-	//wp_mail("mpanasiuk@megaventory.com", "old_tax", var_export($tax_rate, true));
-	//wp_mail("mpanasiuk@megaventory.com", "new_tax", var_export(Tax::wc_find($tax_rate_id), true));
-	
 	$tax = Tax::wc_find($tax_rate_id);
 	if (!$tax) return;
 	
@@ -143,12 +140,11 @@ function on_tax_update($tax_rate_id, $tax_rate) {
 	$can_save = true;
 	foreach ($wc_taxes as $wc_tax) {
 		if ($wc_tax->WC_ID == $tax->WC_ID) continue;
-		wp_mail("mpanasiuk@megaventory.com", "sesja", var_export($_SESSION, true));
 		
 		if ($wc_tax->name == $tax->name and (float)$wc_tax->rate == (float)$tax->rate and $wc_tax->WC_ID != $tax->WC_ID) { //if name is taken by different tax
 			$tax->wc_delete();
 			array_push($_SESSION["errs"], array("Cannot add a new tax with same name and rate", "Please try again with different details"));
-			wp_mail("mpanasiuk@megaventory.com", "sesja2", var_export($_SESSION, true));
+			
 			return;
 		}
 	}
@@ -245,88 +241,6 @@ function plugin_setup_menu(){
 
 // admin panel
 function panel_init(){
-	/*
-	echo '<form id="sync-wc-mv" method="post">';
-	echo '<input type="checkbox" name="with_delete" /> with delete';
-	echo '<input type="hidden" name="sync-wc-mv" value="true" />';
-	echo '<input type="submit" value="Synchronize Products From WC to MV" />';
-	echo '</form>';
-
-	echo '<br><br>';
-
-	echo '<form id="sync-clients" method="post">';
-	//echo '<input type="checkbox" name="with_delete" /> with delete';
-	echo '<input type="hidden" name="sync-clients" value="true" />';
-	echo '<input type="submit" value="Synchronize Clients" />';
-	echo '</form>';
-
-	echo '<br><br>';
-
-	echo '<form id="initialize" method="post">';
-	echo '<input type="hidden" name="initialize" value="true" />';
-	echo '<input type="submit" value="Initialize" />';
-	echo '</form>';
-
-	echo '<br><br>';
-	
-	echo '<form id="api_key_form" method="post">';
-	echo '<label for="api_key">Megaventory API key: </label>';
-	echo '<input type="text" name="api_key" value="' . get_api_key() . '"/>';
-	echo '<input type="submit" value="set key"/>';
-	echo '</form>';
-	
-	echo '<br><br>';
-
-	echo '<form id="test" method="post">';
-	echo '<input type="hidden" name="test" value="true" />';
-	echo '<input type="submit" value="TEST" />';
-	echo '</form>';
-	
-	
-	
-	/////// ERROR TABLE ///////
-	global $wpdb;
-	$table_name = $wpdb->prefix . "mvwc_errors"; 
-	$errors = $wpdb->get_results("SELECT * FROM $table_name;");
-	
-	//var_dump($errors);
-	
-	usort($errors, "error_cmp");
-	$errors = array_reverse($errors);
-	
-	$table = '
-		<table>
-			<tr>
-				<th>ID</th>
-				<th>Entity MV_ID</th>
-				<th>Entity WC_ID</th>
-				<th>Created at</th>
-				<th>Error type</th>
-				<th>Entity name</th>
-				<th>Problem</th>
-				<th>Full message</th>
-				<th>Error code</th>
-			</tr>';
-			foreach ($errors as $error) {
-				$str = '<tr>';
-				
-				$str .= '<td>' . $error->id . '</td>';
-				$str .= '<td>' . $error->mv_id . '</td>';
-				$str .= '<td>' . $error->wc_id . '</td>';
-				$str .= '<td>' . $error->created_at . '</td>';
-				$str .= '<td>' . $error->type . '</td>';
-				$str .= '<td>' . $error->name . '</td>';
-				$str .= '<td>' . $error->problem . '</td>';
-				$str .= '<td>' . $error->message . '</td>';
-				$str .= '<td>' . $error->code . '</td>';
-				
-				$str .= '</tr>';
-				$table .= $str;
-			}
-	$table .= '</table>';
-	echo $table;
-	*/
-	
 	
 	/////// ERROR TABLE ///////
 	global $wpdb;
@@ -484,14 +398,6 @@ function panel_init(){
 		</div>
 	';
 	
-	echo '
-		<form action="'.esc_url(admin_url('admin-post.php')).'" method="post">
-			<input type="hidden" name="action" value="megaventory">
-			<input type="submit" />
-		</form>
-	
-	';
-	
 	echo $html;
 	
 }
@@ -569,8 +475,6 @@ if (isset($_POST['api_host'])) {
 function sync_coupons() {	
 	$coupon = Coupon::MV_get_or_create_compound_percent_coupon(array(881, 906, 904)); //, 880));
 	
-	wp_mail("bmodelski@megaventory.com", "sync coupons", var_export($coupon, true));
-	
 	/*
 	remove_filter('wp_insert_post_data', 'new_post', 99, 2); 
 	
@@ -624,8 +528,6 @@ function sync_on_profile_update($user_id, $old_user_data) {
 }
 
 function sync_on_profile_create($user_id) {
-	//sync_on_profile_update($user_id, null);
-	wp_mail("mpanasiuk@megaventory.com", "R E G I S T E R", "R E G I S T E R");
 	$user = Client::wc_find($user_id);
 	$user->mv_save();
 }
@@ -719,7 +621,6 @@ function map_existing_clients_by_email() {
 	foreach ($clients as $wc_client) {
 		$mv_client = Client::mv_find_by_email($wc_client->email);
 		if ($mv_client) {
-			echo $mv_client->email;
 			update_user_meta($mv_client->MV_ID, 'MV_ID', $mv_client->MV_ID);
 		}
 	}
@@ -743,20 +644,12 @@ function initialize_taxes() {
 			//update in wc from mv
 			$mv_tax->WC_ID = $wc_tax->WC_ID;
 			$mv_tax->wc_save();
-			
-			echo "saving: ";
-			var_dump($mv_tax);
-			echo "<br>----------------<br>";
 		} else {
 			//save to mv from wc
 			$wc_tax->MV_ID = null;
 			$wc_tax->mv_save();
 		}
 	}
-	
-	var_dump($wc_taxes);
-	echo "<br>----------<br>";
-	var_dump($mv_names);
 }
 
 function initialize_integration() {
@@ -961,8 +854,6 @@ add_filter('wp_insert_post_data', 'new_post', 99, 2);
 function new_discount($data, $postarr) {
 	//create and add coupon to megaventory
 	
-	//wp_mail("bmodelski@megaventory.com", "new_discount", var_export($data, true));
-	
 	$coupon = new Coupon;
 	$coupon->name = $postarr['post_title'];
 	$coupon->rate = $postarr['coupon_amount'];
@@ -1045,7 +936,6 @@ function create_plugin_database_table() {
 register_activation_hook(__FILE__, 'create_plugin_database_table');
  
 function reset_mv_data() {
-	wp_mail("mpanasiuk@megaventory.com", "mv_data", "bbbbbbb");
 	$products = Product::wc_all_with_variable();
 	$clients = Client::wc_all();
 	
@@ -1069,8 +959,6 @@ function reset_mv_data() {
 	
 	$sql = "DROP TABLE $table_name";
 	$wpdb->query($sql);
-	
-	wp_mail("mpanasiuk@megaventory.com", "db_table", "aaaaaa");
 }
  
 register_uninstall_hook(__FILE__, 'reset_mv_data');

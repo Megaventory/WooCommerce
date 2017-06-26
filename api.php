@@ -20,8 +20,6 @@
 		//$id = $post['post_content'];
 		//$client = Client::mv_find($id);
 		//return $client;
-		echo "FINDING CLIENT";
-		var_dump((int)get_option("woocommerce_guest"));
 		$client = Client::wc_find((int)get_option("woocommerce_guest"));
 		return $client; //$use $client->MV_ID
 	}
@@ -119,7 +117,6 @@
 		
 		curl_close($ch);
 		
-		echo "<br> normal data: " . htmlentities($data);
 		$data = str_replace("d2p1:", "", $data); // required bc ASP.NET creates those d2p1 tags gods knows why
 		
 		$data = simplexml_load_string(html_entity_decode($data));//, "SimpleXMLElement", LIBXML_NOCDATA);
@@ -148,8 +145,6 @@
 		$url = create_json_url($integration_delete_call) . "&IntegrationUpdateIDToDelete=" . urlencode($id);
 		$data = json_decode(file_get_contents($url), true);
 		
-		echo "<br>RESPONSE: ";
-		var_dump($data);
 	}
 	
 	function pull_product_changes() {
@@ -167,20 +162,13 @@
 		$url = create_xml_url($salesorder_update_call);
 		
 		
-		wp_mail("mpanasiuk@megaventory.com", "orderplaced tax", var_export($order->data['total_tax'], true));
-		wp_mail("mpanasiuk@megaventory.com", "REQUEST", var_export($_REQUEST, true));
-		wp_mail("mpanasiuk@megaventory.com", "POST", var_export($_POST, true));
-		wp_mail("mpanasiuk@megaventory.com", "GET", var_export($_GET, true));
-		
 		$fixed_order_coupons = array();
 		$percent_order_coupons = array();
 		$product_coupons = array();
 		$product_ids_in_cart = array();
 		
-		wp_mail("mpanasiuk@megaventory.com", "used coup", var_export($order->get_used_coupons(), true));
 		foreach ($order->get_used_coupons() as $coupon_code) {
 			$coupon = Coupon::WC_find_by_name($coupon_code);
-			wp_mail("mpanasiuk@megaventory.com", "by name coup", var_export($coupon, true));
 			if ($coupon->type == "fixed_product") {
 				array_push($product_coupons, $coupon);
 			} elseif ($coupon->type == "fixed_cart") {
@@ -202,16 +190,12 @@
 					array_push($eligible_percentage_coupons, $coupon);
 			}
 			
-			wp_mail("mpanasiuk@megaventory.com", "PERVENTAGE DISCS", var_export($percent_order_coupons, true));
-			wp_mail("mpanasiuk@megaventory.com", "ELIGIBLE DISCS", var_export($eligible_percentage_coupons, true));
-			
 			$discount = null;
 			if (count($eligible_percentage_coupons) == 1) {
 				$discount = $eligible_percentage_coupons[0];
 				$discount->MV_load_corresponding_obj_if_present();
 			} elseif (count($eligible_percentage_coupons) > 1) {
 				//create compound;
-				wp_mail("mpanasiuk@megaventory.com", "PERVENTAGE DISCS", var_export($eligible_percentage_coupons, true));
 				$ids = array();
 				foreach ($eligible_percentage_coupons as $coupon) {
 					array_push($ids, $coupon->WC_ID);
@@ -237,7 +221,6 @@
 				if ($discount) $total_no_tax *= (1.0-($discount->rate/100));
 				
 				$total_tax = ((float)$item->get_data()['total_tax'] / (float)$item->get_quantity());
-				wp_mail("mpanasiuk@megaventory.com", "h e n l o", "totaltax: " . $total_tax . "total_no_tax: " . $total_no_tax);
 				$rate = $total_tax / (float)$total_no_tax;
 				$rate *= 100.0; //to percent
 				$rate = round($rate, 2);
@@ -262,7 +245,6 @@
 				
 			}
 			
-			wp_mail("mpanasiuk@megaventory.com", "COMPOUND CUPON", var_export($discount, true));
 			
 			////////////////////////////XML//////////////////////////////////////////////////////////////
 			$productstring = '<mvSalesOrderRow>';
@@ -294,14 +276,6 @@
 					$products_xml .= $productstring;
 				}
 			}
-			
-			
-			
-			
-			$string = "name: " . $product->SKU . "\n";
-			$string .= "total-tax: " . $item->get_data()['total_tax'] . "\n";
-			$string .= "taxes: " . var_export($item->get_data()['taxes'], true). "\n";
-
 			
 		}
 		
@@ -362,16 +336,7 @@
 			</SalesOrderUpdate>
 			';
 		
-		echo "<br>";
-		var_dump(htmlentities($xml_request));
-		
 		$data = send_xml($url, $xml_request);
-		
-		echo "<br> interpreted data<br>";
-		var_dump($data);
-		echo "<br><br>";
-		echo "aaaaaa:<br>";
-		var_dump($data->ResponseStatus);
 		
 		return $data;
 	}

@@ -123,7 +123,6 @@ class Tax {
 	
 	public static function mv_find_by_name_and_rate($name, $rate) {
 		$jsonurl = create_json_url_filters(self::$tax_get_call, array(array("TaxName", "Equals", urlencode($name)), array("TaxValue", "Equals", urlencode($rate))));
-		wp_mail("mpanasiuk@megaventory.com", "URL", $jsonurl);
 		$jsontax = file_get_contents($jsonurl);
 		$jsontax = json_decode($jsontax, true);
 		
@@ -173,10 +172,6 @@ class Tax {
 			
 		$data = send_xml($url, $xml);
 		
-		echo "<br>-------------XML SENT for " . $this->name . "------<br>";
-		var_dump($xml);
-		echo "<br>-------------------------------------<br>";
-		
 		if (count($data['mvTax']) <= 0) {
 			//log err
 			$this->log_error("Tax not saved to MV", $data['ResponseStatus']['Message'], $data['ResponseStatus']['ErrorCode']);
@@ -197,9 +192,6 @@ class Tax {
 	}
 	
 	public function wc_save() {
-		wp_mail("mpanasiuk@megaventory.com", "step 800", $wpdb->last_query . " " . var_export($wpdb->last_result, true));
-		wp_mail("mpanasiuk@megaventory.com", "step 2", "Heregoes");
-		
 		foreach (self::wc_all() as $wc_tax) {
 			if ($wc_tax->equals($this)) {
 				$this->WC_ID = $wc_tax->WC_ID;
@@ -229,9 +221,6 @@ class Tax {
 			$wpdb->query($sql);
 		}
 		
-		echo $wpdb->last_query;
-		echo $wpdb->last_result;
-		wp_mail("mpanasiuk@megaventory.com", "step 3", $wpdb->last_query . " " . var_export($wpdb->last_result, true));
 	}
 	
 	public function wc_delete() {
