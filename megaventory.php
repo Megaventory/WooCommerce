@@ -1,7 +1,18 @@
 <?php
-/*
-Plugin Name: Megaventory Example
-*/
+
+/**
+ * Plugin Name: Megaventory
+ * Plugin URI: http://placeholderurl.com
+ * Description: Plugin that enables integration between WooCommerce and Wordpress
+ * Version: 1.0.0
+ * Author: Megaventory
+ * Author URI: https://megaventory.com/
+ * Developer: Mikolaj Panasiuk, Bartosz Modelski
+ *
+ * Copyright: © 2009-2015 WooCommerce.
+ * License: GNU General Public License v3.0
+ * License URI: http://www.gnu.org/licenses/gpl-3.0.html
+ */
 
 ////////////////////////////////////////////////////
 // initialize plugin, etc. these must be here
