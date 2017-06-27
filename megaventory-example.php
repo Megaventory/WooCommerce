@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 require_once(ABSPATH . "wp-includes/pluggable.php");
-define( 'WP_DEBUG', true );
+define('WP_DEBUG', true);
 ////////////////////////////////////////////////////
 
 require_once("cron.php");
@@ -234,23 +234,17 @@ function column($column, $postid) {
 function plugin_setup_menu(){
 	//plugin tab
 	global $mv_admin_slug;
-	add_menu_page('Megaventory plugin', 'Megaventory', 'manage_options', $mv_admin_slug, 'panel_init', plugin_dir_url( __FILE__ ).'mv3.png');
+	add_menu_page('Megaventory plugin', 'Megaventory', 'manage_options', $mv_admin_slug, 'panel_init', plugin_dir_url( __FILE__ ).'mv.png');
 }
 
 //////////////////////////////// ADMIN PANEL ///////////////////////////////////////////////////////////////
 
 // admin panel
-function panel_init(){
-	
+function panel_init() {
 	/////// ERROR TABLE ///////
 	global $wpdb;
 	$table_name = $wpdb->prefix . "mvwc_errors"; 
 	$errors = $wpdb->get_results("SELECT * FROM $table_name ORDER BY created_at DESC LIMIT 50;");
-	
-	//var_dump($errors);
-	
-	//usort($errors, "error_cmp");
-	//$errors = array_reverse($errors);
 	
 	$error_table = '
 		<h2>Error log</h2>
@@ -433,7 +427,7 @@ function do_post() {
 	if (isset($_POST['sync-coupons'])) {
 		sync_coupons();
 	}
-	register_error("AAAAAAAAA", "AAAAAAAAAAA");
+	
 	wp_redirect(admin_url('admin.php')."?page=".$mv_admin_slug);
 }
 add_action('admin_post_megaventory', 'do_post');
@@ -442,35 +436,6 @@ add_action('admin_post_megaventory', 'do_post');
 function error_cmp($a, $b) {
     return strcmp($a->created_at, $b->created_at);
 }
-
-
-// sync button clicked
-// code will only run correctly on 'init' hook
-// otherwise, some wc variables are not correctly initialized";
-/*
-if (isset($_POST['sync-mv-wc'])) {
-	add_action('init', 'synchronize_products_mv_wc');
-}
-if (isset($_POST['sync-wc-mv'])) {
-	add_action('init', 'synchronize_products_wc_mv');
-}
-if (isset($_POST['sync-clients'])) {
-	add_action('init', 'synchronize_clients');
-}
-if (isset($_POST['initialize'])) {
-	add_action('init', 'initialize_integration');
-}
-if (isset($_POST['test'])) {
-	add_action('init', 'test');
-}
-if (isset($_POST['api_key'])) {
-	add_action('init', 'set_api_key');
-}
-if (isset($_POST['api_host'])) {
-	add_action('init', 'set_api_host');
-}
-*/
-
 
 function sync_coupons() {	
 	$coupon = Coupon::MV_get_or_create_compound_percent_coupon(array(881, 906, 904)); //, 880));
@@ -694,15 +659,11 @@ function test() {
 	*/
 	//var_dump(Product::wc_find_by_SKU('treb'));
 	
-	foreach (Coupon::WC_all() as $coupon) {
-		echo $coupon->name . "<br>";
-		var_dump($coupon->get_excluded_products_categories());
-		echo "<br>";
-		var_dump($coupon->get_included_products_categories());
-		echo "<br>";
-		var_dump($coupon->applies_to_sales());
-		echo "<br><br>";
-	}
+	
+	$all = Product::wc_all();
+	$prod = $all[count($all)-2];
+	$prod->description = '';
+	$prod->mv_save();
 	
 	echo '</div>';
 }
