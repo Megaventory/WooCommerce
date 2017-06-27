@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Megaventory
  * Plugin URI: http://placeholderurl.com
- * Description: Plugin that enables integration between WooCommerce and Wordpress
+ * Description: Integration between WooCommerce and Wordpress
  * Version: 1.0.0
  * Author: Megaventory
  * Author URI: https://megaventory.com/
@@ -245,7 +245,7 @@ function column($column, $postid) {
 function plugin_setup_menu(){
 	//plugin tab
 	global $mv_admin_slug;
-	add_menu_page('Megaventory plugin', 'Megaventory', 'manage_options', $mv_admin_slug, 'panel_init', plugin_dir_url( __FILE__ ).'mv.png');
+	add_menu_page('Megaventory plugin', 'Megaventory', 'manage_options', $mv_admin_slug, 'panel_init', plugin_dir_url( __FILE__ ).'mv.png', 30);
 }
 
 //////////////////////////////// ADMIN PANEL ///////////////////////////////////////////////////////////////
@@ -563,7 +563,6 @@ function synchronize_products_wc_mv() {
 
 //push clients from mv to wc
 function synchronize_clients() {
-	register_error("aaaaaaaaaa", "AAAAAAAAAAAAAAAA");
 	// synchronize with delete?
 	$with_delete = isset($_POST['with_delete']);
 	//do delete later - discuss with Kostis if it is necessary
