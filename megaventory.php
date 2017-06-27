@@ -5,9 +5,10 @@
  * Plugin URI: http://placeholderurl.com
  * Description: Integration between WooCommerce and Wordpress
  * Version: 1.0.0
- * Author: Megaventory
- * Author URI: https://megaventory.com/
+ * Author: WooCommerce
+ * Author URI: http://woocommerce.com/
  * Developer: Mikolaj Panasiuk, Bartosz Modelski
+ * Developer URI: http://megaventory.com/
  *
  * Copyright: © 2009-2015 WooCommerce.
  * License: GNU General Public License v3.0
