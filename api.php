@@ -16,10 +16,6 @@
 	}
 	
 	function get_guest_mv_client() {
-		//$post = get_page_by_title("guest_id", ARRAY_A, "post");
-		//$id = $post['post_content'];
-		//$client = Client::mv_find($id);
-		//return $client;
 		$client = Client::wc_find((int)get_option("woocommerce_guest"));
 		return $client; //$use $client->MV_ID
 	}
@@ -29,7 +25,6 @@
 	$url = $host."json/reply/";
 	$xml_url = $host."xml/reply/";
 	$API_KEY = get_api_key();
-	//$API_KEY = "b7d0cc59b72af1e5@m65192"; // DEV AND DEBUG ONLY
 	
 	$salesorder_update_call = "SalesOrderUpdate";
 	$integration_get_call = "IntegrationUpdateGet";

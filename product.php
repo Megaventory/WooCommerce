@@ -319,8 +319,6 @@ class Product {
 		$version = $var_prod->get_name();
 		$version = str_replace(" ", "", $version); //remove whitespaces
 		$version = explode("-", $version)[1]; //disregard name
-		//$version = explode(",", $version);
-		//$version = implode("/", $version);
 		$version = str_replace(",", "/", $version);
 		
 		$prod->version = $version;
@@ -410,7 +408,6 @@ class Product {
 				'post_content' => $this->long_description,
 				'post_excerpt' => $this->description,
 			);
-			//if ($this->version == null) $post['post_title'] = $this->description;
 			$return = wp_update_post($post);
 			if (is_wp_error($return)) {
 				$this->log_error('Product not saved to WC', $return->get_error_message(), $return->get_error_code());

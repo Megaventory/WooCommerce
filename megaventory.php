@@ -655,27 +655,10 @@ function initialize_integration() {
 	update_option("mv_initialized", (string)true);
 }
 
+// This function is just for debug. it's body is not important and can be modified
 function test() {	
 	echo '<div style="margin:auto;width:50%">';
-	/*
-	foreach (Product::wc_all() as $prod) {
-		echo $prod->SKU . "<br>";
-		var_dump($prod->wc_get_prod_categories());
-		echo "<br>";
-		var_dump($prod->wc_get_prod_categories($by = 'id'));
-		echo "<br>";
-		var_dump($prod->wc_get_prod_categories($by = 'name'));
-		echo "<br><br>";
-	}
-	*/
-	//var_dump(Product::wc_find_by_SKU('treb'));
-	
-	
-	$all = Product::wc_all();
-	$prod = $all[count($all)-2];
-	$prod->description = '';
-	$prod->mv_save();
-	
+	//Print debug here
 	echo '</div>';
 }
 
@@ -722,19 +705,6 @@ add_filter('cron_schedules', 'schedule');
 
 // The WP Cron event callback function'
 function pull_changes() {
-	/*
-	global $execute_lock;
-	if ($execute_lock) { //log info about sync being prevented
-		$args = array
-		(
-			'problem' => "Currencies are not matching",
-			'full_msg' => "Auto sync failed. Currencies between MV and WC do not match",
-			'type' => "fatal"
-		);
-		$er = new MVWC_Error($args);
-		return;
-	}
-	*/
 	if (!check_connectivity()) {
 		register_error("MV auto sync failed", "no connection to MV api server");
 		return;
