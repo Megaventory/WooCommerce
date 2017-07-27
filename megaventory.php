@@ -31,6 +31,7 @@ require_once("product.php");
 require_once("client.php");
 require_once("tax.php");
 require_once("coupon.php");
+require_once("order.php");
 
 
 //normal cron would not work
