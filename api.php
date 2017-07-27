@@ -20,7 +20,7 @@
 		return $client; //$use $client->MV_ID
 	}
 	
-	$default_host = "https://apitest.megaventory.com/";
+	$default_host = "https://api.megaventory.com/v2017a";
 	$host = get_api_host();
 	$url = $host."json/reply/";
 	$xml_url = $host."xml/reply/";

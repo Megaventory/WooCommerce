@@ -14,15 +14,15 @@ class Coupon {
 	
 	public $type; // either 'percent' or 'fixed'
 	
-	private static $MV_URL_discount_get = "https://apitest.megaventory.com/xml/reply/DiscountGet";
-	private static $MV_URL_discount_update = "https://apitest.megaventory.com/xml/reply/DiscountUpdate"; //Used also for adding new discounts
+	private static $MV_URL_discount_get = "https://api.megaventory.com/v2017a/xml/reply/DiscountGet";
+	private static $MV_URL_discount_update = "https://api.megaventory.com/v2017a/xml/reply/DiscountUpdate"; //Used also for adding new discounts
 	
-	private static $MV_URL_category_update = "https://apitest.megaventory.com/xml/reply/ProductCategoryUpdate";
-	private static $MV_URL_category_get = "https://apitest.megaventory.com/xml/reply/ProductCategoryGet";
-	private static $MV_URL_category_undelete = "https://apitest.megaventory.com/xml/reply/ProductCategoryUndelete";
+	private static $MV_URL_category_update = "https://api.megaventory.com/v2017a/xml/reply/ProductCategoryUpdate";
+	private static $MV_URL_category_get = "https://api.megaventory.com/v2017a/xml/reply/ProductCategoryGet";
+	private static $MV_URL_category_undelete = "https://apitest.megaventory.com/v2017a/xml/reply/ProductCategoryUndelete";
 	
-	private static $MV_URL_product_get = "https://apitest.megaventory.com/xml/reply/ProductGet";
-	private static $MV_URL_product_update = "https://apitest.megaventory.com/xml/reply/ProductUpdate";
+	private static $MV_URL_product_get = "https://api.megaventory.com/v2017a/xml/reply/ProductGet";
+	private static $MV_URL_product_update = "https://api.megaventory.com/v2017a/xml/reply/ProductUpdate";
 	
 	//Check if discount with given name is in MV database.
 	//1. Get all records with name $name.
