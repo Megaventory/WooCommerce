@@ -450,9 +450,6 @@ function error_cmp($a, $b) {
 }
 
 function sync_coupons() {	
-	$coupon = Coupon::MV_get_or_create_compound_percent_coupon(array(881, 906, 904)); //, 880));
-	
-	/*
 	remove_filter('wp_insert_post_data', 'new_post', 99, 2); 
 	
 	register_error("Synchronization MV to WC.", Coupon::MV_to_WC());
@@ -471,7 +468,7 @@ function sync_coupons() {
 		
 	}
 	register_error("Synchronization WC to MV.", "Added " . $added . " coupons out of " . $all . " discounts found in WC. All other either were already in Megaventroy or have overlap with existing records.");
-	add_filter('wp_insert_post_data', 'new_post', 99, 2); */
+	add_filter('wp_insert_post_data', 'new_post', 99, 2); 
 } 
 
 function set_api_key($key) {
