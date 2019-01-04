@@ -1,10 +1,8 @@
 <?php
-
 require_once("api.php");
 require_once("error.php");
-
 class Tax {
-	public static $table_name = woocommerce_tax_rates;
+	public static $table_name = 'woocommerce_tax_rates';
 	
 	public $MV_ID;
 	public $WC_ID;
@@ -55,7 +53,6 @@ class Tax {
 	
 	public static function wc_find($id) {
 		global $wpdb;
-
 		$result = $wpdb->get_row($wpdb->prepare("
 				SELECT *
 				FROM {$wpdb->prefix}woocommerce_tax_rates
@@ -83,9 +80,9 @@ class Tax {
 	}
 	
 	public static function mv_all() {
-		$jsonurl = create_json_url(self::$tax_get_call);
-		$jsontax = file_get_contents($jsonurl);
-		$jsontax = json_decode($jsontax, true);
+		$url = create_json_url(self::$tax_get_call);
+		$jsonData=curl_call($url);
+		$jsontax = json_decode($jsonData,true);
 		
 		// interpret json into Product class
 		$taxes = array();
@@ -98,10 +95,9 @@ class Tax {
 	}
 	
 	public static function mv_find($id) {
-		$jsonurl = create_json_url_filter(self::$tax_get_call, "TaxID", "Equals", urlencode($id));
-		$jsontax = file_get_contents($jsonurl);
-		$jsontax = json_decode($jsontax, true);
-
+		$url = create_json_url_filter(self::$tax_get_call, "TaxID", "Equals", urlencode($id));
+		$jsonData = curl_call($url);
+		$jsontax = json_decode($jsonData,true);
 		if (count($jsontax['mvTaxes']) <= 0) {
 			return null;
 		}
@@ -110,9 +106,9 @@ class Tax {
 	}	
 	
 	public static function mv_find_by_name($name) {
-		$jsonurl = create_json_url_filter(self::$tax_get_call, "TaxName", "Equals", urlencode($name));
-		$jsontax = file_get_contents($jsonurl);
-		$jsontax = json_decode($jsontax, true);
+		$url = create_json_url_filter(self::$tax_get_call, "TaxName", "Equals", urlencode($name));
+		$jsonData = curl_call($url);
+		$jsontax = json_decode($jsonData, true);
 		
 		if (count($jsontax['mvTaxes']) <= 0) {
 			return null;
@@ -122,8 +118,8 @@ class Tax {
 	}	
 	
 	public static function mv_find_by_name_and_rate($name, $rate) {
-		$jsonurl = create_json_url_filters(self::$tax_get_call, array(array("TaxName", "Equals", urlencode($name)), array("TaxValue", "Equals", urlencode($rate))));
-		$jsontax = file_get_contents($jsonurl);
+		$url = create_json_url_filters(self::$tax_get_call, array(array("TaxName", "Equals", urlencode($name)), array("TaxValue", "Equals", urlencode($rate))));
+		$jsonData = curl_call($url);
 		$jsontax = json_decode($jsontax, true);
 		
 		if (count($jsontax['mvTaxes']) <= 0) {
@@ -235,8 +231,4 @@ class Tax {
 		return $this->name == $tax->name and (float)$this->rate == (float)$tax->rate;
 	}
 }
-
-
-
-
 ?>

@@ -1,24 +1,23 @@
 <?php
 
-//errors should be immutable. There is no point in changing the messages.
-$error_table_name = $wpdb->prefix . "mvwc_errors"; 
+$success_table_name = $wpdb->prefix . "success_log";
 
-class MVWC_Error {
+class MVWC_Success{
 	private $entity_wc_id;
 	private $entity_mv_id;
 	private $entity_name;
-	private $problem;
+	private $transaction_status;
 	private $full_msg;
-	private $error_code;
+	private $success_code;
 	
 	function __construct($args) {
 		$this->entity_wc_id = $args['entity_id']['wc'];
 		$this->entity_mv_id = $args['entity_id']['mv'];
+		$this->entity_type = $args['entity_type'];
 		$this->entity_name = $args['entity_name'];
-		$this->problem = $args['problem'];
+		$this->transaction_status = $args['transaction_status'];
 		$this->full_msg = $args['full_msg'];
-		$this->error_code = $args['error_code'];
-		$this->type = $args['type'];
+		$this->success_code = $args['success_code'];
 		
 		$this->save();
 	}
@@ -28,36 +27,36 @@ class MVWC_Error {
 	}
 	
 	public function save() {
-		global $error_table_name, $wpdb;
+		global $success_table_name, $wpdb;
 		$charset_collate = $wpdb->get_charset_collate();
 		
-		$return = $wpdb->insert($error_table_name, array
+		$return = $wpdb->insert($success_table_name, array
 		(
 			"created_at" => date('Y-m-d H:i:s'),
+			"type" => $this->entity_type,
 			"name" => $this->entity_name,
 			"wc_id" => $this->entity_wc_id,
 			"mv_id" => $this->entity_mv_id,
-			"problem" => $this->problem,
+			"transaction_status" => $this->transaction_status,
 			"message" => $this->full_msg,
-			"code" => $this->error_code,
-			"type" => $this->type
+			"code" => $this->success_code,
 		));
 		
 		return $return;
 	}
 }
 
-class MVWC_Errors {
-	private $errors = array(); 
+class MVWC_Successes{
+	private $successes = array(); 
 	
-	public function log_error($args = array()) {
-		array_push($this->errors, new MVWC_Error($args));
+	public function log_success($args = array()) {
+		array_push($this->successes, new MVWC_Success($args));
 	}
 	
 	public function full_messages() {
 		$msgs = array();
-		foreach ($this->errors as $error) {
-			array_push($msgs, $error->get_full_message());
+		foreach ($this->successes as $success) {
+			array_push($msgs, $success->get_full_message());
 		}
 		return $msgs;
 	}

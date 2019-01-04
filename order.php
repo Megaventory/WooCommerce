@@ -1,10 +1,10 @@
 <?php
-	//This file contains a method used for placing sales orders
+	//This file contains a method used for placing Sales Orders
 
 	require_once("api.php");
 	require_once("address.php");
 
-	//woocommerce purchase is megaventory sale
+	//WooCommerce's Purchase Order is translated to a Megaventory Sales Order
 	//$order is of type WC_ORDER - find documentation online
 	function place_sales_order($order, $client) { 
 		$salesorder_update_call = "SalesOrderUpdate";

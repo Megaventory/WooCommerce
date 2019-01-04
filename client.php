@@ -1,11 +1,9 @@
 <?php
-
 require_once("api.php");
 require_once("address.php");
 require_once("error.php");
-
 // This class works as a model for a client
-// clients are only transfered from wc to mv
+// clients are only transfered from WC to MV
 class Client {
 	public $MV_ID;
 	public $WC_ID;
@@ -22,31 +20,50 @@ class Client {
 	public $type;
 	
 	public $errors;
-
+	public $successes;
+	
 	private static $supplierclient_get_call = "SupplierClientGet";
 	private static $supplierclient_update_call = "SupplierClientUpdate";
 	private static $supplierclient_undelete_call = "SupplierClientUndelete";
 	private static $supplierclient_delete_call = "SupplierClientDelete";
-
 	function __construct() {
 		$this->errors = new MVWC_Errors();
+		$this->successes = new MVWC_Successes();
 	}
 	
 	public function errors() {
 		return $this->errors;
 	}
+
+	public function successes(){
+		return $this->successes;
+	}
+
 	
 	private function log_error($problem, $full_msg, $code, $type = "error") {
 		$args = array
 		(
 			'entity_id' => array('wc' => $this->WC_ID, 'mv' => $this->MV_ID), 
-			'entity_name' => $this->name,
+			'entity_name' => $this->contact_name,
 			'problem' => $problem,
 			'full_msg' => $full_msg,
 			'error_code' => $code,
 			'type' => $type
 		);
 		$this->errors->log_error($args);
+	}
+
+	private function log_success($transaction_status,$full_msg,$code){
+		$args = array
+		(
+			'entity_id' => array('wc' => $this->WC_ID, 'mv' => $this->MV_ID), 
+			'entity_type'=> "client",
+			'entity_name' => $this->contact_name,
+			'transaction_status' => $transaction_status,
+			'full_msg' => $full_msg,
+			'success_code' => $code
+		);
+		$this->successes->log_success($args);
 	}
 	
 	public static function wc_all() {
@@ -63,7 +80,8 @@ class Client {
 	
 	public static function mv_all() {
 		$url = create_json_url(self::$supplierclient_get_call);
-		$clients = json_decode(file_get_contents($url), true)['mvSupplierClients'];
+		$jsonData=curl_call($url);
+		$clients = json_decode($jsonData, true)['mvSupplierClients'];
 		$temp = array();
 		
 		foreach ($clients as $client) {
@@ -71,7 +89,6 @@ class Client {
 		}
 		return $temp;
 	}
-
 	public static function wc_find($id) {
 		$user = get_user_by('ID', $id);
 		if (!$user) {
@@ -82,7 +99,8 @@ class Client {
 	
 	public static function mv_find($id) {
 		$url = create_json_url_filter(self::$supplierclient_get_call, "SupplierClientID", "Equals", urlencode($id));
-		$client = json_decode(file_get_contents($url), true);
+		$jsonData=curl_call($url);
+		$client = json_decode($jsonData, true);
 		if (count($client['mvSupplierClients']) <= 0) {
 			return null;
 		}
@@ -91,7 +109,8 @@ class Client {
 	
 	public static function mv_find_by_name($name) {
 		$url = create_json_url_filter(self::$supplierclient_get_call, "SupplierClientName", "Equals", urlencode($name));
-		$client = json_decode(file_get_contents($url), true);
+		$jsonData=curl_call($url);
+		$client = json_decode($jsonData, true);
 		if (count($client['mvSupplierClients']) <= 0) {
 			return null;
 		}
@@ -100,7 +119,8 @@ class Client {
 	
 	public static function mv_find_by_email($email) {
 		$url = create_json_url_filter(self::$supplierclient_get_call, "SupplierClientEmail", "Equals", urlencode($email));
-		$client = json_decode(file_get_contents($url), true);
+		$jsonData=curl_call($url);
+		$client = json_decode($jsonData, true);
 		if (count($client['mvSupplierClients']) <= 0) {
 			return null;
 		}
@@ -112,7 +132,7 @@ class Client {
 		$client->WC_ID = $wc_client->ID;
 		$client->MV_ID = get_user_meta($wc_client->ID, "MV_ID", true);
 		$client->email = $wc_client->user_email;
-		
+
 		$client->username = $wc_client->user_login;
 		
 		$client->contact_name = get_user_meta($wc_client->ID, 'first_name', true) . " " . get_user_meta($wc_client->ID, 'last_name', true);
@@ -187,22 +207,22 @@ class Client {
 				
 				$xml_request = $this->generate_update_xml();
 				$data = send_xml($url, $xml_request);
+				$this->log_success("Created","Client have been successfully created in MV",1);
+				
 			} else { //different person
 				$this->contact_name = $this->contact_name . " - " . $this->email;
 				$xml_request = $this->generate_update_xml();
 				$data = send_xml($url, $xml_request);
-				
-				if ($undeleted) {
-					//in the end, it seems that this client was undeleted for no reason
-					//however, he needs to be undeleted in order to gain information
-					$mv_client->mv_destroy();
-				}
+				$this->log_success("Created","Client have been successfully created in MV",1);
 			}
 		}
 		
 		if (count($data['mvSupplierClient']) > 0) { //client exists in mv, can update id
 			update_user_meta($this->WC_ID, "MV_ID", $data["mvSupplierClient"]["SupplierClientID"]);
 			$this->MV_ID = $data["mvSupplierClient"]["SupplierClientID"];
+			//$this->log_success("Updated","Client have been successfully updated in MV",2);
+			//this will be corrected in <v1 class="2"></v1>
+			$this->log_success("Created","Client have been successfully updated in MV",1);
 		} else {
 			//failed to save
 			$this->log_error('Client not saved to MV', $data['InternalErrorCode'], -1);
@@ -238,26 +258,13 @@ class Client {
 	public static function mv_undelete($id) {
 		$url = create_json_url(self::$supplierclient_undelete_call);
 		$url .= "&SupplierClientIDToUndelete=" . urlencode($id);
-		file_get_contents($url);
+
+		curl_call_no_return_transfer($url);
 	}
 	
-	public function mv_destroy() {
-		//if (strtolower($this->type) != "client") { //only pure clients are safe to delete, they hold no products
-		//	return false;
-		//}
-		
-		//$url = create_json_url(self::$supplierclient_delete_call);
-		//$url .= "&SupplierClientIDToDelete=" . urlencode($this->MV_ID);
-		//$url .= "&SupplierClientDeleteAction=DeleteRelatedProducts";
-		file_get_contents($url);
-		//echo $url;
-		
-		//return true;
-	}
 	
 	public function wc_reset_mv_data() {
 		return delete_user_meta($this->WC_ID, "MV_ID");
 	}
 }
-
 ?>

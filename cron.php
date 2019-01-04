@@ -6,6 +6,7 @@ function cron_activation(){
         wp_schedule_event(time(), '5min', 'pull_changes_event');
     }
 }
+
 // The deactivation hook
 function cron_deactivation(){
     if(wp_next_scheduled('pull_changes_event')){ 
@@ -19,7 +20,7 @@ function cron_deactivation(){
 // every 5 mins
 function schedule($schedules) {
     $schedules['5min'] = array(
-            'interval'  => 5 * 60, //30 secs for debug //5 * 60, //5min
+            'interval'  => 5*60 , //30 secs for debug //5 * 60, //5min
             'display'   => __('Every 5 Minutes', 'textdomain')
     );
     return $schedules;

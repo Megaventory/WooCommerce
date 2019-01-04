@@ -41,8 +41,8 @@
 }
 
 /* Tooltip container */
-.mv-tooltip {
-}
+/* .mv-tooltip {
+} */
 
 /* Tooltip text */
 .mv-tooltip .tooltiptext {
@@ -148,7 +148,7 @@ div.mv-row.row-main {
 	text-align: left;
 }
 
-.mv-row .error-wrap {
+.mv-row .userNotificationTable-wrap {
 	width: 100%;
 	max-height: 500px;
 	overflow: auto;
@@ -180,3 +180,16 @@ div.mv-row.row-main {
 	width: 20%;
 }
 
+/* Atomic CSS region */
+
+.halfWidth{width: 50%}
+.MarLe15{margin-left: 15px}
+.MarLe30{margin-left: 30px}
+.width25per{width:25%}
+.width10per{width:10%}
+.tblCell{display:table-cell}
+.flLeft{float:left}
+.red{color:#db3236}
+.green{color:#3cba54}
+.yellow{color:#f4c20d}
+.blue{color:#4885ed}

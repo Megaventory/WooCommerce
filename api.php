@@ -30,7 +30,7 @@
 	$integration_delete_call = "IntegrationUpdateDelete";
 	$currency_get_call = "CurrencyGet";
 	
-	//mv status => wc status
+	//MV status => WC status
 	$translate_order_status = array
 	(
 		'Pending' => 'on-hold',
@@ -44,7 +44,7 @@
 	
 	);
 	
-	//mv status code to string. only a few of them are actually used
+	//MV status code to string. only a few of them are actually used
 	$document_status = array
 	(
 		0 => 'ValidStatus',
@@ -68,10 +68,7 @@
 		99 => 'Cancelled'
 	);
 
-	//$today = DaysOfWeek::Sunday;
-		
-	
-	// create URL using the API key and call
+	//create URL using the API key and call
 	function create_json_url($call) {
 		global $url, $API_KEY;
 		return $url . $call . "?APIKEY=" . urlencode($API_KEY);
@@ -99,7 +96,24 @@
 		
 		return $url;
 	}
-	
+	function send_json($url,$json_request){
+
+		$ch = curl_init();
+
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt ( $ch, CURLOPT_CUSTOMREQUEST, "POST" );
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, ($json_request));
+		curl_setopt ( $ch, CURLOPT_HTTPHEADER, array ('Content-Type: application/json', 'Content-Length: ' . strlen ( $json_request ) ) );
+		$data = curl_exec($ch);
+
+		curl_close($ch);
+
+		$data = json_decode($data, TRUE);
+		
+		return $data;
+
+	}
 	function send_xml($url, $xml_request) {
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $url);
@@ -108,20 +122,23 @@
 		curl_setopt($ch, CURLOPT_POSTFIELDS, ($xml_request));
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 300);
 		$data = curl_exec($ch);
-		
 		curl_close($ch);
-		
-		$data = str_replace("d2p1:", "", $data); // required bc ASP.NET creates those d2p1 tags gods knows why
-		
-		$data = simplexml_load_string(html_entity_decode($data));//, "SimpleXMLElement", LIBXML_NOCDATA);
-		
-		//var_dump($data);
+
+		$data = str_replace("d2p1:", "", $data); // required because ASP.NET creates those d2p1 tags
+		$data = simplexml_load_string(html_entity_decode($data)); //, "SimpleXMLElement", LIBXML_NOCDATA)
 		$data = json_encode($data, JSON_PRETTY_PRINT, 1000);
 		$data = json_decode($data, TRUE);
 		
 		return $data;
 	}
-	
+	function wrap_json($call,$jsonObject){
+
+		global $API_KEY;
+
+		$jsonObject->APIKEY = $API_KEY;
+
+		return $jsonObject;
+	}
 	function wrap_xml($call, $data) {
 		global $API_KEY;
 		$prefix = '
@@ -133,22 +150,37 @@
 			';
 		return $prefix . $data . $suffix;
 	}
-	
+	//curl_call that returns the transfer
+	function curl_call($url){
+		$curl_handle = curl_init();
+		curl_setopt($curl_handle, CURLOPT_URL, $url);
+		curl_setopt($curl_handle, CURLOPT_RETURNTRANSFER, true);
+		$jsonData= curl_exec($curl_handle);
+		curl_close($curl_handle);
+		return $jsonData;
+	}	
+	//curl call that executes the url without returning the transfer
+	function curl_call_no_return_transfer($url){
+		$curl_handle = curl_init();
+		curl_setopt($curl_handle, CURLOPT_URL, $url);
+		curl_setopt($curl_handle, CURLOPT_RETURNTRANSFER, false);
+		curl_exec($curl_handle);
+		curl_close($curl_handle);
 		
+	}
 	
 	function get_default_currency() {
 		global $currency_get_call;
 		$url = create_json_url_filter($currency_get_call, "CurrencyIsDefault", "Equals", "true");
-		
-		$data = file_get_contents($url);
-		return json_decode($data, true)['mvCurrencies'][0]['CurrencyCode'];
+		$jsonData=curl_call($url);
+		$megaventory_currency=json_decode($jsonData, true)['mvCurrencies'][0]['CurrencyCode'];
+		return $megaventory_currency;
 	}
 	
 	function check_connectivity() {
 		global $host;
 		$host2 = $host;
 		$host2 = str_replace("https://", "", $host2);
-		$host2 = str_replace("http://", "", $host2);
 		$host2 = explode("/", $host2)[0];
 		
 		if($socket =@ fsockopen($host2, 80, $errno, $errstr, 30)) {
@@ -162,28 +194,35 @@
 	function check_key() {
 		global $API_KEY;
 		$url = create_json_url("ApiKeyGet");
-		$data = json_decode(file_get_contents($url), true);
-		
+		$jsonData = curl_call($url);
+		$data = json_decode($jsonData,true);
+
 		$code = (int)$data['ResponseStatus']['ErrorCode'];
+
 		if ($code == 401 || $code == 500) { //401-wrong key | 500-no key
+			global $apiKeyErrorResponseStatusMessage;
+			$apiKeyErrorResponseStatusMessage=$data['ResponseStatus']['Message'];
 			return false;
-		} else {
-			return true;
-		}
+		} 
+
+		log_apikey($API_KEY);
+		return true;
+		
 	}
 	 
 	function remove_integration_update($id) {
 		global $integration_delete_call;
 		$url = create_json_url($integration_delete_call) . "&IntegrationUpdateIDToDelete=" . urlencode($id);
-		$data = json_decode(file_get_contents($url), true);
-		
+		$jsonData = curl_call($url);
+		$data = json_decode($jsonData,true);
+
 	}
 	
 	function pull_product_changes() {
 		global $integration_get_call;
-		$url = create_json_url_filter($integration_get_call, "Application", "Equals", "woocommerce");
-		$data = json_decode(file_get_contents($url), true);
-		
+		$url = create_json_url_filter($integration_get_call, "Application", "Equals", "Woocommerce");
+		$jsonData = curl_call($url);
+		$data=json_decode($jsonData,true);
 		return $data;
 	}
 	
@@ -198,19 +237,29 @@
 		$included_empty = count($incl_ids) <= 0;
 		$included = in_array($product->WC_ID, $incl_ids);
 		$excluded = in_array($product->WC_ID, $coupon->get_excluded_products(true));
-		
-		//$apply = (!$excluded and ($included_empty or $included));	
-		
+
 		$categories = $product->wc_get_prod_categories($by='id');
 		$incl_ids_cat = $coupon->get_included_products_categories(true);
 		$included_empty_cat = count($incl_ids_cat) <= 0;
 		$included_cat = in_array($product->WC_ID, $incl_ids_cat);
 		$excluded_cat = in_array($product->WC_ID, $coupon->get_excluded_products_categories(true));
-		
-		//$apply_cat = (!$excluded_cat and ($included_empty_cat or $included_cat));	
-		
+
 		return (($included_empty or $included) or (($included_empty_cat and $included_empty) or $included_cat)) and (!$excluded and !$excluded_cat);
 	}
+	
+	function log_apikey($api_key){
+		global $wpdb;
+		$apikeys_table_name = $wpdb->prefix . "api_keys";
+		
+		$charset_collate = $wpdb->get_charset_collate();
+		$return = $wpdb->insert($apikeys_table_name, array
+		(
+			"created_at" => date('Y-m-d H:i:s'),
+			"api_key" => $api_key,
+		)	
+		);
+		return $return;
 
+	}
 	
 ?>

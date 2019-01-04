@@ -146,7 +146,7 @@ class Coupon {
 	}
 	
 	public function get_excluded_products($by_ids = false) {
-		$ids = get_post_meta($this->WC_ID, 'exclude_product_ids', true); //returns string of foreign keys separated by coma OH THE HORROR
+		$ids = get_post_meta($this->WC_ID, 'exclude_product_ids', true); //returns string of foreign keys separated by comma
 		if (!$ids) return array();
 		
 		$temp = array();
@@ -160,7 +160,7 @@ class Coupon {
 	}	
 	
 	public function get_included_products($by_ids = false) {
-		$ids = get_post_meta($this->WC_ID, 'product_ids', true); //returns string of foreign keys separated by coma OH THE HORROR
+		$ids = get_post_meta($this->WC_ID, 'product_ids', true); //returns string of foreign keys separated by comma
 		if (!$ids) return array();
 		
 		$temp = array();
@@ -174,16 +174,16 @@ class Coupon {
 	}
 	
 	public function get_included_products_categories($by_ids = false) {
-		$ids = get_post_meta($this->WC_ID, 'product_categories', true); //returns string of foreign keys separated by coma OH THE HORROR
+		$ids = get_post_meta($this->WC_ID, 'product_categories', true); //returns string of foreign keys separated by comma
 		
 		
-		return $ids;//$this->array_unserialize($ids);
+		return $ids; //$this->array_unserialize($ids);
 	}	
 	
 	public function get_excluded_products_categories($by_ids = false) {
-		$ids = get_post_meta($this->WC_ID, 'exclude_product_categories', true); //returns string of foreign keys separated by coma OH THE HORROR
+		$ids = get_post_meta($this->WC_ID, 'exclude_product_categories', true); //returns string of foreign keys separated by comma
 		
-		return $ids;//$this->array_unserialize($ids);
+		return $ids; //$this->array_unserialize($ids);
 	}
 	
 	public function applies_to_sales() {
@@ -237,7 +237,7 @@ class Coupon {
 		
 		$coupons = array();
 		
-		//initialise our "hashtable"
+		//initialize our "hashtable"
 		foreach ($results as $number => $coupon) {
 			$coupons[ $coupon['name'] ] = array();
 		}

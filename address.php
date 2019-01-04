@@ -7,7 +7,7 @@ function format_address($ar) {
 	$line_1 = $ar['line_1'];
 	$line_2 = $ar['line_2'];
 	$city = $ar['city']; 
-	$county = $ar['county'];
+	$country = $ar['country'];
 	$postcode = $ar['postcode'];
 	$country = $ar['country'];
 	
@@ -27,8 +27,8 @@ function format_address($ar) {
 	if ($city != null and !ctype_space($city)) {
 		$address .= $city . "\n";
 	}
-	if ($county != null and !ctype_space($county)) {
-		$address .= $county . "\n";
+	if ($country != null and !ctype_space($country)) {
+		$address .= $country . "\n";
 	}
 	if ($postcode != null and !ctype_space($postcode)) {
 		$address .= $postcode . "\n";
