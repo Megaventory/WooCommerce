@@ -3,11 +3,13 @@ require_once("api.php");
 require_once("address.php");
 require_once("error.php");
 require_once("success.php");
-// This class works as a model for a product
-// It holds all important attributes of a MV/WC product
-// WC and MV will store same products at different IDs. Those IDs can be accessed separately
-// SKU is more important than ID and can be used to compare products
+/*  This class works as a model for a product
+	It holds all important attributes of a MV/WC product
+	WC and MV will store same products at different IDs. Those IDs can be accessed separately
+	SKU is more important than ID and can be used to compare products */
+
 class Product {
+
 	public $WC_ID;
 	public $MV_ID;
 	public $name;
@@ -19,24 +21,21 @@ class Product {
 	public $category;
 	public $type;
 	public $image_url;
-
 	public $regular_price;
 	public $sale_price;
 	public $sale_active;
-
 	public $length;
 	public $breadth;
 	public $height;
 	public $version;
 	public $stock_on_hand;
 	public $mv_qty;
-
 	public $mv_type;
-
 	public $variations;
-
 	public $errors;
 	public $successes;
+
+	/*API Calls*/
 
 	private static $product_get_call = "ProductGet";
 	private static $product_update_call = "ProductUpdate";
@@ -49,32 +48,39 @@ class Product {
 	private static $category_undelete_call = "ProductCategoryUndelete";
 
 	function __construct() {
+
 		$this->errors = new MVWC_Errors();
 		$this->successes = new MVWC_Successes();
+
 	}
 
 	public function errors() {
+
 		return $this->errors;
 	}
 
 	public function successes(){
+
 		return $this->successes;
 	}
 
 	public function log_error($problem, $full_msg, $code, $type = "error") {
+
 		$args = array
 		(
 			'entity_id' => array('wc' => $this->WC_ID, 'mv' => $this->MV_ID),
-			'entity_name' => ($this->name == null) ? $this->description : $this->null,
+			'entity_name' => ($this->name == null) ? $this->description : $this->name,
 			'problem' => $problem,
 			'full_msg' => $full_msg,
 			'error_code' => $code,
 			'type' => $type
 		);
 		$this->errors->log_error($args);
+
 	}
 
 	public function log_success($transaction_status,$full_msg,$code){
+
 		$args = array
 		(
 			'entity_id' => array('wc' => $this->WC_ID, 'mv' => $this->MV_ID),
@@ -84,23 +90,31 @@ class Product {
 			'full_msg' => $full_msg,
 			'success_code' => $code
 		);
+
 		$this->successes->log_success($args);
 	}
 
 	public static function wc_all() {
+
 		$args = array('post_type' => 'product', 'numberposts' => -1);
 		$products = get_posts($args);
 		$temp = array();
+
 		foreach ($products as $product) {
 			array_push($temp, self::wc_convert($product));
 		}
+
 		$products = $temp;
+
 		return $temp;
+
 	}
 
 	public static function wc_all_with_variable() {
+
 		$products = self::wc_all();
 		$temp = array();
+
 		foreach ($products as $prod) {
 			array_push($temp, $prod);
 			$vars = $prod->wc_get_variations();
@@ -108,19 +122,22 @@ class Product {
 				$temp = array_merge($temp, $vars);
 			}
 		}
+
 		return $temp;
+
 	}
 
 	public static function mv_all() {
-		$categories = self::mv_get_categories();
 
-		// get products as json
+		$categories = self::mv_get_categories();
 		$url = create_json_url(self::$product_get_call);
 		$jsonData = curl_call($url);
 		$jsonprod = json_decode($jsonData, true);
 
-		// map json to Product class
+		/* map json to Product class */
+
 		$products = array();
+
 		foreach ($jsonprod['mvProducts'] as $prod) {
 			$product = self::mv_convert($prod, $categories);
 			array_push($products, $product);
@@ -130,31 +147,37 @@ class Product {
 	}
 
 	public static function wc_find($id) {
+
 		$wc_prod = get_post($id);
 		if ($wc_prod) {
 			$product= self::wc_convert($wc_prod);
 			return $product;//product after meta fields set
-		} else {
+		}
+		else {
+
 			return null;
 		}
 	}
 
 	public static function mv_find($id) {
+
 		$url = create_json_url_filter(self::$product_get_call, "ProductID", "Equals", urlencode($id));
 		$jsonData = curl_call($url);
 		$data = json_decode($jsonData,true);
 		if (count($data['mvProducts']) <= 0) {
 			return null; //no such ID
 		}
+
 		return self::mv_convert($data["mvProducts"][0]);
 	}
 
 	public function pull_stock() {
+
 		$url = create_json_url_filter(self::$product_stock_call, "productid", "Equals", $this->MV_ID);
 		$jsonData = curl_call($url);
 		$response = json_decode($jsonData, true);
 
-		// sum product on hand in all inventories
+		/* sum product on hand in all inventories */
 		$response = $response['mvProductStockList'];
 		$total_on_hand = 0;
 		$mv_qty = array();
@@ -178,9 +201,12 @@ class Product {
 				array_push($mv_qty, $string);
 				$total_on_hand += $on_hand;
 			}
-		} else {
-			//$this->stock_on_hand = 0;
+
+		} 
+		else {
+
 			$this->mv_qty = "no stock";
+
 			return;
 		}
 
@@ -189,6 +215,7 @@ class Product {
 	}
 
 	public static function get_inventory_name($id, $abbrev = false) {
+
 		$url = create_json_url_filter(self::$inventory_get_call, "InventoryLocationID", "Equals", urlencode($id));
 		$jsonData = curl_call($url);
 		$data=json_decode($jsonData,true);
@@ -205,16 +232,19 @@ class Product {
 	}
 
 	public static function wc_find_by_sku($SKU) {
+
 		$prods = self::wc_all_with_variable();
 		foreach ($prods as $prod) {
 			if ($prod->SKU == $SKU) {
 				return $prod;
 			}
 		}
+
 		return null;
 	}
 
 	public static function mv_find_by_sku($SKU) {
+
 		$url = create_json_url_filter(self::$product_get_call, "ProductSKU", "Equals", urlencode($SKU));
 		$jsonData=curl_call($url);
 		$data=json_decode($jsonData,true);
@@ -225,13 +255,14 @@ class Product {
 	}
 
 	private static function mv_convert($mv_prod, $categories = null) {
-		//passing categories makes things faster and requires less API calls.
-		//always use $categories when using this function in a loop with many users
+
+		/*  passing categories makes things faster and requires less API calls.
+			always use $categories when using this function in a loop with many users */
 		if ($categories == null) {
 			$categories = self::mv_get_categories();
 		}
 		$product = new Product();
-
+		
 		$product->MV_ID = $mv_prod['ProductID'];
 		$product->type = $mv_prod['ProductType'];
 		$product->mv_type = $mv_prod['ProductType'];
@@ -257,8 +288,8 @@ class Product {
 	}
 
 	private static function wc_convert($wc_prod) {
-		$prod = new Product();
 
+		$prod = new Product();
 		$ID = $wc_prod->ID;
 		$prod->WC_ID = $wc_prod->ID;
 		$prod->MV_ID = get_post_meta($ID, 'MV_ID', true);
@@ -270,7 +301,7 @@ class Product {
 
 		$prod->SKU = get_post_meta($ID, '_sku', true);
 
-		//prices
+		/* prices */
 		$prod->regular_price = get_post_meta($ID, '_regular_price', true);
 		$prod->sale_price = get_post_meta($ID, '_sale_price', true);
 		$sale_from = get_post_meta($ID, '_sale_price_dates_from', true);
@@ -303,23 +334,11 @@ class Product {
 			$prod->image_url = $img[0];
 		}
 
-		/*$t = (wp_get_object_terms($prod->WC_ID, 'product_type')[0]->name);
-		$product_type=$prod->type;
-		if ($t == "grouped") {
-			$prod->type = "grouped";
-		} else if ($t == "variable") {
-			$prod->type = "variable";
-			$children = $var->get_children();
-			$prod->variations = $children;
-		} else {
-			$prod->type = "simple";
-		}*/
-
 		return $prod;
 	}
 
 	public function wc_get_variations() {
-		if (count($this->variations) <= 0) return array();
+		if (!isset($this->variations)) return array();
 
 		$prods = array();
 
@@ -332,7 +351,7 @@ class Product {
 	}
 
 	private static function wc_variable_convert($var_prod_id, $parent) {
-		//inherit parent values if no values are present
+		/* inherit parent values if no values are present */
 		$var_prod = new WC_Product_Variation($var_prod_id);
 		$prod = new Product();
 
@@ -388,8 +407,9 @@ class Product {
 			$wc_products = ($this->version == null) ? self::wc_all() : self::wc_all_with_variable();
 		}
 
-		//find if SKU exists, if so, update instead of insert
-		//only insert if $create upon save
+		/* find if SKU exists, if so, update instead of insert
+			only insert if $create upon save */
+
 		if ($this->WC_ID == null) {
 			foreach ($wc_products as $wc_product) {
 				if ($this->SKU == $wc_product->SKU) {
@@ -403,12 +423,11 @@ class Product {
 			return false;
 		}
 
-		//prevent null on empty
+		/* prevent null on empty */
 		if ($this->long_description == null) {
 			$this->long_description = "";
 		}
 		if (wp_strip_all_tags($this->description) == "" || $this->description==null) {
-			//throw new Exception('Short description can\'t be empty');
 			$this->log_error('Product not saved to WC', 'Short description cannot be empty', -1);
 			return false;
 		}
@@ -417,9 +436,9 @@ class Product {
 			return false;
 		}
 
-		//dont update variables title!
+		/* dont update variables title! */
 		if ($this->WC_ID == null) {
-			//create product
+			/*create product */
 			$args = array
 			(
 				'post_content' => $this->long_description,
@@ -435,8 +454,9 @@ class Product {
 			}
 
 			$this->WC_ID = $post_id;
-		} else {
-			//never update product title. only on create
+		} 
+		else {
+			/* never update product title. only on create */
 			$post = array(
 				'ID' => $this->WC_ID,
 				//'post_title' => $this->description,
@@ -450,18 +470,16 @@ class Product {
 			}
 		}
 
-		//meta
+		/*meta */
 
-		//set category to mv category only if product has no categories
-		//otherwise, dont do anything
+		/* set category to mv category only if product has no categories
+			otherwise, dont do anything */
 		if ($this->category != null and count(wp_get_object_terms($this->WC_ID, 'product_cat')) <= 0) {
 			$category_id = $this->wc_get_category_id_by_name($this->category, true);
 			if ($category_id) {
 				wp_set_object_terms($this->WC_ID, $category_id, 'product_cat');
 			}
 		}
-
-
 		wp_set_object_terms($this->WC_ID, 'simple', 'product_type');
 		//set other information
 		update_post_meta($this->WC_ID, '_visibility', 'visible');
@@ -517,53 +535,61 @@ class Product {
 		$urljson=create_json_url(self::$product_update_call);
 		$json_request = $this->generate_update_json($category_id);
 		$data= send_json($urljson,$json_request);
+		/*if product didn't save in Megaventory it will return an error code !=0*/
+		if (($data['ResponseStatus']['ErrorCode']) != 0) { 
 
-		if ($data['InternalErrorCode'] == "ProductSKUAlreadyDeleted") {
+			/* the only case we will not log an error is the case that the product is already deleted in MV */
+			if ($data['InternalErrorCode'] != "ProductSKUAlreadyDeleted") {
+
+				$internal_error_code= " [" .$data['InternalErrorCode'] . "]";
+				$this->log_error('Product not saved to MV'.$internal_error_code, $data['ResponseStatus']['Message'], -1);
+				
+				return false;
+		}
+
 			$this->MV_ID = $data['entityID'];
 			$url = create_json_url(self::$product_undelete_call);
 			$url = $url . "&ProductIDToUndelete=" . urlencode($this->MV_ID);
-
-			curl_call_no_return_transfer($url);
-
+			$call=curl_call($url);
 			$json_request = $this->generate_update_json($category_id);
-
 			$data=send_json($url,$json_request);
 		}
 
-		if (($data['ResponseStatus']['ErrorCode']) != 0) { //not saved
-			$this->log_error('Product not saved to MV', $data['ResponseStatus']['Message'], -1);
-			return false;
-		}
+		/*otherwise the product will either be created or updated*/
 		$product_exists = ($this->MV_ID == null||$this->MV_ID == "");
-		$action = ($product_exists ? "Created" : "Updated");
+		$action = ($product_exists ? "created" : "updated");
 
-		$this->log_success($action,"Product have been successfully ".$action." in MV",1);
+		$this->log_success($action,"product successfully ".$action." in MV",1);
 
 		update_post_meta($this->WC_ID, "MV_ID", $data["mvProduct"]["ProductID"]);
+
 		$this->MV_ID = $data["mvProduct"]["ProductID"];
 
 		//save variable's children?
-		if (count($this->variations) > 0) {
+		if ($this->variations != null ) {
+
 			foreach ($this->variations as $id) {
 				$prod = self::wc_variable_convert($id, $this);
 			}
 		}
 
-
 		return $data['mvProduct'];
 	}
+
 	private function generate_update_json($category_id = null){
 	
 		$create_new = ($this->MV_ID == null||$this->MV_ID == "");
-		$action = ($create_new ? "Insert" : "Update");
+		$duplicated = (self::mv_find_by_sku($this->SKU) == null );
+		$duplicated?$create_new=true:false;
+
+		$action = ( ( ($create_new) && ($duplicated) ) ? "Insert" : "Update");
 
 		$special_characters=array("?","$","@","!","*","#");//special charactes that need to be removed in order to be accepted by MV
 		
-		//declare productObject as an object of stdClass in the global namespace in order to comply with E_STRICT standards
 		$productUpdateObject = new \stdClass();
 		$productObject=new \stdClass();
 
-		$productObject->ProductID = $create_new ? "" : $this->MV_ID;
+		$productObject->ProductID = $create_new ? '' : $this->MV_ID;
 		$productObject->ProductType=$create_new ?"BuyFromSupplier": ($this->mv_type ?  $this->mv_type : '');
 		$productObject->ProductSKU=$this->SKU;
 		$productObject->ProductDescription=wp_strip_all_tags(str_replace($special_characters," ",$this->description));
@@ -581,7 +607,7 @@ class Product {
 		$productUpdateObject->mvRecordAction=$action;		
 		$productUpdateObject->mvInsertUpdateDeleteSourceApplication="woocommerce";
 
-		$json_object=wrap_json(self::$product_update_call,$productUpdateObject);
+		$json_object=wrap_json($productUpdateObject);
 
 		$json_object = json_encode($productUpdateObject);
 		
@@ -590,6 +616,7 @@ class Product {
 	}
 
 	public function wc_destroy() {
+
 		if ($this->WC_ID == null) {
 			$all = ($this->version == null) ? self::wc_all() : self::wc_all_with_variable();
 			foreach ($all as $prod) {
@@ -607,8 +634,9 @@ class Product {
 
 	}
 
-	//image is attached only if a product has no image yet
+	/* image is attached only if a product has no image yet */
 	function attach_image() {
+
 		require_once(ABSPATH . 'wp-admin/includes/media.php');
 		require_once(ABSPATH . 'wp-admin/includes/file.php');
 		require_once(ABSPATH . 'wp-admin/includes/image.php');
@@ -631,7 +659,7 @@ class Product {
 		$image = $this->image_url;
 		// magic sideload image returns an HTML image, not an ID
 		$media = media_sideload_image($image, $this->WC_ID);
-		//echo $media->get_error_message();
+		echo $media->get_error_message();
 		// therefore we must find it so we can set it as featured ID
 		if(!empty($media) && !is_wp_error($media)){
 			$args = array(
@@ -730,7 +758,19 @@ class Product {
 		return (array_key_exists('mvProductCategory', $response)) ? $response['mvProductCategory']['ProductCategoryID'] : null;
 	}
 
+	public function sync_post_meta_with_ID(){
 
+
+		update_post_meta($this->WC_ID, 'MV_ID', $this->MV_ID);
+		update_post_meta($this->WC_ID, '_mv_qty', $this->mv_qty);
+		update_post_meta($this->WC_ID, '_manage_stock', "yes");
+		update_post_meta($this->WC_ID, '_stock', (string)$this->stock_on_hand);
+		update_post_meta($this->WC_ID, '_stock_status', ($this->stock_on_hand > 0 ? "instock" : "outofstock"));
+		
+
+	}
+
+	
 	public function sync_stock() {
 		
 		if ($this->MV_ID == null) return; //this should not happen

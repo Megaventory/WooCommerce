@@ -40,6 +40,7 @@ class Tax {
 	}
 	
 	public static function wc_all() {
+
 		global $wpdb;
 		
 		$table_name = $wpdb->prefix . self::$table_name;
@@ -52,7 +53,9 @@ class Tax {
 	}
 	
 	public static function wc_find($id) {
+
 		global $wpdb;
+
 		$result = $wpdb->get_row($wpdb->prepare("
 				SELECT *
 				FROM {$wpdb->prefix}woocommerce_tax_rates
@@ -63,6 +66,7 @@ class Tax {
 	}
 	
 	public static function wc_convert($wc_tax) {
+
 		$tax = new Tax();
 		
 		$tax->WC_ID = $wc_tax['tax_rate_id'];
@@ -80,11 +84,11 @@ class Tax {
 	}
 	
 	public static function mv_all() {
+
 		$url = create_json_url(self::$tax_get_call);
 		$jsonData=curl_call($url);
 		$jsontax = json_decode($jsonData,true);
-		
-		// interpret json into Product class
+
 		$taxes = array();
 		foreach ($jsontax['mvTaxes'] as $tax) {
 			$tax = self::mv_convert($tax, $categories);
@@ -93,8 +97,9 @@ class Tax {
 		
 		return $taxes;
 	}
-	
+
 	public static function mv_find($id) {
+
 		$url = create_json_url_filter(self::$tax_get_call, "TaxID", "Equals", urlencode($id));
 		$jsonData = curl_call($url);
 		$jsontax = json_decode($jsonData,true);
@@ -106,6 +111,7 @@ class Tax {
 	}	
 	
 	public static function mv_find_by_name($name) {
+
 		$url = create_json_url_filter(self::$tax_get_call, "TaxName", "Equals", urlencode($name));
 		$jsonData = curl_call($url);
 		$jsontax = json_decode($jsonData, true);
@@ -118,6 +124,7 @@ class Tax {
 	}	
 	
 	public static function mv_find_by_name_and_rate($name, $rate) {
+
 		$url = create_json_url_filters(self::$tax_get_call, array(array("TaxName", "Equals", urlencode($name)), array("TaxValue", "Equals", urlencode($rate))));
 		$jsonData = curl_call($url);
 		$jsontax = json_decode($jsontax, true);
@@ -130,6 +137,7 @@ class Tax {
 	}
 	
 	public static function mv_convert($mv_tax) {
+
 		$tax = new Tax();
 		
 		$tax->MV_ID = $mv_tax['TaxID'];
@@ -141,6 +149,7 @@ class Tax {
 	}
 	
 	public function mv_save() {
+
 		$create_new = false;
 		if ($this->MV_ID == null) { //find by name first
 			$tax = self::mv_find_by_name_and_rate($this->name, $this->rate);
@@ -151,22 +160,20 @@ class Tax {
 			}
 		}
 		$action = ($create_new ? "Insert" : "Update");
-		
-		$xml = '
-			<mvTax>
-				' . (!$create_new ? '<TaxID>'.$this->MV_ID.'</TaxID>' : '') . '
-				<TaxName>'.$this->name.'</TaxName>
-				<TaxDescription>'.$this->description.'</TaxDescription>
-				<TaxValue>'.$this->rate.'</TaxValue>
-			</mvTax>
-			<mvRecordAction>' . $action . '</mvRecordAction>
-			<mvInsertUpdateDeleteSourceApplication>woocommerce</mvInsertUpdateDeleteSourceApplication>
-		';
-		
-		$url = create_xml_url(self::$tax_update_call);
-		$xml = wrap_xml(self::$tax_update_call, $xml);
-			
-		$data = send_xml($url, $xml);
+		$taxObject=new \stdClass();
+		$taxObj=new \stdClass();
+
+		$taxObject->TaxID=!$create_new?$this->MV_ID:"";
+		$taxObject->TaxName=$this->name;
+		$taxObject->TaxDescription=$this->description;
+		$taxObject->TaxValue=$this->rate;
+
+		$taxObj->mvTax=$taxObject;
+		$taxObj->mvRecordAction=$action;
+		$taxObj->mvInsertUpdateDeleteSourceApplication="woocommerce";
+		$ur=create_json_url(self::$tax_update_call);
+		$taxObj=wrap_json($taxObj);
+		$data = send_json($url,$taxObj);
 		
 		if (count($data['mvTax']) <= 0) {
 			//log err
@@ -188,6 +195,7 @@ class Tax {
 	}
 	
 	public function wc_save() {
+
 		foreach (self::wc_all() as $wc_tax) {
 			if ($wc_tax->equals($this)) {
 				$this->WC_ID = $wc_tax->WC_ID;
@@ -220,6 +228,7 @@ class Tax {
 	}
 	
 	public function wc_delete() {
+
 		global $wpdb;
 		$table_name = $wpdb->prefix . self::$table_name;
 		$sql = "DELETE FROM $table_name WHERE tax_rate_id=".(string)$this->WC_ID.";";
@@ -228,6 +237,7 @@ class Tax {
 	}
 	
 	public function equals($tax) {
+
 		return $this->name == $tax->name and (float)$this->rate == (float)$tax->rate;
 	}
 }

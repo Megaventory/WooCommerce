@@ -8,11 +8,11 @@
 
 .column-mv_stock {
 	width: 15%;
-	color: red;
+	background-color: #eee;
 }
 
 .qty-on-hand {
-	color: LightGrey;
+	color: #666;
 }
 
 .qty-non-shipped {
@@ -116,6 +116,7 @@
 }
 
 .mv-form .mv-form-bottom {
+	margin-top: 10px;
 	display: block;
 	text-align: center;
 }
@@ -180,6 +181,82 @@ div.mv-row.row-main {
 	width: 20%;
 }
 
+#loading{background-color: transparent;height: 100%!important;right: 0!important;text-align: center!important;top: 0!important;vertical-align: middle;white-space: nowrap!important;width: 100%!important;z-index: 13000!important;}
+#InnerLoading{background-color: #F0F0F0;filter: progid:DXImageTransform.Microsoft.Alpha(Style=0,Opacity=1);height: 100%!important;opacity: 0.96;position: absolute!important;top: 0!important;width: 100%!important;}
+.InnerloadingBox{background-color:transparent;border:medium none;position:fixed;top:0;margin:auto 0;left:40%;top:30%;}
+#loading h1{left:41%;position:fixed;top:35%;}
+.InnerloadingBox > span{  display:inline-block;-webkit-animation: loading 0.9s infinite alternate; -moz-animation: loading 0.9s infinite alternate;
+	color:#2D882D;width:100px;font-size:300pt;}
+    .InnerloadingBox > span:nth-child(2){color:#2D882D; -webkit-animation-delay: 0.2s; -moz-animation-delay: 0.2s;}
+	.InnerloadingBox > span:nth-child(3){ color:#2D882D;  -webkit-animation-delay: 0.2s; -moz-animation-delay: 0.2s;}
+	
+#success-log th, #error-log th{
+	font-weight:600;
+}
+
+	@-webkit-keyframes loading {
+
+		0% {
+	  
+		  width: 16.7%;
+	  
+		
+	  
+		  -webkit-transform: translateZ(0);
+	  
+		}
+	  
+		100% {
+	  
+		  width: 30%;
+	  
+	
+	  
+		  -webkit-transform: translateZ(-21px);
+	  
+		}
+	  
+	  }
+	  
+	  @-moz-keyframes loading {
+	  
+		0% {
+	  
+			width: 16.7%;
+	  
+		
+	  
+		  -moz-transform: translateZ(0);
+	  
+		}
+	  
+		100% {
+	  
+			width: 30%;
+	   
+	  
+	
+	  
+		  -moz-transform: translateZ(-21px);
+	  
+		}
+	  
+	  }
+
+.updateButton{
+	border-radius: 5px;
+	align-self: flex-start;
+    background-color: #00AADC;
+    border-color: #0087BE;
+    box-shadow: 0 1px 0 #0087BE;
+    color: #fff;
+    font-size: 1.1em;
+    height: auto;
+    padding: 0.45em 1.5em;
+    text-shadow: none;
+}
+
+
 /* Atomic CSS region */
 
 .halfWidth{width: 50%}
@@ -193,3 +270,6 @@ div.mv-row.row-main {
 .green{color:#3cba54}
 .yellow{color:#f4c20d}
 .blue{color:#4885ed}
+.none{display:none}
+.CurPointer {cursor: pointer}
+.margin5px{margin:5px;}

@@ -2,8 +2,8 @@
 require_once("api.php");
 require_once("address.php");
 require_once("error.php");
-// This class works as a model for a client
-// clients are only transfered from WC to MV
+/*  This class works as a model for a client
+	clients are only transfered from WC to MV */
 class Client {
 	public $MV_ID;
 	public $WC_ID;
@@ -39,12 +39,12 @@ class Client {
 		return $this->successes;
 	}
 
-	
 	private function log_error($problem, $full_msg, $code, $type = "error") {
+
 		$args = array
 		(
 			'entity_id' => array('wc' => $this->WC_ID, 'mv' => $this->MV_ID), 
-			'entity_name' => $this->contact_name,
+			'entity_name' => $this->username,
 			'problem' => $problem,
 			'full_msg' => $full_msg,
 			'error_code' => $code,
@@ -54,10 +54,11 @@ class Client {
 	}
 
 	private function log_success($transaction_status,$full_msg,$code){
+
 		$args = array
 		(
 			'entity_id' => array('wc' => $this->WC_ID, 'mv' => $this->MV_ID), 
-			'entity_type'=> "client",
+			'entity_type'=> "customer",
 			'entity_name' => $this->contact_name,
 			'transaction_status' => $transaction_status,
 			'full_msg' => $full_msg,
@@ -67,11 +68,11 @@ class Client {
 	}
 	
 	public static function wc_all() {
+
 		$clients = array();
 		
 		foreach (get_users() as $user) {
 			$client = self::wc_convert($user);
-			
 			array_push($clients, $client);
 		}
 		
@@ -79,6 +80,7 @@ class Client {
 	}
 	
 	public static function mv_all() {
+
 		$url = create_json_url(self::$supplierclient_get_call);
 		$jsonData=curl_call($url);
 		$clients = json_decode($jsonData, true)['mvSupplierClients'];
@@ -90,6 +92,7 @@ class Client {
 		return $temp;
 	}
 	public static function wc_find($id) {
+
 		$user = get_user_by('ID', $id);
 		if (!$user) {
 			return null;
@@ -98,6 +101,7 @@ class Client {
 	}
 	
 	public static function mv_find($id) {
+
 		$url = create_json_url_filter(self::$supplierclient_get_call, "SupplierClientID", "Equals", urlencode($id));
 		$jsonData=curl_call($url);
 		$client = json_decode($jsonData, true);
@@ -108,6 +112,7 @@ class Client {
 	}
 	
 	public static function mv_find_by_name($name) {
+
 		$url = create_json_url_filter(self::$supplierclient_get_call, "SupplierClientName", "Equals", urlencode($name));
 		$jsonData=curl_call($url);
 		$client = json_decode($jsonData, true);
@@ -118,16 +123,24 @@ class Client {
 	}
 	
 	public static function mv_find_by_email($email) {
+
 		$url = create_json_url_filter(self::$supplierclient_get_call, "SupplierClientEmail", "Equals", urlencode($email));
 		$jsonData=curl_call($url);
 		$client = json_decode($jsonData, true);
 		if (count($client['mvSupplierClients']) <= 0) {
 			return null;
 		}
+
 		return self::mv_convert($client['mvSupplierClients'][0]);
 	}
 	
 	private static function wc_convert($wc_client) {
+		
+		$client_type = $wc_client->roles[0];
+		if($client_type!="customer" && $client_type!="subscriber"){//we want to save only customers users
+			return null;
+		}
+
 		$client = new Client();
 		$client->WC_ID = $wc_client->ID;
 		$client->MV_ID = get_user_meta($wc_client->ID, "MV_ID", true);
@@ -158,20 +171,20 @@ class Client {
 		$client->shipping_address = format_address($billing_address);
 		
 		$client->phone = get_user_meta($wc_client->ID, 'billing_phone', true);
-		//$client->type = "Client";
+		$client->type = $wc_client->roles[0];
 		
 		return $client;
 	}
 	
 	private static function mv_convert($supplierclient) {
+
 		$client = new Client();
-				
 		$client->MV_ID = $supplierclient['SupplierClientID'];
 		$client->username = $supplierclient['SupplierClientName'];
 		$client->contact_name = $supplierclient['SupplierClientName'];
 		$client->shipping_address = $supplierclient['SupplierClientShippingAddress1'];
 		$client->shipping_address2 = $supplierclient['SupplierClientShippingAddress2'];
-		$client->billing_address = $supplierclient['SupplierClientBillingAddress2'];
+		$client->billing_address = $supplierclient['SupplierClientBillingAddress'];
 		$client->tax_ID = $supplierclient['SupplierClientTaxID'];
 		$client->phone = $supplierclient['SupplierClientPhone1'];
 		$client->email = $supplierclient['SupplierClientEmail'];
@@ -181,90 +194,110 @@ class Client {
 	}
 	
 	public function mv_save() {
-		$url = create_xml_url(self::$supplierclient_update_call);
-		$xml_request = $this->generate_update_xml();
+
+		$url = create_json_url(self::$supplierclient_update_call);
+		$json_request = $this->generate_update_json();
+		$data= send_json($url,$json_request);
 		
-		$data = send_xml($url, $xml_request);
-		
-		
-		//what if client was deleted or name already exists
+		/* what if client was deleted or name already exists */
 		$undeleted = false;
-		if ($data['InternalErrorCode'] == "SupplierClientAlreadyDeleted") {
-			// client must be undeleted first and then updated
-			self::mv_undelete($data["entityID"]);
-			
-			// if undelete, this name will exist. next if statement has to decide what to do next
-			$data['InternalErrorCode'] = "SupplierClientNameAlreadyExists";
-			$undeleted = true;
-		} 
+
+		if (array_key_exists('InternalErrorCode', $data)) {
 		
-		if ($data['InternalErrorCode'] == "SupplierClientNameAlreadyExists") {
-			$mv_client = self::mv_find($data['entityID']);
-			//$client->MV_ID = $mv_client->MV_ID;
-			if ($this->email == $mv_client->email) { //same person
-				$this->MV_ID = $mv_client->MV_ID;
-				$this->contact_name = $mv_client->contact_name;
+			if ($data['InternalErrorCode'] == "SupplierClientAlreadyDeleted") {
+				/* client must be undeleted first and then updated */
+				$undelete=self::mv_undelete($data["entityID"]);
 				
-				$xml_request = $this->generate_update_xml();
-				$data = send_xml($url, $xml_request);
-				$this->log_success("Created","Client have been successfully created in MV",1);
-				
-			} else { //different person
-				$this->contact_name = $this->contact_name . " - " . $this->email;
-				$xml_request = $this->generate_update_xml();
-				$data = send_xml($url, $xml_request);
-				$this->log_success("Created","Client have been successfully created in MV",1);
+				/* if undelete, this name will exist. next if statement has to decide what to do next */
+				$data['InternalErrorCode'] = "SupplierClientNameAlreadyExists";
+				$undeleted = true;
+			} 
+			/* client name already exists,update info if is the same client,create new if is different person */
+			if ($data['InternalErrorCode'] == "SupplierClientNameAlreadyExists") {
+				$mv_client = self::mv_find($data['entityID']);
+
+				/* same person */
+				if ($this->email == $mv_client->email) { 
+
+					$this->MV_ID = $mv_client->MV_ID;
+					$this->contact_name = $mv_client->contact_name;
+					$json_request= $this->generate_update_json();
+					$jsonData=send_json($url,$json_request);
+					$this->log_success("updated","customer successfully updated in MV",1);
+					
+					return true;
+				}
+				/* different person */
+				else { 
+					$this->contact_name = $this->contact_name . " - " . $this->email;
+					$json_request= $this->generate_update_json();
+					$jsonData=send_json($url,$json_request);
+					$this->log_success("created","customer successfully created in MV",1);
+
+					return true;
+				}
 			}
 		}
 		
-		if (count($data['mvSupplierClient']) > 0) { //client exists in mv, can update id
+		/*  if the client is successfully inserted in Megaventory then the return data ($data) will have an mvSupplierCLient object.
+			Hence, we need to update the WooCommerce's user object's MV_ID to match Megaventory's SupplierClientID */
+		if (array_key_exists('mvSupplierClient', $data)){
+		
 			update_user_meta($this->WC_ID, "MV_ID", $data["mvSupplierClient"]["SupplierClientID"]);
 			$this->MV_ID = $data["mvSupplierClient"]["SupplierClientID"];
-			//$this->log_success("Updated","Client have been successfully updated in MV",2);
-			//this will be corrected in <v1 class="2"></v1>
-			$this->log_success("Created","Client have been successfully updated in MV",1);
-		} else {
-			//failed to save
+			$this->log_success("created","customer successfully created in MV",1);
+			
+		} 
+		else {
+			/* failed to save */
 			$this->log_error('Client not saved to MV', $data['InternalErrorCode'], -1);
 			return false;
+
 		}
 		
 		return $data;
 	}
 	
-	private function generate_update_xml() {
+	private function generate_update_json(){
 		$create_new = $this->MV_ID == null;
 		$action = ($create_new ? "Insert" : "Update");
+
+		$productUpdateClient=new \stdClass();
+		$productClient=new \stdClass();
+
+		$productClient->SupplierClientID= $create_new?"":$this->MV_ID;
+		$productClient->SupplierClientType= $this->type? $this->type: "Client";
+		$productClient->SupplierClientName= $this->contact_name;
+		$this->billing_address ? $productClient->SupplierClientBillingAddress=$this->billing_address : "";
+		$this->shipping_address ? $productClient->SupplierClientShippingAddress1=$this->shipping_address:"";
+		$this->phone ? $productClient->SupplierClientPhone1 = $this->phone : "";
+		$this->email ? $productClient->SupplierClientEmail = $this->email : "";
+		$this->contact_name ? $productClient->SupplierClientComments= "WooCommerce client" : "";
+
+		$productUpdateClient->mvSupplierClient= $productClient;
+		$productUpdateClient->mvRecordAction= $action;
+
+		$json_object=wrap_json($productUpdateClient);
+		$json_object=json_encode($json_object);
+
+		return $json_object;
 		
-		$xml_request = '
-				<mvSupplierClient>
-					' . ($create_new ? '' : '<SupplierClientID>' . $this->MV_ID . '</SupplierClientID>') . '
-					<SupplierClientType>' . ($this->type ? $this->type : 'Client') . '</SupplierClientType>
-					<SupplierClientName>' . $this->contact_name . '</SupplierClientName>
-					' . ($this->billing_address ? '<SupplierClientBillingAddress>' . $this->billing_address . '</SupplierClientBillingAddress>' : '') . '
-					' . ($this->shipping_address ? '<SupplierClientShippingAddress1>' . $this->shipping_address . '</SupplierClientShippingAddress1>' : '') . '
-					' . ($this->phone ? '<SupplierClientPhone1>' . $this->phone . '</SupplierClientPhone1>' : '') . '
-					' . ($this->email ? '<SupplierClientEmail>' . $this->email . '</SupplierClientEmail>' : '') . '
-					' . ($this->contact_name ? '<SupplierClientComments>' . 'WooCommerce client' . '</SupplierClientComments>' : '') . '
-				</mvSupplierClient>
-				<mvRecordAction>' . $action . '</mvRecordAction>
-			';
-			
-		$xml_request = wrap_xml(self::$supplierclient_update_call, $xml_request);
-		
-		return $xml_request;
 	}
 	
 	public static function mv_undelete($id) {
+
 		$url = create_json_url(self::$supplierclient_undelete_call);
 		$url .= "&SupplierClientIDToUndelete=" . urlencode($id);
 
-		curl_call_no_return_transfer($url);
+		$call=curl_call($url);
+		return $call;
 	}
 	
 	
 	public function wc_reset_mv_data() {
+
 		return delete_user_meta($this->WC_ID, "MV_ID");
+		
 	}
 }
 ?>

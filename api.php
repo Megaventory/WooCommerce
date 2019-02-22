@@ -17,20 +17,19 @@
 	
 	function get_guest_mv_client() {
 		$client = Client::wc_find((int)get_option("woocommerce_guest"));
-		return $client; //$use $client->MV_ID
+		return $client;
 	}
 	
 	$default_host = "https://api.megaventory.com/v2017a/";
 	$host = get_api_host();
 	$url = $host."json/reply/";
-	$xml_url = $host."xml/reply/";
 	$API_KEY = get_api_key();
 	
 	$integration_get_call = "IntegrationUpdateGet";
 	$integration_delete_call = "IntegrationUpdateDelete";
 	$currency_get_call = "CurrencyGet";
 	
-	//MV status => WC status
+	/* MV status => WC status */
 	$translate_order_status = array
 	(
 		'Pending' => 'on-hold',
@@ -44,7 +43,7 @@
 	
 	);
 	
-	//MV status code to string. only a few of them are actually used
+	/* 	MV status code to string. only a few of them are actually used */
 	$document_status = array
 	(
 		0 => 'ValidStatus',
@@ -74,10 +73,6 @@
 		return $url . $call . "?APIKEY=" . urlencode($API_KEY);
 	}
 	
-	function create_xml_url($call) {
-		global $xml_url, $API_KEY;
-		return $xml_url . $call . "?APIKEY=" . $API_KEY;
-	}
 	
 	function create_json_url_filter($call, $fieldName, $searchOperator, $searchValue) {
 		return create_json_url($call) . "&Filters={FieldName:" . urlencode($fieldName) . ",SearchOperator:" . urlencode($searchOperator) . ",SearchValue:" . urlencode($searchValue) ."}";
@@ -99,39 +94,20 @@
 	function send_json($url,$json_request){
 
 		$ch = curl_init();
-
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt ( $ch, CURLOPT_CUSTOMREQUEST, "POST" );
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, ($json_request));
 		curl_setopt ( $ch, CURLOPT_HTTPHEADER, array ('Content-Type: application/json', 'Content-Length: ' . strlen ( $json_request ) ) );
 		$data = curl_exec($ch);
-
 		curl_close($ch);
-
 		$data = json_decode($data, TRUE);
 		
 		return $data;
 
 	}
-	function send_xml($url, $xml_request) {
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, ($xml_request));
-		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 300);
-		$data = curl_exec($ch);
-		curl_close($ch);
-
-		$data = str_replace("d2p1:", "", $data); // required because ASP.NET creates those d2p1 tags
-		$data = simplexml_load_string(html_entity_decode($data)); //, "SimpleXMLElement", LIBXML_NOCDATA)
-		$data = json_encode($data, JSON_PRETTY_PRINT, 1000);
-		$data = json_decode($data, TRUE);
-		
-		return $data;
-	}
-	function wrap_json($call,$jsonObject){
+	
+	function wrap_json($jsonObject){
 
 		global $API_KEY;
 
@@ -139,18 +115,8 @@
 
 		return $jsonObject;
 	}
-	function wrap_xml($call, $data) {
-		global $API_KEY;
-		$prefix = '
-			<' . $call . ' xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://api.megaventory.com/types">
-				<APIKEY>' . $API_KEY . '</APIKEY>
-			';
-		$suffix = '
-			</' . $call . '>
-			';
-		return $prefix . $data . $suffix;
-	}
-	//curl_call that returns the transfer
+	
+	/* curl_call that returns the transfer */
 	function curl_call($url){
 		$curl_handle = curl_init();
 		curl_setopt($curl_handle, CURLOPT_URL, $url);
@@ -158,15 +124,6 @@
 		$jsonData= curl_exec($curl_handle);
 		curl_close($curl_handle);
 		return $jsonData;
-	}	
-	//curl call that executes the url without returning the transfer
-	function curl_call_no_return_transfer($url){
-		$curl_handle = curl_init();
-		curl_setopt($curl_handle, CURLOPT_URL, $url);
-		curl_setopt($curl_handle, CURLOPT_RETURNTRANSFER, false);
-		curl_exec($curl_handle);
-		curl_close($curl_handle);
-		
 	}
 	
 	function get_default_currency() {
@@ -193,24 +150,43 @@
 	
 	function check_key() {
 		global $API_KEY;
+		global $apiKeyErrorResponseStatusMessage;
 		$url = create_json_url("ApiKeyGet");
 		$jsonData = curl_call($url);
 		$data = json_decode($jsonData,true);
-
+		$apiKeyErrorResponseStatusMessage=$data['ResponseStatus']['Message'];
 		$code = (int)$data['ResponseStatus']['ErrorCode'];
-
-		if ($code == 401 || $code == 500) { //401-wrong key | 500-no key
-			global $apiKeyErrorResponseStatusMessage;
-			$apiKeyErrorResponseStatusMessage=$data['ResponseStatus']['Message'];
+		/* 401-wrong key | 500-no key */
+		if ($code == 401 || $code == 500) {
 			return false;
 		} 
-
 		log_apikey($API_KEY);
+
 		return true;
 		
 	}
+
+	function check_if_integration_is_enabled(){
+
+		$url = create_json_url("AccountSettingsGet");
+
+		$json_object=new \stdClass();
+		$integrationObject=new \stdClass();
+
+		$integrationObject->SettingName="isWoocommerceEnabled";
+		$json_object->mvAccountSettings=$integrationObject;
+		$json_object=wrap_json($integrationObject);
+		$json_object=json_encode($json_object);
+		$data=send_json($url,$json_object);
+
+		$isWooCommerceEnabledResponse=$data['mvAccountSettings'][0]["SettingValue"];
+
+		return $isWooCommerceEnabledResponse;
+
+	}
 	 
 	function remove_integration_update($id) {
+
 		global $integration_delete_call;
 		$url = create_json_url($integration_delete_call) . "&IntegrationUpdateIDToDelete=" . urlencode($id);
 		$jsonData = curl_call($url);
@@ -219,6 +195,7 @@
 	}
 	
 	function pull_product_changes() {
+
 		global $integration_get_call;
 		$url = create_json_url_filter($integration_get_call, "Application", "Equals", "Woocommerce");
 		$jsonData = curl_call($url);
@@ -227,6 +204,7 @@
 	}
 	
 	function apply_coupon($product, $coupon) {
+
 		if (!$coupon->type or $coupon->type == "fixed_cart")
 			return false;
 		
@@ -248,18 +226,18 @@
 	}
 	
 	function log_apikey($api_key){
+
 		global $wpdb;
 		$apikeys_table_name = $wpdb->prefix . "api_keys";
 		
 		$charset_collate = $wpdb->get_charset_collate();
 		$return = $wpdb->insert($apikeys_table_name, array
-		(
+			(
 			"created_at" => date('Y-m-d H:i:s'),
 			"api_key" => $api_key,
-		)	
-		);
+			)	
+			);
+			
 		return $return;
-
-	}
-	
+	}	
 ?>

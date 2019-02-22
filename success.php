@@ -60,7 +60,5 @@ class MVWC_Successes{
 		}
 		return $msgs;
 	}
-	
 }
-
 ?>

@@ -1,6 +1,7 @@
 <?php
 
-//errors should be immutable. There is no point in changing the messages.
+/* errors should be immutable. There is no point in changing the messages.  */ 
+global $wpdb;
 $error_table_name = $wpdb->prefix . "mvwc_errors"; 
 
 class MVWC_Error {
@@ -48,8 +49,9 @@ class MVWC_Error {
 }
 
 class MVWC_Errors {
+
 	private $errors = array(); 
-	
+
 	public function log_error($args = array()) {
 		array_push($this->errors, new MVWC_Error($args));
 	}
@@ -59,9 +61,8 @@ class MVWC_Errors {
 		foreach ($this->errors as $error) {
 			array_push($msgs, $error->get_full_message());
 		}
+		
 		return $msgs;
 	}
-	
 }
-
 ?>

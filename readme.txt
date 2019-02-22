@@ -1,6 +1,6 @@
 === Megaventory ===
 Description: Integration between WooCommerce and Megaventory
-Version: 1.1
+Version: 1.2
 Contributors: grzalamp, ch-asimakopoulos, yyialouris
 Tags: megaventory, integration, inventory, stock
 Requires at least: 4.4
