@@ -20,7 +20,6 @@ function AsyncImport()
 			
 			if(count($wc_products) > $i) {
 				$flag=$wc_products[$i]->mv_save();
-				$wc_products[$i]->sync_stock();
 				$flag?$successes++:$errors++;
 			}
 		}
