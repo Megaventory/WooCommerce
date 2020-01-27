@@ -1,0 +1,344 @@
+.checkmark {
+	display:inline-block;
+	width: 22px;
+	height:22px;
+	-ms-transform: rotate(45deg); /* IE 9 */
+	-webkit-transform: rotate(45deg); /* Chrome, Safari, Opera */
+	transform: rotate(45deg);
+}
+
+.checkmark_stem {
+	position: absolute;
+	width:3px;
+	height:9px;
+	background-color:green;
+	left:17px;
+	top:6px;
+}
+
+.checkmark_kick {
+	position: absolute;
+	width:3px;
+	height:3px;
+	background-color:green;
+	left:14px;
+	top:12px;
+}
+
+.checkmark_stem_error {
+	position: absolute;
+	width:3px;
+	height:9px;
+	background-color:red;
+	left:17px;
+	top:9px;
+}
+
+.checkmark_kick_error {
+	position: absolute;
+	width:9px;
+	height:3px;
+	background-color:red;
+	left:14px;
+	top:12px;
+}
+
+.column-name.column-primary {
+	width: 15%!IMPORTANT;
+}
+
+.column-product_tag {
+	width: 5% !IMPORTANT;
+}
+
+.column-megaventory_stock {
+	width: 15%;
+	background-color: #eee;
+}
+
+.credentialsTable{
+	width: 100%;
+}
+
+.credentialsTable td:first-child{
+	width: 150px;
+}
+.qty-on-hand {
+	color: #666;
+}
+
+.qty-non-shipped {
+	color: Red;
+}
+
+.qty-non-allocated {
+	color: DarkRed;
+}
+
+.qty-non-received {
+	color: Green;
+}
+
+.qty-row {
+	width: 100%;
+	text-align: center;
+}
+
+.qty-row td:first-child {
+	text-align: left;
+}
+
+.qty-row  td {
+	padding: 0px;
+}
+
+.initNoticeDiv {
+	padding-bottom: 5px;
+	text-align: start;
+}
+
+.initializeNotice {
+	font-size: 17px;
+}
+
+.inventories {
+	text-align: left;
+	width: 35%;
+}
+/* Tooltip container */
+/* .mv-tooltip {
+} */
+
+/* Tooltip text */
+.mv-tooltip .tooltiptext {
+	visibility: hidden;
+	width: 120px;
+	background-color: black;
+	color: #fff;
+	text-align: center;
+	padding: 5px 0;
+	border-radius: 6px;
+
+	/* Position the tooltip text - see examples below! */
+	position: absolute;
+	z-index: 1;
+}
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.mv-tooltip:hover .tooltiptext {
+	visibility: visible;
+}
+
+/* ADMIN PANEL */
+
+.mv-row {
+	width: 100%;
+	display: block;
+	float: none;
+	overflow: auto;
+	text-align: center;
+}
+
+.mv-row .connection {
+	width: 25%;
+	float: left;
+}
+
+.mv-row .credentials {
+	width: 45%;
+	float: left;
+}
+
+.mv-row .actions {
+	width: 500px;
+	float: left;
+}
+
+.mv-row h3 {
+	text-align: center;
+	margin-bottom: 5px;
+}
+
+.mv-status ul {
+	width: 100%;
+	min-width: 200px;
+	display: table;
+}
+
+.mv-status ul li {
+	display: inline-table;
+	width: 60%;
+	margin: 0 5%;
+}
+
+.mv-status ul li.mv-li-left {
+	text-align: right;
+}
+
+.mv-form form .mv-form-body {
+	display: table;
+	width: 100%;
+	text-align: center;
+}
+
+.mv-form .mv-form-body p {
+	display: table-row;
+}
+
+.mv-form .mv-form-body label, .mv-form .mv-form-body input {
+	display: table-cell;
+}
+
+.mv-form .mv-form-bottom {
+	margin-top: 10px;
+	display: block;
+	text-align: left;
+}
+
+div.mv-row.row-main {
+	width: 90%;
+}
+
+.wrap-init {
+	text-align: center;
+}
+
+.wrap-init input {
+	width: 90%;
+}
+
+.mv-admin {
+	text-align: center;
+	min-width: 800px;
+}
+
+.mv-admin h1 {
+	margin-right: 5%;
+}
+
+
+/* ERROR LOG AND TAX TABLE */
+.mv-row table {
+	text-align: left;
+}
+
+.mv-row .userNotificationTable-wrap {
+	width: 100%;
+	max-height: 500px;
+	overflow: auto;
+}
+
+.mv-row .tax-wrap {
+	width: 100%;
+	max-height: 300px;
+	overflow: auto;
+}
+.smallColumn{
+	width: 5%;
+}
+
+.mediumColumn{
+	width: 10%;
+}
+
+#loading{background-color: transparent;height: 100%!important;right: 0!important;text-align: center!important;top: 0!important;vertical-align: middle;white-space: nowrap!important;width: 100%!important;z-index: 13000!important;}
+#InnerLoading{background-color: #F0F0F0;filter: progid:DXImageTransform.Microsoft.Alpha(Style=0,Opacity=1);height: 100%!important;opacity: 0.96;position: absolute!important;top: 0!important;width: 100%!important;}
+.InnerloadingBox{background-color:transparent;border:medium none;position:fixed;top:0;margin:auto 0;left:40%;top:30%;}
+#loading h1{left:41%;position:fixed;top:35%;}
+.InnerloadingBox > span{  display:inline-block;animation: loading 0.9s infinite alternate; -webkit-animation: loading 0.9s infinite alternate; -moz-animation: loading 0.9s infinite alternate;
+	color:#2D882D;width:100px;font-size:300pt;}
+.InnerloadingBox > span:nth-child(2){color:#2D882D; animation-delay: 0.2s; -webkit-animation-delay: 0.2s; -moz-animation-delay: 0.2s;}
+.InnerloadingBox > span:nth-child(3){ color:#2D882D; animation-delay: 0.2s;  -webkit-animation-delay: 0.2s; -moz-animation-delay: 0.2s;}
+
+.pushAction {
+	width: 350px;
+	text-align: start;
+	float: left;
+}
+.showInitSync {
+	background-color: #f3f5f6;
+	border: 1px solid #0071a1;
+	border-color:#016087;
+	color:#016087;
+	padding: 3px 2px;
+	text-align: center;
+	text-decoration: none;
+	display: inline-block;
+	margin: 4px 2px;
+	cursor: pointer;
+}
+.showInitSync:hover {
+	background-color: #f1f1f1;
+}
+#success-log th, #error-log th, #taxes th{
+	font-weight: 600;
+	top: 0px;
+	position: sticky;
+	background:white;
+}
+@keyframes loading {
+	0% {
+		width: 16.7%;
+		transform: translateZ(0);
+	}
+	100% {
+		width: 30%;
+		transform: translateZ(-21px);
+	}
+}
+@-webkit-keyframes loading {
+	0% {
+		width: 16.7%;
+		-webkit-transform: translateZ(0);
+	}
+	100% {
+		width: 30%;
+		-webkit-transform: translateZ(-21px);
+	}
+}
+@-moz-keyframes loading {
+	0% {
+		width: 16.7%;
+		-moz-transform: translateZ(0);
+	}
+	100% {
+		width: 30%;
+		-moz-transform: translateZ(-21px);
+	}
+}
+
+.updateButton{
+	border-radius: 5px;
+	align-self: flex-start;
+	background-color: #00AADC;
+	border-color: #0087BE;
+	box-shadow: 0 1px 0 #0087BE;
+	color: #fff;
+	font-size: 1.1em;
+	height: auto;
+	padding: 0.45em 1.5em;
+	text-shadow: none;
+	margin-bottom: 5px;
+	display: inline-block;
+}
+
+/* Atomic CSS region */
+
+.displayNone{display: none;}
+.halfWidth{width: 50%}
+.MarLe15{margin-left: 15px}
+.MarLe30{margin-left: 30px}
+.MarTop10{margin-top: 10px}
+.width25per{width:25%}
+.width10per{width:10%}
+.width80per{width:80%;}
+.width30px{width:30px;}
+.tblCell{display:table-cell}
+.flLeft{float:left}
+.red{color:#db3236}
+.green{color:#3cba54}
+.yellow{color:#f4c20d}
+.blue{color:#4885ed}
+.none{display:none}
+.CurPointer {cursor: pointer}
+.margin5px{margin:5px;}
