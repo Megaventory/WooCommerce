@@ -1117,7 +1117,8 @@ class Product {
 
 		if ( null !== $megaventory_product->mv_id || '' !== $megaventory_product->mv_id ) {
 
-			$this->mv_id = $megaventory_product->mv_id;
+			$this->mv_id   = $megaventory_product->mv_id;
+			$this->mv_type = $megaventory_product->mv_type;
 		}
 
 		$create_new = ( null === $this->mv_id || '' === $this->mv_id );
