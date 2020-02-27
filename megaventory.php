@@ -998,6 +998,10 @@ function pull_changes() {
 
 				$wc_product = wc_get_product( $post_meta_id );
 
+				if ( false === $wc_product || null === $wc_product ) {
+					continue;
+				}
+
 				if ( 'variation' === $wc_product->get_type() ) {
 
 					// Sync variation stock.
