@@ -41,11 +41,7 @@ function generate_admin_page() {
 
 	$taxes_objects = Tax::wc_all();
 
-	global $correct_connection, $correct_currency, $correct_key;
 	global $connection_value,$currency_value,$key_value,$initialize_value;
-	$products_call = 'products';
-
-	$initialized = (bool) get_option( 'is_megaventory_initialized' );
 
 	$update_credentials_nonce = wp_create_nonce( 'update-credentials-nonce' );
 	?>
@@ -191,8 +187,14 @@ function generate_admin_page() {
 		<?php endif; ?>
 		<br>
 		<?php
-			$inventories          = Location::get_megaventory_locations();
-			$default_inventory_id = (int) get_option( 'default-megaventory-inventory-location' );
+		$inventories = array();
+
+		if ( '&check;' === $connection_value && '&check;' === $currency_value && '&check;' === $key_value ) {
+
+			$inventories = Location::get_megaventory_locations();
+		}
+
+		$default_inventory_id = (int) get_option( 'default-megaventory-inventory-location' );
 		?>
 		<div class="mv-row row-main">
 			<div class='inventories'>

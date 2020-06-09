@@ -293,7 +293,7 @@ class Client {
 	 */
 	public static function mv_find( $id ) {
 
-		$url       = create_json_url_filter( self::$supplierclient_get_call, 'SupplierClientID', 'Equals', rawurlencode( $id ) );
+		$url       = create_json_url_filter( self::$supplierclient_get_call, 'SupplierClientID', 'Equals', $id );
 		$json_data = perform_call_to_megaventory( $url );
 		$client    = json_decode( $json_data, true );
 		if ( count( $client['mvSupplierClients'] ) <= 0 ) {
@@ -490,16 +490,19 @@ class Client {
 			}
 		}
 
-		/*
-		If the client is successfully inserted in Megaventory then the return data ($data) will have an mvSupplierClient object.
-		Hence, we need to update the WooCommerce's user object's mv_id to match Megaventory's SupplierClientID.
-		*/
 		if ( array_key_exists( 'mvSupplierClient', $data ) ) {
 
 			update_user_meta( $this->wc_id, 'mv_id', $data['mvSupplierClient']['SupplierClientID'] );
-			$this->mv_id = $data['mvSupplierClient']['SupplierClientID'];
-			$this->log_success( 'created', 'customer successfully created in Megaventory', 1 );
 
+			$this->mv_id = $data['mvSupplierClient']['SupplierClientID'];
+
+			if ( 'Insert' === $json_request->mvrecordaction ) {
+
+				$this->log_success( 'created', 'customer successfully created in Megaventory', 1 );
+			} else {
+
+				$this->log_success( 'updated', 'customer successfully updated in Megaventory', 1 );
+			}
 		} else {
 			/* failed to save */
 			$this->log_error( 'Client not saved to Megaventory', $data['InternalErrorCode'], -1, $data['json_object'] );
@@ -565,7 +568,7 @@ class Client {
 	public static function mv_undelete( $id ) {
 
 		$url  = create_json_url( self::$supplierclient_undelete_call );
-		$url .= '&SupplierClientIDToUndelete=' . rawurlencode( $id );
+		$url .= '&SupplierClientIDToUndelete=' . $id;
 
 		$call = perform_call_to_megaventory( $url );
 		return $call;

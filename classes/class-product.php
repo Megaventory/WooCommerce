@@ -317,7 +317,7 @@ class Product {
 				'wc' => $this->wc_id,
 				'mv' => $this->mv_id,
 			),
-			'entity_name' => ( empty( $this->name ) ) ? $this->description : $this->name,
+			'entity_name' => ( empty( $this->sku ) ) ? $this->name : $this->sku,
 			'problem'     => $problem,
 			'full_msg'    => $full_msg,
 			'error_code'  => $code,
@@ -344,7 +344,7 @@ class Product {
 				'mv' => $this->mv_id,
 			),
 			'entity_type'        => 'product',
-			'entity_name'        => ( empty( $this->name ) ) ? $this->description : $this->name,
+			'entity_name'        => ( empty( $this->sku ) ) ? $this->name : $this->sku,
 			'transaction_status' => $transaction_status,
 			'full_msg'           => $full_msg,
 			'success_code'       => $code,
@@ -527,8 +527,7 @@ class Product {
 				$string .= ';' . $non_received_wo;
 
 				array_push( $mv_qty, $string );
-				$available_stock += (int) $total + (int) $non_shipped + (int) $non_received_wo - (int) $non_shipped - (int) $non_allocated;
-				// Available stock for WooCommerce: total + non_received + non_receivedWO - non_shipped - non_allocated.
+				$available_stock += (int) $on_hand;
 			}
 		} else {
 
@@ -664,9 +663,8 @@ class Product {
 		$prod->mv_id = (int) get_post_meta( $id, 'mv_id', true );
 
 		$prod->name             = $wc_prod->post_name;
-		$prod->description      = $wc_prod->post_title;
 		$prod->long_description = $wc_prod->post_content;
-		$prod->description      = $wc_prod->post_excerpt;
+		$prod->description      = ( empty( $wc_prod->post_excerpt ) ? $wc_prod->post_title : $wc_prod->post_excerpt );
 
 		$terms      = get_the_terms( $id, 'product_type' );
 		$prod->type = ( ! empty( $terms ) ) ? sanitize_title( current( $terms )->name ) : 'simple';
@@ -1057,7 +1055,7 @@ class Product {
 
 			$category_id = array_search( $this->category, $categories, true );
 
-			if ( ! empty( $category_id ) ) { // we need to create a new category.
+			if ( false === $category_id ) { // we need to create a new category.
 
 				$category_id = self::mv_create_category( $this->category );
 			}
@@ -1092,7 +1090,7 @@ class Product {
 
 		/*Otherwise the product will either be created or updated.*/
 
-		$product_exists = ( null === $this->mv_id || '' === $this->mv_id );
+		$product_exists = ( null === $this->mv_id || 0 === $this->mv_id );
 		$action         = ( $product_exists ? 'created' : 'updated' );
 
 		$this->log_success( $action, 'product successfully ' . $action . ' in Megaventory', 1 );
@@ -1115,13 +1113,15 @@ class Product {
 		$megaventory_product = new Product();
 		$megaventory_product = self::mv_find_by_sku( $this->sku );
 
-		if ( null !== $megaventory_product->mv_id || '' !== $megaventory_product->mv_id ) {
+		if ( null !== $megaventory_product ) {
 
 			$this->mv_id   = $megaventory_product->mv_id;
 			$this->mv_type = $megaventory_product->mv_type;
+		} else {
+			$this->mv_id = 0;
 		}
 
-		$create_new = ( null === $this->mv_id || '' === $this->mv_id );
+		$create_new = ( null === $this->mv_id || 0 === $this->mv_id );
 
 		$action = ( ( $create_new ) ? 'Insert' : 'Update' );
 
@@ -1133,7 +1133,7 @@ class Product {
 		$product_object->productid              = $create_new ? '' : $this->mv_id;
 		$product_object->producttype            = $this->mv_type ? $this->mv_type : 'BuyFromSupplier';
 		$product_object->productsku             = $this->sku;
-		$product_object->productdescription     = wp_strip_all_tags( str_replace( $special_characters, ' ', $this->description ) );
+		$product_object->productdescription     = mb_substr( wp_strip_all_tags( str_replace( $special_characters, ' ', $this->description ) ), 0, 400 );
 		$product_object->productversion         = $this->version ? $this->version : '';
 		$product_object->productlongdescription = $this->long_description ? mb_substr( wp_strip_all_tags( str_replace( $special_characters, ' ', $this->long_description ) ), 0, 400 ) : '';
 		$product_object->productcategoryid      = $category_id;

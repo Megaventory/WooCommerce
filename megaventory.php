@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.0.0
+ * Version: 2.1.0
  * Text Domain: megaventory
  * Plugin URI: https://github.com/Megaventory/WooCommerce
  * Description: Integration between WooCommerce and Megaventory.
@@ -222,6 +222,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 		add_action( 'woocommerce_tax_rate_added', 'on_tax_update', 10, 2 );
 
 	} else {
+
 		$execute_lock = true;
 	}
 
@@ -277,6 +278,8 @@ function check_status() {
 
 	if ( ! $correct_key ) {
 
+		delete_option( 'megaventory_api_key' );
+
 		register_error( 'Megaventory error! Invalid API key!', $api_key_error_response_status_message );
 
 		$key_value = '&cross;';
@@ -285,6 +288,8 @@ function check_status() {
 	}
 
 	if ( strpos( $api_key_error_response_status_message, 'Administrator' ) === false ) {
+
+		delete_option( 'megaventory_api_key' );
 
 		register_error( "Megaventory error! WooCommerce integration needs administrator's credentials!", 'Please contact your Megaventory account administrator.' );
 
@@ -938,9 +943,9 @@ add_filter( 'cron_schedules', 'schedule' ); // @codingStandardsIgnoreLine. It is
  */
 function pull_changes() {
 
-	if ( ! check_connectivity() ) {
+	if ( ! check_status() ) {
 
-		register_error( 'Megaventory automatic synchronization failed', 'No connection to Megaventory API server' );
+		register_error( 'Megaventory automatic synchronization failed', 'Check that Currency, API Key are correct and your store is initialized' );
 
 		return;
 	}

@@ -260,21 +260,8 @@ function async_import() {
 			wp_die();
 
 		}
+
 		if ( 4 === $block ) {
-
-			$products        = Product::wc_all();
-			$step            = $block + 1;
-			$percent         = (int) ( ( $step / $number_of_blocks ) * 100 );
-			$success_message = 'continue';
-			$block++;
-
-			$data_to_return = create_json_for_ajax_initialize( $block, 0, $percent, $success_message );
-			wp_send_json_success( $data_to_return );
-			wp_die();
-
-		}
-
-		if ( 5 === $block ) {
 
 			update_option( 'is_megaventory_initialized', (string) true );
 
