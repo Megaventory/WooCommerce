@@ -520,7 +520,7 @@ class Client {
 	 */
 	private function generate_update_json() {
 
-		if ( '' !== $this->mv_id || null !== $this->mv_id ) {
+		if ( '' !== $this->mv_id && null !== $this->mv_id ) {
 
 			$mv_main = self::mv_find( $this->mv_id );
 

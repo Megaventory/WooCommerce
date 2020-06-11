@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.1.0
+ * Version: 2.1.1
  * Text Domain: megaventory
  * Plugin URI: https://github.com/Megaventory/WooCommerce
  * Description: Integration between WooCommerce and Megaventory.

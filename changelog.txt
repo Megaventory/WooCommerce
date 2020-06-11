@@ -1,5 +1,8 @@
 *** Megaventory Extension Template Changelog ***
 
+2020-06-11 - version 2.1.1
+* Customer Get bug
+
 2020-06-09 - version 2.1.0
 * Category sync bug
 * Trim short description to 400 chars
