@@ -664,7 +664,7 @@ class Product {
 
 		$prod->name             = $wc_prod->post_name;
 		$prod->long_description = $wc_prod->post_content;
-		$prod->description      = ( empty( $wc_prod->post_excerpt ) ? $wc_prod->post_title : $wc_prod->post_excerpt );
+		$prod->description      = $wc_prod->post_title;
 
 		$terms      = get_the_terms( $id, 'product_type' );
 		$prod->type = ( ! empty( $terms ) ) ? sanitize_title( current( $terms )->name ) : 'simple';
@@ -780,7 +780,7 @@ class Product {
 		$prod->wc_id         = $var_prod_id;
 		$prod->mv_id         = get_post_meta( $var_prod_id, 'mv_id', true );
 		$prod->sku           = $var_prod->get_sku();
-		$prod->description   = $var_prod->get_description() ? $var_prod->get_description() : $parent->description;
+		$prod->description   = $var_prod->get_name() ? $var_prod->get_name() : $parent->description;
 		$prod->type          = 'variable-child';
 		$prod->regular_price = $var_prod->get_regular_price() ? $var_prod->get_regular_price() : $parent->regular_price;
 		$prod->sale_price    = $var_prod->get_sale_price() ? $var_prod->get_sale_price() : $parent->sale_price;

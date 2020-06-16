@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.1.1
+ * Version: 2.1.2
  * Text Domain: megaventory
  * Plugin URI: https://github.com/Megaventory/WooCommerce
  * Description: Integration between WooCommerce and Megaventory.
@@ -287,7 +287,7 @@ function check_status() {
 		return false;
 	}
 
-	if ( strpos( $api_key_error_response_status_message, 'Administrator' ) === false ) {
+	if ( null !== $api_key_error_response_status_message && strpos( $api_key_error_response_status_message, 'Administrator' ) === false ) {
 
 		delete_option( 'megaventory_api_key' );
 
@@ -952,7 +952,7 @@ function pull_changes() {
 
 	$changes = pull_product_changes();
 
-	if ( count( $changes ) <= 0 ) { // No need to do anything if there are no changes.
+	if ( count( $changes['mvIntegrationUpdates'] ) === 0 ) { // No need to do anything if there are no changes.
 
 		return;
 	}
@@ -960,37 +960,36 @@ function pull_changes() {
 	foreach ( $changes['mvIntegrationUpdates'] as $change ) {
 		if ( 'product' === $change['Entity'] ) {
 
-			global $save_product_lock;
-			$save_product_lock = true;/*  prevent changes from megaventory to be pushed back to megaventory again (prevent infinite loop of updates) */
-
-			/*
-				Only care about update | or $change["Action"] == "insert"
-				new product created, or details changed
-				get product new info.
+			/**
+			 **It's very dangerous to apply product updates. Because for example, for short description we take the product title.
+			 **The description on e-commerces has some html tags, also they can be more than 400 or 4000 chars.
+			 **We can't change his business models!
+			 **Only the stock and the order's status.
+			 **global $save_product_lock;
+			 **$save_product_lock = true;// prevent changes from megaventory to be pushed back to megaventory again (prevent infinite loop of updates)
+			 **
+			 **if ( 'update' === $change['Action'] ) {
+			 **
+			 **$product = Product::mv_find( $change['EntityIDs'] );
+			 **
+			 **save new info.
+			 **only update synchronized prods so they are not added.
+			 **$product->wc_save( null, false );
+			 **
+			 **} elseif ( 'delete' === $change['Action'] ) {
+			 **
+			 **$data    = json_decode( $change['JsonData'], true );
+			 **$product = Product::wc_find_by_sku( $data['ProductSKU'] );
+			 **
+			 **
+			 **if ( null !== $product ) {
+			 **
+			 **$product->wc_destroy();
+			 **}
+			 **}
+			 **$save_product_lock = false;
 			*/
-			if ( 'update' === $change['Action'] ) {
-
-				$product = Product::mv_find( $change['EntityIDs'] );
-
-				// save new info.
-				// only update synchronized prods so they are not added.
-				$product->wc_save( null, false );
-
-			} elseif ( 'delete' === $change['Action'] ) {
-
-				$data    = json_decode( $change['JsonData'], true );
-				$product = Product::wc_find_by_sku( $data['ProductSKU'] );
-
-				/* Already deleted from Megaventory */
-				if ( null !== $product ) {
-
-					$product->wc_destroy();
-				}
-			}
-
-			/* delete integration update as it was already resolved */
 			remove_integration_update( $change['IntegrationUpdateID'] );
-			$save_product_lock = false;
 
 		} elseif ( 'stock' === $change['Entity'] ) { // stock changed.
 
@@ -1021,9 +1020,10 @@ function pull_changes() {
 
 					$product->sync_stock();
 				}
-
-				$data = remove_integration_update( $change['IntegrationUpdateID'] );
 			}
+
+			$data = remove_integration_update( $change['IntegrationUpdateID'] );
+
 		} elseif ( 'document' === $change['Entity'] ) { // Order changed.
 
 			global $document_status, $translate_order_status;
