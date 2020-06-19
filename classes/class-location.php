@@ -265,7 +265,7 @@ class Location {
 
 			$error_code = ( $results['ResponseStatus']['ErrorCode'] ? $results['ResponseStatus']['ErrorCode'] : -1 );
 
-			$this->log_error( -1, $error_message, $error_code, $results['json_object'], $results['json_object'] );
+			$this->log_error( -1, $error_message, $error_code, 'error', $results['json_object'] );
 		}
 
 		return $return_bool;

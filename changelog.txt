@@ -1,5 +1,10 @@
 *** Megaventory Extension Template Changelog ***
 
+2020-06-18 - version 2.1.3
+* Customer mapping fixes
+* Undelete product and customer fixes 
+* Initial sync operation fixes
+
 2020-06-16 - version 2.1.2
 * Get WooCommerce product title as product short description
 * Prevent product updates from Megaventory to WooCommerce(except stock updates)

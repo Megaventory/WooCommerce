@@ -116,7 +116,7 @@ function async_import() {
 				log_notice( 'success', $message );
 			}
 			if ( $errors_count > 0 ) {
-				$message = "$errors_count users haven't been imported in your Megaventory account. " . ' Only customers are being imported.';
+				$message = "$errors_count customers haven't been imported in your Megaventory account.";
 				log_notice( 'error', $message );
 			}
 		} else {
@@ -179,7 +179,7 @@ function async_import() {
 			$block = (int) sanitize_text_field( wp_unslash( $_POST['block'] ) );
 		}
 
-		$number_of_blocks = 6;
+		$number_of_blocks = 4;
 
 		if ( 0 === $block ) {
 
@@ -199,6 +199,7 @@ function async_import() {
 			wp_send_json_success( $data_to_return );
 			wp_die();
 		}
+
 		if ( 1 === $block ) {
 
 			$products           = Product::wc_all();
@@ -235,20 +236,6 @@ function async_import() {
 
 		if ( 2 === $block ) {
 
-			map_existing_clients_by_email();
-			$step            = $block + 1;
-			$percent         = (int) ( ( $step / $number_of_blocks ) * 100 );
-			$success_message = 'continue';
-			$block++;
-
-			$data_to_return = create_json_for_ajax_initialize( $block, 0, $percent, $success_message );
-			wp_send_json_success( $data_to_return );
-			wp_die();
-
-		}
-
-		if ( 3 === $block ) {
-
 			initialize_taxes();
 			$step            = $block + 1;
 			$percent         = (int) ( ( $step / $number_of_blocks ) * 100 );
@@ -261,7 +248,7 @@ function async_import() {
 
 		}
 
-		if ( 4 === $block ) {
+		if ( 3 === $block ) {
 
 			update_option( 'is_megaventory_initialized', (string) true );
 

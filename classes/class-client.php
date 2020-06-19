@@ -227,7 +227,7 @@ class Client {
 				'mv' => $this->mv_id,
 			),
 			'entity_type'        => 'customer',
-			'entity_name'        => $this->contact_name,
+			'entity_name'        => $this->username,
 			'transaction_status' => $transaction_status,
 			'full_msg'           => $full_msg,
 			'success_code'       => $code,
@@ -245,7 +245,13 @@ class Client {
 		$clients = array();
 
 		foreach ( get_users() as $user ) {
+
 			$client = self::wc_convert( $user );
+
+			if ( null === $client ) {
+				continue;
+			}
+
 			array_push( $clients, $client );
 		}
 
@@ -374,8 +380,11 @@ class Client {
 	 */
 	private static function wc_convert( $wc_client ) {
 
-		$client_type = $wc_client->roles[0];
-		if ( 'customer' !== $client_type && 'subscriber' !== $client_type ) {// we want to save only customers users.
+		$accepted_roles = array( 'customer', 'subscriber' );
+
+		array_intersect( $accepted_roles, $wc_client->roles );
+
+		if ( empty( array_intersect( $accepted_roles, $wc_client->roles ) ) ) {// we want to save only customers users.
 			return null;
 		}
 
@@ -386,7 +395,7 @@ class Client {
 
 		$client->username = $wc_client->user_login;
 
-		$client->contact_name = get_user_meta( $wc_client->ID, 'first_name', true ) . ' ' . get_user_meta( $wc_client->ID, 'last_name', true );
+		$client->contact_name = trim( get_user_meta( $wc_client->ID, 'first_name', true ) . ' ' . get_user_meta( $wc_client->ID, 'last_name', true ) );
 		$ship_name            = get_user_meta( $wc_client->ID, 'shipping_first_name', true ) . ' ' . get_user_meta( $wc_client->ID, 'shipping_last_name', true );
 		$client->company      = get_user_meta( $wc_client->ID, 'billing_company', true );
 
@@ -409,7 +418,7 @@ class Client {
 		$client->shipping_address    = format_address( $billing_address );
 
 		$client->phone = get_user_meta( $wc_client->ID, 'billing_phone', true );
-		$client->type  = $wc_client->roles[0];
+		$client->type  = 'Client'; // you can change it to 'Both' aka supplier and client.
 
 		return $client;
 	}
@@ -448,45 +457,19 @@ class Client {
 		$json_request = $this->generate_update_json();
 		$data         = send_json( $url, $json_request );
 
-		/* what if client was deleted or name already exists */
-		$undeleted = false;
-
 		if ( array_key_exists( 'InternalErrorCode', $data ) ) {
 
 			if ( 'SupplierClientAlreadyDeleted' === $data['InternalErrorCode'] ) {
-				/* client must be undeleted first and then updated */
-				$undelete = self::mv_undelete( $data['entityID'] );
+				/* client must be undeleted first and then update */
+				$undelete_data = self::mv_undelete( $data['entityID'] );
 
-				/* if undelete, this name will exist. next if statement has to decide what to do next */
-				$data['InternalErrorCode'] = 'SupplierClientNameAlreadyExists';
-				$undeleted                 = true;
-			}
-			/* client name already exists,update info if is the same client,create new if is different person */
-			if ( 'SupplierClientNameAlreadyExists' === $data['InternalErrorCode'] ) {
-				$mv_client = self::mv_find( $data['entityID'] );
-
-				/* same person */
-				if ( $this->email === $mv_client->email ) {
-
-					$this->mv_id        = $mv_client->mv_id;
-					$this->contact_name = $mv_client->contact_name;
-					$json_request       = $this->generate_update_json();
-					$json_data          = send_json( $url, $json_request );
-
-					update_user_meta( $this->wc_id, 'mv_id', $json_data['mvSupplierClient']['SupplierClientID'] );
-					$this->log_success( 'updated', 'customer successfully updated in Megaventory', 1 );
-
-					return true;
-				} else { /* Different person */
-					$this->contact_name = $this->contact_name . ' - ' . $this->email;
-					$json_request       = $this->generate_update_json();
-					$json_data          = send_json( $url, $json_request );
-
-					update_user_meta( $this->wc_id, 'mv_id', $json_data['mvSupplierClient']['SupplierClientID'] );
-					$this->log_success( 'created', 'customer successfully created in Megaventory', 1 );
-
-					return true;
+				if ( array_key_exists( 'InternalErrorCode', $undelete_data ) ) {
+					$this->log_error( 'Client not saved to Megaventory', 'Client is deleted. Undelete failed', -1, 'error', $data['json_object'] );
+					return false;
 				}
+
+				$this->mv_id = $data['entityID'];
+				return $this->mv_save();
 			}
 		}
 
@@ -505,7 +488,7 @@ class Client {
 			}
 		} else {
 			/* failed to save */
-			$this->log_error( 'Client not saved to Megaventory', $data['InternalErrorCode'], -1, $data['json_object'] );
+			$this->log_error( 'Client not saved to Megaventory', $data['InternalErrorCode'], -1, 'error', $data['json_object'] );
 			return false;
 
 		}
@@ -539,13 +522,13 @@ class Client {
 
 		$product_client->supplierclientid   = $create_new ? '' : $this->mv_id;
 		$product_client->supplierclienttype = $this->type ? $this->type : 'Client';
-		$product_client->supplierclientname = $this->contact_name;
+		$product_client->supplierclientname = $this->username;
 
-		$this->billing_address ? $product_client->supplierclientbillingaddress    = $this->billing_address : '';
+		$this->billing_address ? $product_client->supplierclientbillingaddress    = $this->contact_name . '\n' . $this->billing_address : '';
 		$this->shipping_address ? $product_client->supplierclientshippingaddress1 = $this->shipping_address : '';
 		$this->phone ? $product_client->supplierclientphone1                      = $this->phone : '';
 		$this->email ? $product_client->supplierclientemail                       = $this->email : '';
-		$this->contact_name ? $product_client->supplierclientcomments             = 'WooCommerce client' : '';
+		$product_client->supplierclientcomments                                   = 'WooCommerce client';
 
 		$product_update_client->mvsupplierclient = $product_client;
 		$product_update_client->mvrecordaction   = $action;
@@ -563,7 +546,7 @@ class Client {
 	 * Undelete a client in Megaventory.
 	 *
 	 * @param integer $id as client's id.
-	 * @return mixed
+	 * @return array
 	 */
 	public static function mv_undelete( $id ) {
 
@@ -571,7 +554,8 @@ class Client {
 		$url .= '&SupplierClientIDToUndelete=' . $id;
 
 		$call = perform_call_to_megaventory( $url );
-		return $call;
+
+		return json_decode( $call, true );
 	}
 
 	/**

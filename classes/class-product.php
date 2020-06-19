@@ -456,7 +456,7 @@ class Product {
 	 */
 	public static function mv_find( $id ) {
 
-		$url       = create_json_url_filter( self::$product_get_call, 'ProductID', 'Equals', rawurlencode( $id ) );
+		$url       = create_json_url_filter( self::$product_get_call, 'ProductID', 'Equals', $id );
 		$json_data = perform_call_to_megaventory( $url );
 		$data      = json_decode( $json_data, true );
 		if ( count( $data['mvProducts'] ) <= 0 ) {
@@ -1080,10 +1080,16 @@ class Product {
 				return false;
 			}
 
-			$this->mv_id  = $data['entityID'];
-			$url          = create_json_url( self::$product_undelete_call );
-			$url          = $url . '&ProductIDToUndelete=' . rawurlencode( $this->mv_id );
-			$call         = perform_call_to_megaventory( $url );
+			$this->mv_id   = $data['entityID'];
+			$url           = create_json_url( self::$product_undelete_call );
+			$url           = $url . '&ProductIDToUndelete=' . $this->mv_id;
+			$undelete_data = perform_call_to_megaventory( $url );
+
+			if ( array_key_exists( 'InternalErrorCode', $undelete_data ) ) {
+				$this->log_error( 'Product not saved to Megaventory', 'Product is deleted. Undelete failed', -1, 'error', $data['json_object'] );
+				return false;
+			}
+
 			$json_request = $this->generate_update_json( $category_id );
 			$data         = send_json( $url, $json_request );
 		}
@@ -1358,7 +1364,7 @@ class Product {
 	}
 
 	/**
-	 * Sync product meta data.
+	 * Sync product meta data on initial sync operation only.
 	 *
 	 * @return void
 	 */
@@ -1366,9 +1372,13 @@ class Product {
 
 		update_post_meta( $this->wc_id, 'mv_id', $this->mv_id );
 		update_post_meta( $this->wc_id, '_mv_qty', $this->mv_qty );
-		update_post_meta( $this->wc_id, '_manage_stock', 'yes' );
-		update_post_meta( $this->wc_id, '_stock', (string) $this->available_wc_stock );
-		update_post_meta( $this->wc_id, '_stock_status', ( $this->available_wc_stock > 0 ? 'instock' : 'outofstock' ) );
+
+		if ( 0 === (int) get_post_meta( $this->wc_id, '_stock', true ) ) {
+
+			update_post_meta( $this->wc_id, '_manage_stock', 'yes' );
+			update_post_meta( $this->wc_id, '_stock', (string) $this->available_wc_stock );
+			update_post_meta( $this->wc_id, '_stock_status', ( $this->available_wc_stock > 0 ? 'instock' : 'outofstock' ) );
+		}
 
 	}
 

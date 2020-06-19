@@ -219,6 +219,7 @@ function place_sales_order( $order, $client ) {
 	$order_object->salesorderreferenceno          = $order->get_order_number();
 	$order_object->salesorderreferenceapplication = 'woocommerce';
 	$order_object->salesorderclientid             = $client->mv_id;
+	$order_object->salesordercontactperson        = $client->contact_name;
 	$order_object->salesorderbillingaddress       = str_replace( "\n", ' ', $shipping_address );
 	$order_object->salesordershippingaddress      = str_replace( "\n", ' ', $billing_address );
 	$order_object->salesordercomments             = $order->get_customer_note();

@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.1.2
+ * Version: 2.1.3
  * Text Domain: megaventory
  * Plugin URI: https://github.com/Megaventory/WooCommerce
  * Description: Integration between WooCommerce and Megaventory.
@@ -752,31 +752,6 @@ function map_existing_products_by_sku() {
 		if ( $mv_product ) {
 
 			update_post_meta( $wc_product->wc_id, 'mv_id', $mv_product->mv_id );
-		}
-	}
-}
-
-/**
- * Mapping clients by e-mail.
- *
- * @return void
- */
-function map_existing_clients_by_email() {
-
-	$clients = Client::wc_all();
-
-	foreach ( $clients as $wc_client ) {
-
-		$mv_client = false;
-
-		if ( $wc_client ) {
-
-			$mv_client = Client::mv_find_by_email( $wc_client->email );
-		}
-
-		if ( $mv_client ) {
-
-			update_user_meta( $mv_client->mv_id, 'mv_id', $mv_client->mv_id );
 		}
 	}
 }
