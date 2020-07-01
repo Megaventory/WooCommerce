@@ -1,5 +1,10 @@
 *** Megaventory Extension Template Changelog ***
 
+2020-07-01 - version 2.1.4
+* Button to pull updates from Megaventory manually
+* Keep Megaventory product barcode
+* Product image fix
+
 2020-06-18 - version 2.1.3
 * Customer mapping fixes
 * Undelete product and customer fixes 

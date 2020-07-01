@@ -50,7 +50,32 @@ function ajaxImport(startingIndex, numberOfIndToProcess, successes, errors, call
 			},
 
 			error: function (errorThrown) {
-				alert( 'error on import' );
+				alert( 'Error on import, try again! If the error persist contact to Megaventory!' );
+			}
+		}
+	);
+}
+
+/**
+ * Pull Integration Updates manually.
+ */
+function ajaxPullUpdates() {
+	jQuery( '#loading_operation' ).show();
+	jQuery.ajax(
+		{
+			url: "admin-ajax.php",
+			type: "POST",
+			data: {
+				'action': 'pull_integration_updates',
+				'async-nonce': ajax_object.nonce
+			},
+			success: function (data) { // This outputs the result of the ajax request.
+				jQuery( '#loading_operation' ).hide();
+			},
+
+			error: function (errorThrown) {
+				alert( 'Error on updates synchronization, try again! If the error persists, contact Megaventory support.' );
+				jQuery( '#loading_operation' ).hide();
 			}
 		}
 	);

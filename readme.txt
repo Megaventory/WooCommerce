@@ -1,6 +1,6 @@
 === Megaventory ===
 Plugin name: Megaventory
-Version: 2.1.3
+Version: 2.1.4
 Description: Integration between WooCommerce and Megaventory.
 Contributors: grzalamp, ch-asimakopoulos, yyialouris, christos andrianos
 Tags: megaventory, integration, inventory, stock

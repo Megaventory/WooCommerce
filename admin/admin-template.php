@@ -176,6 +176,9 @@ function generate_admin_page() {
 							<div id="sync-coupons" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,5,0,0,'coupons')" >
 								Push Coupons from WooCommerce to Megaventory
 							</div>
+							<div id="pull-updates" class="updateButton CurPointer pushAction MarTop10" onclick="ajaxPullUpdates()" >
+								Pull Updates from Megaventory
+							</div>
 						<?php else : ?>
 							<div id="initialize" class="updateButton CurPointer" onclick="ajaxInitialize(0,0,5,'initialize')" >
 								Initial Sync
@@ -338,6 +341,16 @@ function generate_admin_page() {
 			<div id="InnerLoading"></div>
 
 			<h1>Current Sync Count: 0%</h1>
+
+			<div class="InnerloadingBox">
+				<span>.</span><span>.</span><span>.</span><br>
+			</div>
+		</div>
+
+		<div id="loading_operation" class="none">
+			<div id="InnerLoading"></div>
+
+			<h1>It may take some time..</h1>
 
 			<div class="InnerloadingBox">
 				<span>.</span><span>.</span><span>.</span><br>

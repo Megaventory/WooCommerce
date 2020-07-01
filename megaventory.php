@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.1.3
+ * Version: 2.1.4
  * Text Domain: megaventory
  * Plugin URI: https://github.com/Megaventory/WooCommerce
  * Description: Integration between WooCommerce and Megaventory.
@@ -49,10 +49,15 @@ require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/ajax-sync.php';
 
 /*scripts hooks*/
 add_action( 'admin_enqueue_scripts', 'ajax_calls' );
+
 add_action( 'wp_ajax_asyncImport', 'async_import' );
 add_action( 'wp_ajax_nopriv_asyncImport', 'async_import' );
+
 add_action( 'wp_ajax_changeDefaultMegaventoryLocation', 'change_default_megaventory_location' );
 add_action( 'wp_ajax_nopriv_changeDefaultMegaventoryLocation', 'change_default_megaventory_location' );
+
+add_action( 'wp_ajax_pull_integration_updates', 'pull_integration_updates' );
+add_action( 'wp_ajax_nopriv_pull_integration_updates', 'pull_integration_updates' );
 
 $mv_admin_slug = 'megaventory-plugin';
 
@@ -254,7 +259,11 @@ function check_status() {
 	$currency_value   = '&dash;';
 	$initialize_value = '&dash;';
 
-	$correct_connection = check_connectivity();
+	/**
+	 * $correct_connection = check_connectivity();
+	 */
+
+	$correct_connection = true;
 
 	if ( ! $correct_connection ) {
 
@@ -422,8 +431,8 @@ function ajax_calls() {
 
 	$nonce = wp_create_nonce( 'async-nonce' );
 
-	wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.0', true );
-	wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.0', true );
+	wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.1', true );
+	wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.1', true );
 
 	$nonce_array = array(
 		'nonce' => $nonce,
@@ -438,7 +447,7 @@ function ajax_calls() {
  * @return void
  */
 function register_style() {
-	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.0', 'all' );
+	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.1', 'all' );
 }
 
 /**

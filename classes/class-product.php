@@ -59,7 +59,7 @@ class Product {
 	public $sku;
 
 	/**
-	 * Product ean.
+	 * Product barcode.
 	 *
 	 * @var string
 	 */
@@ -790,6 +790,15 @@ class Product {
 		$prod->length  = $var_prod->get_length() ? $var_prod->get_length() : $parent->length;
 		$prod->breadth = $var_prod->get_width() ? $var_prod->get_width() : $parent->breadth;
 
+		$image_array = wp_get_attachment_image_src( get_post_thumbnail_id( $prod->wc_id ) );
+		if ( $image_array ) {
+
+			$prod->image_url = $image_array[0];
+		} else {
+
+			$prod->image_url = $parent->image_url;
+		}
+
 		$prod->category = $parent->category;
 
 		// Version is | name - var1, var2, var3.
@@ -1085,7 +1094,7 @@ class Product {
 			$url           = $url . '&ProductIDToUndelete=' . $this->mv_id;
 			$undelete_data = perform_call_to_megaventory( $url );
 
-			if ( array_key_exists( 'InternalErrorCode', $undelete_data ) ) {
+			if ( array_key_exists( 'InternalErrorCode', json_decode( $undelete_data ) ) ) {
 				$this->log_error( 'Product not saved to Megaventory', 'Product is deleted. Undelete failed', -1, 'error', $data['json_object'] );
 				return false;
 			}
@@ -1123,6 +1132,7 @@ class Product {
 
 			$this->mv_id   = $megaventory_product->mv_id;
 			$this->mv_type = $megaventory_product->mv_type;
+			$this->ean     = $megaventory_product->ean;
 		} else {
 			$this->mv_id = 0;
 		}
@@ -1140,6 +1150,7 @@ class Product {
 		$product_object->producttype            = $this->mv_type ? $this->mv_type : 'BuyFromSupplier';
 		$product_object->productsku             = $this->sku;
 		$product_object->productdescription     = mb_substr( wp_strip_all_tags( str_replace( $special_characters, ' ', $this->description ) ), 0, 400 );
+		$product_object->productean             = ( isset( $this->ean ) ? $this->ean : '' );
 		$product_object->productversion         = $this->version ? $this->version : '';
 		$product_object->productlongdescription = $this->long_description ? mb_substr( wp_strip_all_tags( str_replace( $special_characters, ' ', $this->long_description ) ), 0, 400 ) : '';
 		$product_object->productcategoryid      = $category_id;

@@ -389,3 +389,17 @@ function change_default_megaventory_location() {
 	wp_send_json_success( true );
 	wp_die();
 }
+
+/**
+ * Pull integration updates manually.
+ */
+function pull_integration_updates() {
+
+	if ( isset( $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
+
+		pull_changes();
+	}
+
+	wp_send_json_success( true );
+	wp_die();
+}
