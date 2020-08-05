@@ -93,44 +93,21 @@
 }
 
 .initNoticeDiv {
-	padding-bottom: 5px;
+	padding-bottom: 15px;
 	text-align: start;
-}
-
-.initializeNotice {
-	font-size: 17px;
 }
 
 .inventories {
 	text-align: left;
 	width: 35%;
 }
-/* Tooltip container */
-/* .mv-tooltip {
-} */
-
-/* Tooltip text */
-.mv-tooltip .tooltiptext {
-	visibility: hidden;
-	width: 120px;
-	background-color: black;
-	color: #fff;
-	text-align: center;
-	padding: 5px 0;
-	border-radius: 6px;
-
-	/* Position the tooltip text - see examples below! */
-	position: absolute;
-	z-index: 1;
-}
-
-/* Show the tooltip text when you mouse over the tooltip container */
-.mv-tooltip:hover .tooltiptext {
-	visibility: visible;
-}
 
 /* ADMIN PANEL */
 
+.mv-action {
+	display: inline-block;
+	width: 100%;
+}
 .mv-row {
 	width: 100%;
 	display: block;
@@ -150,7 +127,7 @@
 }
 
 .mv-row .actions {
-	width: 500px;
+	width: 70%;
 	float: left;
 }
 
@@ -253,8 +230,8 @@ div.mv-row.row-main {
 
 .pushAction {
 	width: 350px;
-	text-align: start;
-	float: left;
+	text-align: center;
+	display: block;
 }
 .showInitSync {
 	background-color: #f3f5f6;
@@ -270,6 +247,11 @@ div.mv-row.row-main {
 }
 .showInitSync:hover {
 	background-color: #f1f1f1;
+}
+.stockNotice {
+	background: #ccc;
+	padding: 20px;
+	margin-bottom: 20px;
 }
 #success-log th, #error-log th, #taxes th{
 	font-weight: 600;
@@ -351,13 +333,22 @@ div.mv-row.row-main {
 	padding: 0.45em 1.5em;
 	text-shadow: none;
 	margin-bottom: 5px;
-	display: inline-block;
+}
+
+@font-face {
+	font-family: 'password';
+	font-style: normal;
+	font-weight: 400;
+	src: url(https://jsbin-user-assets.s3.amazonaws.com/rafaelcastrocouto/password.ttf);
 }
 
 /* Atomic CSS region */
 
 .displayNone{display: none;}
+.displayBlock{display: block;}
+.fontFamilyPassword{font-family: password;}
 .halfWidth{width: 50%}
+.Mar10{margin: 10px;}
 .MarLe15{margin-left: 15px}
 .MarLe30{margin-left: 30px}
 .MarTop10{margin-top: 10px}

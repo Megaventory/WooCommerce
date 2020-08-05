@@ -255,7 +255,7 @@ class Location {
 
 			$this->mv_location_id = $results['mvInventoryLocation']['InventoryLocationID'];
 
-			$this->log_success( $request_object->mvrecordaction, 'Default inventory location created succesfully to your Megaventory account', 1 );
+			$this->log_success( $request_object->mvrecordaction, 'Default inventory location created successfully to your Megaventory account', 1 );
 
 			$return_bool = true;
 

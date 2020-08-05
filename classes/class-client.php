@@ -119,14 +119,14 @@ class Client {
 	/**
 	 * Errors messages.
 	 *
-	 * @var string
+	 * @var MVWC_Errors
 	 */
 	public $errors;
 
 	/**
 	 * Succeeded messages.
 	 *
-	 * @var string
+	 * @var MVWC_Successes
 	 */
 	public $successes;
 
@@ -238,7 +238,7 @@ class Client {
 	/**
 	 * Get all clients from wooCommerce.
 	 *
-	 * @return array
+	 * @return Client[]
 	 */
 	public static function wc_all() {
 
@@ -376,7 +376,7 @@ class Client {
 	 * Converts wooCommerce client to client.
 	 *
 	 * @param WP_User $wc_client as wooCommerce client.
-	 * @return client
+	 * @return Client
 	 */
 	private static function wc_convert( $wc_client ) {
 
@@ -390,7 +390,7 @@ class Client {
 
 		$client        = new Client();
 		$client->wc_id = $wc_client->ID;
-		$client->mv_id = get_user_meta( $wc_client->ID, 'mv_id', true );
+		$client->mv_id = (int) get_user_meta( $wc_client->ID, 'mv_id', true );
 		$client->email = $wc_client->user_email;
 
 		$client->username = $wc_client->user_login;
@@ -415,7 +415,7 @@ class Client {
 		$billing_address['city']     = get_user_meta( $wc_client->ID, 'billing_city', true );
 		$billing_address['postcode'] = get_user_meta( $wc_client->ID, 'billing_postcode', true );
 		$billing_address['country']  = get_user_meta( $wc_client->ID, 'billing_country', true );
-		$client->shipping_address    = format_address( $billing_address );
+		$client->billing_address     = format_address( $billing_address );
 
 		$client->phone = get_user_meta( $wc_client->ID, 'billing_phone', true );
 		$client->type  = 'Client'; // you can change it to 'Both' aka supplier and client.
@@ -464,11 +464,18 @@ class Client {
 				$undelete_data = self::mv_undelete( $data['entityID'] );
 
 				if ( array_key_exists( 'InternalErrorCode', $undelete_data ) ) {
-					$this->log_error( 'Client not saved to Megaventory', 'Client is deleted. Undelete failed', -1, 'error', $data['json_object'] );
+					$this->log_error( 'Client is deleted. Undelete failed', $undelete_data['ResponseStatus']['Message'], -1, 'error', $data['json_object'] );
 					return false;
 				}
 
 				$this->mv_id = $data['entityID'];
+				return $this->mv_save();
+			}
+
+			if ( 'SupplierClientNameAlreadyExists' === $data['InternalErrorCode'] ) {
+
+				$this->mv_id = $data['entityID'];
+
 				return $this->mv_save();
 			}
 		}
@@ -488,7 +495,8 @@ class Client {
 			}
 		} else {
 			/* failed to save */
-			$this->log_error( 'Client not saved to Megaventory', $data['InternalErrorCode'], -1, 'error', $data['json_object'] );
+			$internal_error_code = ' [' . $data['InternalErrorCode'] . ']';
+			$this->log_error( 'Client not saved to Megaventory' . $internal_error_code, $data['ResponseStatus']['Message'], -1, 'error', $data['json_object'] );
 			return false;
 
 		}
@@ -499,22 +507,22 @@ class Client {
 	/**
 	 * Create an object for client update.
 	 *
-	 * @return string|bool
+	 * @return stdClass
 	 */
 	private function generate_update_json() {
 
-		if ( '' !== $this->mv_id && null !== $this->mv_id ) {
+		if ( ! empty( $this->mv_id ) ) {
 
 			$mv_main = self::mv_find( $this->mv_id );
 
 			if ( null === $mv_main ) {
 
-				update_user_meta( $this->wc_id, 'mv_id', '' );
-				$this->mv_id = null;
+				update_user_meta( $this->wc_id, 'mv_id', 0 );
+				$this->mv_id = 0;
 			}
 		}
 
-		$create_new = ( null === $this->mv_id || '' === $this->mv_id );
+		$create_new = empty( $this->mv_id );
 		$action     = ( $create_new ? 'Insert' : 'Update' );
 
 		$product_update_client = new \stdClass();

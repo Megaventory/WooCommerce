@@ -215,46 +215,17 @@ class Coupon {
 	 * @param int $id as coupon id.
 	 * @return Coupon|null
 	 */
-	public static function wc_find( $id ) {
+	public static function wc_find_coupon( $id ) {
 
-		global $wpdb;
-		$results = $wpdb->get_results(
-			$wpdb->prepare(
-				"
-					SELECT 
-						{$wpdb->prefix}posts.ID as id, 
-						{$wpdb->prefix}posts.post_title as name, 
-						{$wpdb->prefix}posts.post_excerpt as description,
-						meta1.meta_value as rate, 
-						meta2.meta_value as discount_type 
-					FROM 
-						{$wpdb->prefix}posts, 
-						{$wpdb->prefix}postmeta as meta1, 
-						{$wpdb->prefix}postmeta as meta2 
-					WHERE {$wpdb->prefix}posts.post_type = 'shop_coupon' 
-						AND {$wpdb->prefix}posts.ID = %d
-						AND {$wpdb->prefix}posts.post_status = 'publish' 
-						AND meta1.meta_key = 'coupon_amount' 
-						AND meta1.post_id = {$wpdb->prefix}posts.ID
-						AND meta2.meta_key = 'discount_type' 
-						AND	meta2.post_id = meta1.post_id",
-				$id
-			),
-			ARRAY_A
-		); // db call ok; no-cache ok.
-
-		if ( 0 === count( $results ) ) {
-			return null;
-		}
-		$buffer = $results[0];
+		$wc_coupon = new WC_Coupon( $id );
 
 		$coupon = new Coupon();
 
-		$coupon->wc_id       = $buffer['id'];
-		$coupon->name        = $buffer['name'];
-		$coupon->rate        = $buffer['rate'];
-		$coupon->description = $buffer['description'];
-		$coupon->type        = $buffer['discount_type'];
+		$coupon->wc_id       = $wc_coupon->get_id();
+		$coupon->name        = $wc_coupon->get_code();
+		$coupon->rate        = $wc_coupon->get_amount();
+		$coupon->description = $wc_coupon->get_description();
+		$coupon->type        = $wc_coupon->get_discount_type();
 
 		return $coupon;
 	}
@@ -401,31 +372,6 @@ class Coupon {
 	}
 
 	/**
-	 * Get discount rate by description.
-	 *
-	 * @return bool
-	 */
-	public function mv_load_percent_by_description() {
-
-		$url = create_json_url( self::$mv_url_discount_get );
-
-		$json_request = self::json_load_percent_by_description();
-
-		$data = send_json( $url, $json_request );
-
-		if ( empty( $data['mvDiscounts'] ) ) {
-			return false;
-		} else {
-			$this->mv_id = $data['mvDiscounts']['mvDiscount']['DiscountID'];
-			$this->name  = $data['mvDiscounts']['mvDiscount']['DiscountName'];
-			$this->rate  = $data['mvDiscounts']['mvDiscount']['DiscountValue'];
-			$this->type  = 'percent';
-
-			return true;
-		}
-	}
-
-	/**
 	 * Get or Create a Discount.
 	 *
 	 * @param array[int] $ids coupons ids.
@@ -439,33 +385,6 @@ class Coupon {
 		}
 
 		return $coupon;
-	}
-
-	/**
-	 * Get discount by description.
-	 *
-	 * @return string
-	 */
-	private function json_load_percent_by_description() {
-
-		$discountobject          = new \stdClass();
-		$discountobjectfilter    = new \stdClass();
-		$discountobjectfilter    = array(
-			'AndOr'          => 'And',
-			'FieldName'      => 'DiscountDescription',
-			'SearchOperator' => 'Equals',
-			'SearchValue'    => $this->description,
-		);
-		$discountobject->filters = $discountobjectfilter;
-
-		$object_to_send = wrap_json( $discountobject );
-
-		/**
-		 * $object_to_send = wp_json_encode( $object_to_send );
-		 */
-
-		return $object_to_send;
-
 	}
 
 	/**
@@ -674,20 +593,22 @@ class Coupon {
 	 */
 	public function load_corresponding_discount_from_megaventory() {
 
-		if ( 'percent' === $this->type ) {
+		if ( 'percent' !== $this->type ) {
 
-			$data = $this->get_megaventory_discount_by_name_rate();
+			return false;
+		}
 
-			if ( empty( $data['mvDiscounts'] ) ) {
+		$data = $this->get_megaventory_discount_by_name_rate();
 
-				return false;
+		if ( empty( $data['mvDiscounts'] ) ) {
 
-			} else {
+			return false;
 
-				$this->mv_id       = $data['mvDiscounts'][0]['DiscountID'];
-				$this->description = $data['mvDiscounts'][0]['DiscountDescription'];
-				return true;
-			}
+		} else {
+
+			$this->mv_id       = $data['mvDiscounts'][0]['DiscountID'];
+			$this->description = $data['mvDiscounts'][0]['DiscountDescription'];
+			return true;
 		}
 	}
 
@@ -779,8 +700,6 @@ class Coupon {
 	 * @return bool
 	 */
 	public function mv_save() {
-
-		$result = array();
 
 		if ( 'percent' === $this->type ) {
 

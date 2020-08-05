@@ -22,260 +22,317 @@ function async_import() {
 	$errors          = 0;
 	$successes       = 0;
 
-	if ( isset( $_POST['startingIndex'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
+	try {
 
-		$starting_index = (int) sanitize_text_field( wp_unslash( $_POST['startingIndex'] ) );
-	}
+		if ( isset( $_POST['startingIndex'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
 
-	if ( isset( $_POST['numberOfIndexesToProcess'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
-
-		$number_of_indexes_to_process = (int) sanitize_text_field( wp_unslash( $_POST['numberOfIndexesToProcess'] ) );
-	}
-
-	if ( isset( $_POST['call'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
-
-		$call = sanitize_text_field( wp_unslash( $_POST['call'] ) );
-	}
-
-	if ( isset( $_POST['successes'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
-
-		$successes_count = isset( $_POST['successes'] ) ? (int) $_POST['successes'] : null;
-	}
-
-	if ( isset( $_POST['errors'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
-
-		$errors_count = isset( $_POST['errors'] ) ? (int) $_POST['errors'] : null;
-	}
-
-	if ( 'products' === $call ) {
-
-		$wc_products        = Product::wc_all_with_variable();
-		$number_of_products = count( $wc_products );
-
-		for ( $i = $starting_index; $i < $number_of_indexes_to_process + $starting_index; $i++ ) {
-
-			if ( count( $wc_products ) > $i ) {
-
-				$flag = $wc_products[ $i ]->mv_save();
-
-				if ( null !== $flag ) {
-
-					$flag ? $successes++ : $errors++;
-				}
-			}
+			$starting_index = (int) sanitize_text_field( wp_unslash( $_POST['startingIndex'] ) );
 		}
 
-		$successes_count += $successes;
-		$errors_count    += $errors;
+		if ( isset( $_POST['numberOfIndexesToProcess'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
 
-		if ( $number_of_indexes_to_process + $starting_index > $number_of_products ) {
-			$success_message = 'FinishedSuccessfully';
-			if ( $successes_count > 0 ) {
-				$message = "$successes_count products have been imported/updated successfully in your Megaventory account.";
-				log_notice( 'success', $message );
-			}
-			if ( $errors_count > 0 ) {
-				$message = "$errors_count products haven't been imported in your Megaventory account. " . ' Please check the Error log below for more information.';
-				log_notice( 'error', $message );
-			}
-		} else {
-			$success_message = 'continue';
+			$number_of_indexes_to_process = (int) sanitize_text_field( wp_unslash( $_POST['numberOfIndexesToProcess'] ) );
 		}
 
-		$data_to_return = create_json_for_ajax_imports( $starting_index, $number_of_indexes_to_process, $number_of_products, $successes_count, $errors_count, $success_message );
+		if ( isset( $_POST['call'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
 
-		wp_send_json_success( $data_to_return );
-		wp_die();
-	}
-
-	if ( 'clients' === $call ) {
-
-		$wc_clients        = Client::wc_all();
-		$number_of_clients = count( $wc_clients );
-
-		for ( $i = $starting_index; $i < $number_of_indexes_to_process + $starting_index; $i++ ) {
-
-			if ( count( $wc_clients ) > $i ) {
-
-				if ( null !== $wc_clients[ $i ] ) {
-
-					$client_saved = $wc_clients[ $i ]->mv_save();
-					$client_saved ? $successes++ : $errors++;
-				} else {
-					$errors++;
-				}
-			}
-		}
-		$successes_count += $successes;
-		$errors_count    += $errors;
-
-		if ( $number_of_indexes_to_process + $starting_index > count( $wc_clients ) ) {
-			$success_message = 'FinishedSuccessfully';
-			if ( $successes_count > 0 ) {
-				$message = "$successes_count customers have been imported/updated successfully in your Megaventory account.";
-				log_notice( 'success', $message );
-			}
-			if ( $errors_count > 0 ) {
-				$message = "$errors_count customers haven't been imported in your Megaventory account.";
-				log_notice( 'error', $message );
-			}
-		} else {
-			$success_message = 'continue';
-
+			$call = sanitize_text_field( wp_unslash( $_POST['call'] ) );
 		}
 
-		$data_to_return = create_json_for_ajax_imports( $starting_index, $number_of_indexes_to_process, $number_of_clients, $successes_count, $errors_count, $success_message );
+		if ( isset( $_POST['successes'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
 
-		wp_send_json_success( $data_to_return );
-		wp_die();
-	}
-
-	if ( 'coupons' === $call ) {
-
-		$coupons           = Coupon::wc_all();
-		$number_of_coupons = count( $coupons );
-
-		for ( $i = $starting_index; $i < $number_of_indexes_to_process + $starting_index; $i++ ) {
-
-			if ( count( $coupons ) > $i ) {
-
-				if ( 'percent' !== $coupons[ $i ]->type ) {
-					continue;
-				}
-
-				$flag = $coupons[ $i ]->mv_save();
-				$flag ? $successes++ : $errors++;
-			}
+			$successes_count = isset( $_POST['successes'] ) ? (int) $_POST['successes'] : null;
 		}
 
-		$successes_count += $successes;
-		$errors_count    += $errors;
+		if ( isset( $_POST['errors'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
 
-		if ( $number_of_indexes_to_process + $starting_index > count( $coupons ) ) {
-			$success_message = 'FinishedSuccessfully';
-			if ( $successes_count > 0 ) {
-				$message = "$successes_count coupons have been imported/updated successfully in your Megaventory account.";
-				log_notice( 'success', $message );
-			}
-			if ( $errors_count > 0 ) {
-				$message = "$errors_count coupons haven't imported in your Megaventory account. " . ' Please check the Error log below for more information.';
-				log_notice( 'error', $message );
-			}
-		} else {
-			$success_message = 'continue';
+			$errors_count = isset( $_POST['errors'] ) ? (int) $_POST['errors'] : null;
 		}
 
-		$data_to_return = create_json_for_ajax_imports( $starting_index, $number_of_indexes_to_process, $number_of_coupons, $successes_count, $errors_count, $success_message );
+		if ( 'products' === $call ) {
 
-		wp_send_json_success( $data_to_return );
-		wp_die();
+			$wc_products        = Product::wc_all_with_variable();
+			$number_of_products = count( $wc_products );
 
-	}
+			for ( $i = $starting_index; $i < $number_of_indexes_to_process + $starting_index; $i++ ) {
 
-	if ( 'initialize' === $call ) {
+				if ( count( $wc_products ) > $i ) {
 
-		if ( isset( $_POST['block'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
+					$flag = $wc_products[ $i ]->mv_save();
 
-			$block = (int) sanitize_text_field( wp_unslash( $_POST['block'] ) );
-		}
+					if ( null !== $flag ) {
 
-		$number_of_blocks = 4;
-
-		if ( 0 === $block ) {
-
-			Client::create_default_client();
-
-			Product::create_default_shipping();
-
-			Location::initialize_megaventory_locations();
-
-			$step            = $block + 1;
-			$percent         = (int) ( ( $step / $number_of_blocks ) * 100 );
-			$success_message = 'continue';
-			$block++;
-
-			$data_to_return = create_json_for_ajax_initialize( $block, 0, $percent, $success_message );
-
-			wp_send_json_success( $data_to_return );
-			wp_die();
-		}
-
-		if ( 1 === $block ) {
-
-			$products           = Product::wc_all();
-			$number_of_products = count( $products );
-
-			for ( $i = $starting_index;$i < $number_of_indexes_to_process + $starting_index;$i++ ) {
-
-				if ( count( $products ) > $i ) {
-					$product_to_initialize = Product::mv_find_by_sku( $products[ $i ]->sku );
-					if ( $product_to_initialize ) {
-						$product_to_initialize->wc_id = $products[ $i ]->wc_id;
-						$product_to_initialize->sync_post_meta_with_id();
-
+						$flag ? $successes++ : $errors++;
 					}
 				}
 			}
-			if ( $number_of_indexes_to_process + $starting_index > count( $products ) ) {
-				$block++;
-				$step = $block;
+
+			$successes_count += $successes;
+			$errors_count    += $errors;
+
+			if ( $number_of_indexes_to_process + $starting_index > $number_of_products ) {
+
+				update_option( 'are_megaventory_products_synchronized', 1 );
+
+				$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+
+				$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+
+				$synchronized_message = $successes_count . ' of ' . $number_of_products . ' on ' . $current_date;
+
+				update_option( 'megaventory_products_synchronized_time', $synchronized_message );
+
+				$success_message = 'FinishedSuccessfully';
+				if ( $successes_count > 0 ) {
+					$message = "$successes_count products have been imported/updated successfully in your Megaventory account.";
+					log_notice( 'success', $message );
+				}
+				if ( $errors_count > 0 ) {
+					$message = "$errors_count products haven't been imported in your Megaventory account. " . ' Please check the Error log below for more information.';
+					log_notice( 'error', $message );
+				}
 			} else {
-				$step = $block + 1;
+				$success_message = 'continue';
 			}
 
-			$starting_index  = $number_of_indexes_to_process + $starting_index;
-			$success_message = 'continue';
-
-			$percent = calculate_percent_on_initialize( $number_of_blocks, $starting_index, $number_of_products, $step );
-
-			$data_to_return = create_json_for_ajax_initialize( $block, $starting_index, $percent, $success_message );
+			$data_to_return = create_json_for_ajax_imports( $starting_index, $number_of_indexes_to_process, $number_of_products, $successes_count, $errors_count, $success_message );
 
 			wp_send_json_success( $data_to_return );
 			wp_die();
 		}
 
-		if ( 2 === $block ) {
+		if ( 'clients' === $call ) {
 
-			initialize_taxes();
-			$step            = $block + 1;
-			$percent         = (int) ( ( $step / $number_of_blocks ) * 100 );
-			$success_message = 'continue';
-			$block++;
+			$wc_clients        = Client::wc_all();
+			$number_of_clients = count( $wc_clients );
 
-			$data_to_return = create_json_for_ajax_initialize( $block, 0, $percent, $success_message );
+			for ( $i = $starting_index; $i < $number_of_indexes_to_process + $starting_index; $i++ ) {
+
+				if ( count( $wc_clients ) > $i ) {
+
+					if ( null !== $wc_clients[ $i ] ) {
+
+						$client_saved = $wc_clients[ $i ]->mv_save();
+						$client_saved ? $successes++ : $errors++;
+					} else {
+						$errors++;
+					}
+				}
+			}
+			$successes_count += $successes;
+			$errors_count    += $errors;
+
+			if ( $number_of_indexes_to_process + $starting_index > count( $wc_clients ) ) {
+
+				update_option( 'are_megaventory_clients_synchronized', 1 );
+
+				$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+
+				$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+
+				$synchronized_message = $successes_count . ' of ' . $number_of_clients . ' on ' . $current_date;
+
+				update_option( 'megaventory_clients_synchronized_time', $synchronized_message );
+
+				$success_message = 'FinishedSuccessfully';
+				if ( $successes_count > 0 ) {
+					$message = "$successes_count customers have been imported/updated successfully in your Megaventory account.";
+					log_notice( 'success', $message );
+				}
+				if ( $errors_count > 0 ) {
+					$message = "$errors_count customers haven't been imported in your Megaventory account.";
+					log_notice( 'error', $message );
+				}
+			} else {
+				$success_message = 'continue';
+
+			}
+
+			$data_to_return = create_json_for_ajax_imports( $starting_index, $number_of_indexes_to_process, $number_of_clients, $successes_count, $errors_count, $success_message );
+
+			wp_send_json_success( $data_to_return );
+			wp_die();
+		}
+
+		if ( 'coupons' === $call ) {
+
+			$coupons           = Coupon::wc_all();
+			$number_of_coupons = count( $coupons );
+
+			for ( $i = $starting_index; $i < $number_of_indexes_to_process + $starting_index; $i++ ) {
+
+				if ( count( $coupons ) > $i ) {
+
+					if ( 'percent' !== $coupons[ $i ]->type ) {
+						continue;
+					}
+
+					$flag = $coupons[ $i ]->mv_save();
+					$flag ? $successes++ : $errors++;
+				}
+			}
+
+			$successes_count += $successes;
+			$errors_count    += $errors;
+
+			if ( $number_of_indexes_to_process + $starting_index > count( $coupons ) ) {
+
+				update_option( 'are_megaventory_coupons_synchronized', 1 );
+
+				$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+
+				$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+
+				$synchronized_message = $successes_count . ' of ' . $number_of_coupons . ' on ' . $current_date;
+
+				update_option( 'megaventory_coupons_synchronized_time', $synchronized_message );
+
+				$success_message = 'FinishedSuccessfully';
+				if ( $successes_count > 0 ) {
+					$message = "$successes_count coupons have been imported/updated successfully in your Megaventory account.";
+					log_notice( 'success', $message );
+				}
+				if ( $errors_count > 0 ) {
+					$message = "$errors_count coupons haven't imported in your Megaventory account. " . ' Please check the Error log below for more information.';
+					log_notice( 'error', $message );
+				}
+			} else {
+				$success_message = 'continue';
+			}
+
+			$data_to_return = create_json_for_ajax_imports( $starting_index, $number_of_indexes_to_process, $number_of_coupons, $successes_count, $errors_count, $success_message );
+
 			wp_send_json_success( $data_to_return );
 			wp_die();
 
 		}
 
-		if ( 3 === $block ) {
+		if ( 'initialize' === $call ) {
 
-			update_option( 'is_megaventory_initialized', (string) true );
+			if ( isset( $_POST['block'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
 
-			$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+				$block = (int) sanitize_text_field( wp_unslash( $_POST['block'] ) );
+			}
 
-			$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+			$number_of_blocks = 4;
 
-			update_option( 'megaventory_initialized_time', (string) $current_date );
+			if ( 0 === $block ) {
 
-			$step            = $block;
-			$percent         = (int) ( ( $step / $number_of_blocks ) * 100 );
-			$success_message = 'FinishedSuccessfully';
-			$block++;
+				Client::create_default_client();
 
-			$message1 = 'Plugin successfully initialized! Now you can import products, clients and coupons in your Megaventory account.';
-			$message2 = 'Please keep in mind that this process will take place only once. After that, synchronization will happen automatically!';
+				Product::create_default_shipping();
 
-			log_notice( 'success', $message1 );
-			log_notice( 'notice', $message2 );
+				Location::initialize_megaventory_locations();
 
-			$percent = $percent > 100 ? 100 : $percent;
+				$step            = $block + 1;
+				$percent         = (int) ( ( $step / $number_of_blocks ) * 100 );
+				$success_message = 'continue';
+				$block++;
 
-			$data_to_return = create_json_for_ajax_initialize( $block, 0, $percent, $success_message );
-			wp_send_json_success( $data_to_return );
-			wp_die();
+				$data_to_return = create_json_for_ajax_initialize( $block, 0, $percent, $success_message );
 
+				wp_send_json_success( $data_to_return );
+				wp_die();
+			}
+
+			if ( 1 === $block ) {
+
+				$products           = Product::wc_all_with_variable();
+				$number_of_products = count( $products );
+
+				for ( $i = $starting_index;$i < $number_of_indexes_to_process + $starting_index;$i++ ) {
+
+					if ( count( $products ) > $i ) {
+
+						$wc_product = $products[ $i ];
+
+						$wc_product->reset_megaventory_post_meta();
+					}
+				}
+				if ( $number_of_indexes_to_process + $starting_index > count( $products ) ) {
+					$block++;
+					$step = $block;
+				} else {
+					$step = $block + 1;
+				}
+
+				$starting_index  = $number_of_indexes_to_process + $starting_index;
+				$success_message = 'continue';
+
+				$percent = calculate_percent_on_initialize( $number_of_blocks, $starting_index, $number_of_products, $step );
+
+				$data_to_return = create_json_for_ajax_initialize( $block, $starting_index, $percent, $success_message );
+
+				wp_send_json_success( $data_to_return );
+				wp_die();
+			}
+
+			if ( 2 === $block ) {
+
+				initialize_taxes();
+				$step            = $block + 1;
+				$percent         = (int) ( ( $step / $number_of_blocks ) * 100 );
+				$success_message = 'continue';
+				$block++;
+
+				$data_to_return = create_json_for_ajax_initialize( $block, 0, $percent, $success_message );
+				wp_send_json_success( $data_to_return );
+				wp_die();
+
+			}
+
+			if ( 3 === $block ) {
+
+				update_option( 'is_megaventory_initialized', 1 );
+
+				// DO NOT update with booleans values.
+				update_option( 'are_megaventory_products_synchronized', 0 );
+				update_option( 'are_megaventory_clients_synchronized', 0 );
+				update_option( 'are_megaventory_coupons_synchronized', 0 );
+				update_option( 'is_megaventory_stock_adjusted', 0 );
+
+				$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+
+				$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+
+				update_option( 'megaventory_initialized_time', (string) $current_date );
+
+				$step            = $block;
+				$percent         = (int) ( ( $step / $number_of_blocks ) * 100 );
+				$success_message = 'FinishedSuccessfully';
+				$block++;
+
+				$message1 = 'Plugin successfully initialized! Now you can import products, clients and coupons in your Megaventory account.';
+				$message2 = 'Please keep in mind that this process will take place only once. After that, synchronization will happen automatically!';
+
+				log_notice( 'success', $message1 );
+				log_notice( 'notice', $message2 );
+
+				$percent = $percent > 100 ? 100 : $percent;
+
+				$data_to_return = create_json_for_ajax_initialize( $block, 0, $percent, $success_message );
+				wp_send_json_success( $data_to_return );
+				wp_die();
+
+			}
 		}
+	} catch ( \Error $ex ) {
+
+		$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+
+		$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+
+		error_log( "\n" . $current_date . $ex->getMessage() . ' ' . $ex->getFile() . "({$ex->getLine()})", 3, MEGAVENTORY__PLUGIN_DIR . '/mv-exceptions.log' ); // @codingStandardsIgnoreLine.
+		error_log( "\n" . $current_date . $ex->getTraceAsString(), 3, MEGAVENTORY__PLUGIN_DIR . '/mv-exceptions.log' ); // @codingStandardsIgnoreLine.
+
+		if ( 'initialize' === $call ) {
+			$data_to_return = create_json_for_ajax_initialize( 0, 0, 0, 'Error occurred' );
+		} else {
+			$data_to_return = create_json_for_ajax_imports( 1, 1, 1, 1, 1, 'Error occurred' );
+		}
+
+		wp_send_json_success( $data_to_return );
+		wp_die();
 	}
 }
 
@@ -401,5 +458,79 @@ function pull_integration_updates() {
 	}
 
 	wp_send_json_success( true );
+	wp_die();
+}
+
+/**
+ * Synchronize stock to megaventory in batches.
+ */
+function sync_stock_to_megaventory() {
+
+	$starting_index = 0;
+	$return_values  = array();
+	try {
+
+		if ( isset( $_POST['async-nonce'], $_POST['startingIndex'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
+
+			$starting_index = (int) sanitize_text_field( wp_unslash( $_POST['startingIndex'] ) );
+
+			$return_values = Product::push_stock( $starting_index );
+		}
+	} catch ( \Error $ex ) {
+
+		$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+
+		$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+
+		error_log( "\n" . $current_date . $ex->getMessage() . ' ' . $ex->getFile() . "({$ex->getLine()})", 3, MEGAVENTORY__PLUGIN_DIR . '/mv-exceptions.log' ); // @codingStandardsIgnoreLine.
+		error_log( "\n" . $current_date . $ex->getTraceAsString(), 3, MEGAVENTORY__PLUGIN_DIR . '/mv-exceptions.log' ); // @codingStandardsIgnoreLine.
+
+		$return_values = array(
+			'starting_index' => $starting_index,
+			'next_index'     => 0,
+			'error_occurred' => true,
+			'finished'       => true,
+			'message'        => '',
+		);
+	}
+
+	wp_send_json_success( wp_json_encode( $return_values ) );
+	wp_die();
+}
+
+/**
+ * Synchronize stock from megaventory in batches.
+ */
+function sync_stock_from_megaventory() {
+
+	$starting_index = 0;
+	$return_values  = array();
+	try {
+
+		if ( isset( $_POST['async-nonce'], $_POST['startingIndex'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
+
+			$starting_index = (int) sanitize_text_field( wp_unslash( $_POST['startingIndex'] ) );
+
+			$return_values = Product::pull_stock( $starting_index );
+		}
+	} catch ( \Error $ex ) {
+
+		$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+
+		$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+
+		error_log( "\n" . $current_date . $ex->getMessage() . ' ' . $ex->getFile() . "({$ex->getLine()})", 3, MEGAVENTORY__PLUGIN_DIR . '/mv-exceptions.log' ); // @codingStandardsIgnoreLine.
+		error_log( "\n" . $current_date . $ex->getTraceAsString(), 3, MEGAVENTORY__PLUGIN_DIR . '/mv-exceptions.log' ); // @codingStandardsIgnoreLine.
+
+		$return_values = array(
+			'starting_index' => $starting_index,
+			'next_index'     => 0,
+			'error_occurred' => true,
+			'finished'       => true,
+			'message'        => '',
+		);
+	}
+
+	wp_send_json_success( wp_json_encode( $return_values ) );
 	wp_die();
 }

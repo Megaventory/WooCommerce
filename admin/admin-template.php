@@ -41,7 +41,49 @@ function generate_admin_page() {
 
 	$taxes_objects = Tax::wc_all();
 
-	global $connection_value,$currency_value,$key_value,$initialize_value;
+	$correct_connection         = (bool) get_option( 'correct_connection' );
+	$correct_currency           = (bool) get_option( 'correct_currency' );
+	$correct_key                = (bool) get_option( 'correct_key' );
+	$is_megaventory_initialized = (bool) get_option( 'is_megaventory_initialized' );
+
+	$are_megaventory_products_synchronized = get_option( 'are_megaventory_products_synchronized', null );
+	if ( null !== get_option( 'are_megaventory_products_synchronized', null ) ) {
+
+		$are_megaventory_products_synchronized = (bool) get_option( 'are_megaventory_products_synchronized', null );
+	}
+
+	$are_megaventory_clients_synchronized = get_option( 'are_megaventory_clients_synchronized', null );
+	if ( null !== get_option( 'are_megaventory_clients_synchronized', null ) ) {
+
+		$are_megaventory_clients_synchronized = (bool) get_option( 'are_megaventory_clients_synchronized', null );
+	}
+
+	$are_megaventory_coupons_synchronized = get_option( 'are_megaventory_coupons_synchronized', null );
+	if ( null !== get_option( 'are_megaventory_coupons_synchronized', null ) ) {
+
+		$are_megaventory_coupons_synchronized = (bool) get_option( 'are_megaventory_coupons_synchronized', null );
+	}
+
+	$is_megaventory_stock_adjusted = (bool) get_option( 'is_megaventory_stock_adjusted', null );
+	if ( null !== get_option( 'is_megaventory_stock_adjusted', null ) ) {
+
+		$is_megaventory_stock_adjusted = (bool) get_option( 'is_megaventory_stock_adjusted', null );
+	}
+
+	$is_megaventory_synchronized = false;
+
+	$is_old_version = false;
+
+	// for old versions.
+	if ( $is_megaventory_initialized && ( null === $are_megaventory_products_synchronized || null === $are_megaventory_clients_synchronized || null === $are_megaventory_coupons_synchronized ) ) {
+
+		$is_old_version = true;
+	}
+
+	if ( $are_megaventory_products_synchronized && $are_megaventory_clients_synchronized && $are_megaventory_coupons_synchronized ) {
+
+		$is_megaventory_synchronized = true;
+	}
 
 	$update_credentials_nonce = wp_create_nonce( 'update-credentials-nonce' );
 	?>
@@ -53,7 +95,7 @@ function generate_admin_page() {
 				<div class="mv-status">
 					<ul class="mv-status">
 						<li class="mv-li-left"><span>Connection: </span>
-						<?php if ( '&check;' === $connection_value ) : ?>
+						<?php if ( $correct_connection ) : ?>
 							<span class="checkmark">
 								<div class="checkmark_stem"></div>
 								<div class="checkmark_kick"></div>
@@ -66,7 +108,7 @@ function generate_admin_page() {
 						<?php endif; ?>
 						</li>
 						<li class="mv-li-left"><span>Key: </span>
-						<?php if ( '&check;' === $key_value ) : ?>
+						<?php if ( $correct_key ) : ?>
 							<span class="checkmark">
 								<div class="checkmark_stem"></div>
 								<div class="checkmark_kick"></div>
@@ -79,7 +121,7 @@ function generate_admin_page() {
 						<?php endif; ?>
 						</li>
 						<li class="mv-li-left"><span>Currency: </span>
-						<?php if ( '&check;' === $currency_value ) : ?>
+						<?php if ( $correct_currency ) : ?>
 							<span class="checkmark">
 								<div class="checkmark_stem"></div>
 								<div class="checkmark_kick"></div>
@@ -91,7 +133,7 @@ function generate_admin_page() {
 							</span>
 						<?php endif; ?>
 						</li>
-						<?php if ( '&check;' !== $initialize_value ) : ?>
+						<?php if ( ! $is_megaventory_initialized ) : ?>
 							<li class="mv-li-left"><span>Initial Sync: </span>
 								<span class="checkmark">
 									<div class="checkmark_stem_error"></div>
@@ -115,16 +157,16 @@ function generate_admin_page() {
 											<label class="MarLe30 width25per" for="api_key">Megaventory API key: </label>
 										</td>
 										<td>
-											<input type="password" class="flLeft width80per" name="api_key" value="<?php echo esc_html( get_api_key() ); ?>" id="api_key"><img class="width30px flLeft MarLe15" src="https://cdn1.iconfinder.com/data/icons/eyes-set/100/eye1-01-128.png" onclick="show_hide_api_key();" />
+											<input type="text" autocomplete="new-password" class="flLeft width80per fontFamilyPassword" name="api_key" value="<?php echo esc_html( get_api_key() ); ?>" id="api_key"><img class="width30px flLeft MarLe15" src="https://cdn1.iconfinder.com/data/icons/eyes-set/100/eye1-01-128.png" onclick="show_hide_api_key();" />
 										</td>
 										<script>
 											function show_hide_api_key(obj) {
 												var obj = document.getElementById("api_key");
-												if ( "text" == obj.type) {
-													obj.type = "password";
+												if ( obj.classList.contains("fontFamilyPassword")) {
+													obj.classList.remove("fontFamilyPassword");
 													return;
 												}
-												obj.type = "text";
+												obj.classList.add("fontFamilyPassword");
 												return;
 											}
 										</script>
@@ -154,34 +196,137 @@ function generate_admin_page() {
 				</div>
 			</div>
 		</div>	
-		<?php if ( '&check;' === $connection_value && '&check;' === $currency_value && '&check;' === $key_value ) : ?>
+		<?php if ( $correct_connection && $correct_currency && $correct_key ) : ?>
 			<div class="mv-row row-main">
 				<div class="actions">
 					<h3>Initialization</h3>
 					<div class="MarTop10">
-						<?php if ( '&check;' === $initialize_value ) : ?>
-							<div id="initialize-notice" class="initNoticeDiv">
-								<span class="initializeNotice">Initial Sync ran on <?php echo esc_attr( get_option( 'megaventory_initialized_time' ) ); ?><br>
-								If you would like to run the Initial Sync again, 
-								<span class="CurPointer" onclick="ajaxInitialize(0,0,5,'initialize')" ><a href="#">click here</a></span>
+						<?php if ( $is_megaventory_initialized ) : ?>
+
+							<div class="initNoticeDiv">
+								<span>Initial Synchronization ran on <?php echo esc_attr( get_option( 'megaventory_initialized_time' ) ); ?><br>
+								If you would like to run the Initial Synchronization again, 
+								<span class="CurPointer" onclick="ajaxReInitialize(0,0,150,'initialize')" ><a href="#">click here</a></span>
 								</span>
 							</div>
 
-							<div id="sync-wc-mv" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,5,0,0,'products')" >
-								Push Products from WooCommerce to Megaventory
-							</div>
-							<div id="sync-clients" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,5,0,0,'clients')" >
-								Push Clients from WooCommerce to Megaventory
-							</div>
-							<div id="sync-coupons" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,5,0,0,'coupons')" >
-								Push Coupons from WooCommerce to Megaventory
-							</div>
-							<div id="pull-updates" class="updateButton CurPointer pushAction MarTop10" onclick="ajaxPullUpdates()" >
-								Pull Updates from Megaventory
-							</div>
+							<?php if ( $is_old_version ) : ?>
+
+								<div id="sync-wc-mv" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,30,0,0,'products')" >
+									<span class="mv-action" title="Synchronize products from your WooCommerce to your Megaventory account">Push Products from WooCommerce to Megaventory </span>
+								</div>
+
+								<div id="sync-clients" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,50,0,0,'clients')" >
+									<span class="mv-action" title="Synchronize clients from your WooCommerce to your Megaventory account">Push Clients from WooCommerce to Megaventory</span>
+								</div>
+
+								<div id="sync-coupons" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,50,0,0,'coupons')" >
+									<span class="mv-action" title="Synchronize coupons from your WooCommerce to your Megaventory account">Push Coupons from WooCommerce to Megaventory</span>
+								</div>
+
+								<div id="pull-updates" class="updateButton CurPointer pushAction MarTop10" onclick="ajaxPullUpdates()" >
+									<span class="mv-action" title="Apply Pending Updates">Pull Updates from Megaventory</span>
+								</div>
+
+							<?php else : ?>
+
+								<?php if ( $are_megaventory_products_synchronized ) : ?>
+
+									<div class="initNoticeDiv">
+										<span>Products Synchronization: <?php echo esc_attr( get_option( 'megaventory_products_synchronized_time' ) ); ?><br>
+										To run the Products Synchronization again, 
+										<span class="CurPointer" onclick="ajaxImport(0,30,0,0,'products')" ><a href="#">click here</a></span>
+										</span>
+									</div>
+								<?php endif; ?>
+
+								<?php if ( $are_megaventory_clients_synchronized ) : ?>
+
+									<div class="initNoticeDiv">
+										<span>Clients Synchronization: <?php echo esc_attr( get_option( 'megaventory_clients_synchronized_time' ) ); ?><br>
+										To run the Clients Synchronization again, 
+										<span class="CurPointer" onclick="ajaxImport(0,30,0,0,'clients')" ><a href="#">click here</a></span>
+										</span>
+									</div>
+
+								<?php endif; ?>
+
+								<?php if ( $are_megaventory_coupons_synchronized ) : ?>
+
+									<div class="initNoticeDiv">
+										<span>Coupons Synchronization: <?php echo esc_attr( get_option( 'megaventory_coupons_synchronized_time' ) ); ?><br>
+										To run the Coupons Synchronization again, 
+										<span class="CurPointer" onclick="ajaxImport(0,30,0,0,'coupons')" ><a href="#">click here</a></span>
+										</span>
+									</div>
+
+								<?php endif; ?>
+
+								<?php if ( $is_megaventory_stock_adjusted ) : ?>
+
+									<div class="initNoticeDiv">
+										<span>Product Quantity Synchronization: <?php echo esc_attr( get_option( 'megaventory_stock_synchronized_time' ) ); ?><br>
+										To run Products Quantity synchronization to Megaventory again, 
+										<span class="CurPointer" onclick="SyncStockToMegaventory(0)" ><a href="#">click here</a></span><br>
+										or<br>
+										To run Products Quantity synchronization from Megaventory again,
+										<span class="CurPointer" onclick="SyncStockFromMegaventory(0)" ><a href="#">click here</a></span>
+										</span>
+									</div>
+
+								<?php endif; ?>
+
+								<?php if ( false === $are_megaventory_products_synchronized ) : ?>
+
+									<div id="sync-wc-mv" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,30,0,0,'products')" >
+										<span class="mv-action" title="Synchronize products from your WooCommerce to your Megaventory account">Push Products from WooCommerce to Megaventory </span>
+									</div>
+
+								<?php elseif ( false === $are_megaventory_clients_synchronized ) : ?>
+
+									<div id="sync-clients" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,50,0,0,'clients')" >
+										<span class="mv-action" title="Synchronize clients from your WooCommerce to your Megaventory account">Push Clients from WooCommerce to Megaventory</span>
+									</div>
+
+								<?php elseif ( false === $are_megaventory_coupons_synchronized ) : ?>
+
+									<div id="sync-coupons" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,50,0,0,'coupons')" >
+										<span class="mv-action" title="Synchronize coupons from your WooCommerce to your Megaventory account">Push Coupons from WooCommerce to Megaventory</span>
+									</div>
+
+								<?php endif; ?>
+
+								<?php if ( $is_megaventory_synchronized && false === $is_megaventory_stock_adjusted ) : ?>
+									<div class="initNoticeDiv stockNotice">
+										<span class="displayBlock">There are two ways to synchronize product quantity:</span>
+										<span class="displayBlock Mar10">- To push your WooCommerce product quantity to your Megaventory account choose <strong>Push Product Quantity to Megaventory</strong>.
+										This action will create <strong>Pending Adjustment Documents</strong> in your Megaventory account. Approving these documents will update the Megaventory Product Quantity.</span>
+										<span class="displayBlock Mar10">- If you have set already your Product Quantity on your Megaventory account choose <strong>Pull Product Quantity from Megaventory</strong>.
+										This action will overwrite your product quantity in your WooCommerce with the sum of all the <strong>on-hand quantity</strong> added from every Inventory Location in your Megaventory account.
+										</span>
+									</div>
+									<div id="create-adj" class="updateButton CurPointer pushAction" onclick="SyncStockToMegaventory(0)" >
+										<span class="mv-action" title="Create Pending Adjustments on your Megaventory account based on your WooCommerce quantity">Push Product Quantity to Megaventory</span>
+									</div>
+									<div id="pull-stock" class="updateButton CurPointer pushAction MarTop10" onclick="SyncStockFromMegaventory(0)" >
+										<span class="mv-action" title="Synchronize products quantity from your Megaventory account">Pull Product Quantity from Megaventory</span>
+									</div>
+
+								<?php endif; ?>
+
+								<?php if ( $is_megaventory_stock_adjusted ) : ?>
+
+									<div id="pull-updates" class="updateButton CurPointer pushAction MarTop10" onclick="ajaxPullUpdates()" >
+										<span class="mv-action" title="Apply Pending Updates">Pull Updates from Megaventory</span>
+									</div>
+
+								<?php endif; ?>
+
+							<?php endif; ?>
+
 						<?php else : ?>
-							<div id="initialize" class="updateButton CurPointer" onclick="ajaxInitialize(0,0,5,'initialize')" >
-								Initial Sync
+							<div id="initialize" class="updateButton CurPointer pushAction" onclick="ajaxInitialize(0,0,150,'initialize')" >
+								<span class="mv-action" title="Initialize Megaventory plugin">Initial Synchronization</span>
 							</div>
 						<?php endif; ?>
 					</div>
@@ -192,7 +337,7 @@ function generate_admin_page() {
 		<?php
 		$inventories = array();
 
-		if ( '&check;' === $connection_value && '&check;' === $currency_value && '&check;' === $key_value ) {
+		if ( $correct_connection && $correct_currency && $correct_key ) {
 
 			$inventories = Location::get_megaventory_locations();
 		}
@@ -215,6 +360,17 @@ function generate_admin_page() {
 						</td>
 					</th>
 					<?php foreach ( $inventories as $inventory ) : ?>
+						<?php
+						$mv_location_id_to_abbr = get_option( 'mv_location_id_to_abbr' );
+
+						if ( ! isset( $mv_location_id_to_abbr ) ) {
+							$mv_location_id_to_abbr = array();
+						}
+
+						$mv_location_id_to_abbr[ $inventory['InventoryLocationID'] ] = $inventory['InventoryLocationAbbreviation'];
+
+						update_option( 'mv_location_id_to_abbr', $mv_location_id_to_abbr );
+						?>
 						<tr>
 							<td>
 								<input name="mvLocation" id=<?php echo esc_attr( $inventory['InventoryLocationID'] ) . ' '; ?>type="radio"
@@ -247,6 +403,7 @@ function generate_admin_page() {
 				</table>
 			</div>
 		</div>
+
 		<div class="mv-row row-main">
 			<h2 class="green">Success log</h2>
 			<div class="userNotificationTable-wrap">
@@ -350,7 +507,7 @@ function generate_admin_page() {
 		<div id="loading_operation" class="none">
 			<div id="InnerLoading"></div>
 
-			<h1>It may take some time..</h1>
+			<h1>This may take some time..</h1>
 
 			<div class="InnerloadingBox">
 				<span>.</span><span>.</span><span>.</span><br>

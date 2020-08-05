@@ -80,11 +80,11 @@ class Product {
 	public $long_description;
 
 	/**
-	 * Product quantity.
+	 * Product cost.
 	 *
 	 * @var int
 	 */
-	public $quantity;
+	public $unit_cost;
 
 	/**
 	 * Product category.
@@ -206,13 +206,6 @@ class Product {
 	public $successes;
 
 	/*API Calls*/
-
-	/**
-	 * Get Product API call.
-	 *
-	 * @var string
-	 */
-	private static $product_get_call = 'ProductGet';
 
 	/**
 	 * Update Product API call.
@@ -356,7 +349,7 @@ class Product {
 	/**
 	 * Gets all Products.
 	 *
-	 * @return array[Product]
+	 * @return Product[]
 	 */
 	public static function wc_all() {
 
@@ -381,7 +374,7 @@ class Product {
 	/**
 	 * Get configurable Products from WooCommerce.
 	 *
-	 * @return array[Product]
+	 * @return Product[]
 	 */
 	public static function wc_all_with_variable() {
 
@@ -412,7 +405,7 @@ class Product {
 	public static function mv_all() {
 
 		$categories = self::mv_get_categories();
-		$url        = create_json_url( self::$product_get_call );
+		$url        = create_json_url( MV_Constants::PRODUCT_GET );
 		$json_data  = perform_call_to_megaventory( $url );
 		$json_prod  = json_decode( $json_data, true );
 
@@ -456,7 +449,7 @@ class Product {
 	 */
 	public static function mv_find( $id ) {
 
-		$url       = create_json_url_filter( self::$product_get_call, 'ProductID', 'Equals', $id );
+		$url       = create_json_url_filter( MV_Constants::PRODUCT_GET, 'ProductID', 'Equals', $id );
 		$json_data = perform_call_to_megaventory( $url );
 		$data      = json_decode( $json_data, true );
 		if ( count( $data['mvProducts'] ) <= 0 ) {
@@ -492,24 +485,187 @@ class Product {
 	/**
 	 * Pull stock from Megaventory.
 	 *
+	 * @param int $starting_index as the position.
+	 * @return array['starting_index','next_index','error_occurred','finished','message']
+	 */
+	public static function pull_stock( $starting_index ) {
+
+		$return_values = array(
+			'starting_index' => $starting_index,
+			'next_index'     => 0,
+			'error_occurred' => false,
+			'finished'       => false,
+			'message'        => '',
+		);
+
+		$all_wc_products = self::wc_all_with_variable();
+
+		$all_simple_products = array();
+
+		foreach ( $all_wc_products as $wc_product ) {
+
+			if ( empty( $wc_product->sku ) || empty( $wc_product->mv_id ) || ( 'simple' !== $wc_product->type && 'variable-child' !== $wc_product->type ) ) {
+				continue;
+			}
+			array_push( $all_simple_products, $wc_product );
+		}
+
+		$all_simple_products_count = count( $all_simple_products );
+
+		$selected_products_to_sync_stock = array_slice( $all_simple_products, $starting_index, MV_Constants::SYNC_STOCK_FROM_MEGAVENTORY );
+
+		$selected_products_to_sync_stock_count = count( $selected_products_to_sync_stock );
+
+		if ( 0 === $selected_products_to_sync_stock_count ) {
+
+			$return_values = array(
+				'starting_index' => $starting_index,
+				'next_index'     => -1,
+				'error_occurred' => false,
+				'finished'       => true,
+				'message'        => 'Current synchronization: ' . $all_simple_products_count . ' of ' . $all_simple_products_count,
+			);
+
+			update_option( 'is_megaventory_stock_adjusted', 1 );
+
+			$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+
+			$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+
+			$synchronized_message = 'Quantity adjusted from Megaventory on ' . $current_date;
+
+			update_option( 'megaventory_stock_synchronized_time', $synchronized_message );
+
+			return $return_values;
+		}
+
+		$filters = array();
+
+		foreach ( $selected_products_to_sync_stock as $selected_product ) {
+
+			$filter = array(
+				'AndOr'          => 'Or',
+				'FieldName'      => 'productID',
+				'SearchOperator' => 'Equals',
+				'SearchValue'    => $selected_product->mv_id,
+			);
+
+			array_push( $filters, $filter );
+		}
+		// call to get stock information for ids.
+
+		$stock_get_body = array(
+			'APIKEY'  => get_api_key(),
+			'Filters' => $filters,
+		);
+
+		$url      = get_url_for_call( MV_Constants::INVENTORY_LOCATION_STOCK_GET );
+		$response = send_request_to_megaventory( $url, $stock_get_body );
+
+		if ( '0' !== ( $response['ResponseStatus']['ErrorCode'] ) ) {
+
+			$args = array(
+				'type'        => 'error',
+				'entity_name' => 'Stock Get',
+				'entity_id'   => 0,
+				'problem'     => 'Error on Stock Get, try again! If the error persists, contact Megaventory support.',
+				'full_msg'    => $response['ResponseStatus']['Message'],
+				'error_code'  => $response['ResponseStatus']['ErrorCode'],
+				'json_object' => '',
+			);
+
+			$e = new MVWC_Error( $args );
+
+			$return_values = array(
+				'starting_index' => $starting_index,
+				'next_index'     => 0,
+				'error_occurred' => true,
+				'finished'       => true,
+				'message'        => '',
+			);
+
+			return $return_values;
+		}
+
+		$megaventory_product_stock_list = $response['mvProductStockList'];
+
+		foreach ( $selected_products_to_sync_stock as $selected_product ) {
+
+			$index = array_search( $selected_product->mv_id, array_column( $megaventory_product_stock_list, 'productID' ), true );
+
+			if ( false !== $index ) {
+
+				$selected_product->update_stock_properties_from_location_stock_get( $megaventory_product_stock_list[ $index ] );
+
+				update_post_meta( $selected_product->wc_id, '_mv_qty', $selected_product->mv_qty );
+				update_post_meta( $selected_product->wc_id, '_manage_stock', 'yes' );
+				update_post_meta( $selected_product->wc_id, '_stock', (string) $selected_product->available_wc_stock );
+
+				$woocommerce_product = wc_get_product( $selected_product->wc_id );
+				if ( 'no' === $woocommerce_product->backorders ) {
+
+					update_post_meta( $selected_product->wc_id, '_stock_status', ( $selected_product->available_wc_stock > 0 ? 'instock' : 'outofstock' ) );
+				} else {
+
+					update_post_meta( $selected_product->wc_id, '_stock_status', ( $selected_product->available_wc_stock >= 0 ? 'instock' : 'onbackorder' ) );
+				}
+			}
+		}
+
+		if ( MV_Constants::SYNC_STOCK_FROM_MEGAVENTORY > $selected_products_to_sync_stock_count ) {
+
+			$return_values = array(
+				'starting_index' => $starting_index,
+				'next_index'     => -1,
+				'error_occurred' => false,
+				'finished'       => true,
+				'message'        => 'Current synchronization: ' . ( $starting_index + $selected_products_to_sync_stock_count ) . ' of ' . $all_simple_products_count,
+			);
+
+			update_option( 'is_megaventory_stock_adjusted', 1 );
+
+			$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+
+			$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+
+			$synchronized_message = 'Quantity adjusted from Megaventory on ' . $current_date;
+
+			update_option( 'megaventory_stock_synchronized_time', $synchronized_message );
+
+		} else {
+
+			$return_values = array(
+				'starting_index' => $starting_index,
+				'next_index'     => $starting_index + MV_Constants::SYNC_STOCK_FROM_MEGAVENTORY,
+				'error_occurred' => false,
+				'finished'       => false,
+				'message'        => 'Current synchronization: ' . ( $starting_index + $selected_products_to_sync_stock_count ) . ' of ' . $all_simple_products_count,
+			);
+
+		}
+
+		return $return_values;
+	}
+
+	/**
+	 * Generates stock information for product
+	 *
+	 * @param array $mv_product_stock_list as mvProductStockList.
 	 * @return void
 	 */
-	public function pull_stock() {
-
-		$url       = create_json_url_filter( self::$product_stock_call, 'productID', 'Equals', $this->mv_id );
-		$json_data = perform_call_to_megaventory( $url );
-		$response  = json_decode( $json_data, true );
+	public function update_stock_properties_from_location_stock_get( $mv_product_stock_list ) {
 
 		/* sum product on hand in all inventories */
-		$response        = $response['mvProductStockList'];
 		$available_stock = 0;
 		$mv_qty          = array();
 
-		if ( null !== $response[0]['mvStock'] ) {
+		if ( null !== $mv_product_stock_list['mvStock'] ) {
 
-			foreach ( $response[0]['mvStock'] as $inventory ) {
+			foreach ( $mv_product_stock_list['mvStock'] as $inventory ) {
 
-				$inventory_name = self::get_inventory_name( $inventory['InventoryLocationID'], true );
+				$mv_location_id_to_abbr = get_option( 'mv_location_id_to_abbr' );
+
+				$inventory_name = $mv_location_id_to_abbr[ $inventory['InventoryLocationID'] ];
 
 				$total           = $inventory['StockPhysical'];
 				$on_hand         = $inventory['StockOnHand'];
@@ -526,7 +682,8 @@ class Product {
 				$string .= ';' . $non_received_po;
 				$string .= ';' . $non_received_wo;
 
-				array_push( $mv_qty, $string );
+				$mv_qty[ $inventory['InventoryLocationID'] ] = $string;
+
 				$available_stock += (int) $on_hand;
 			}
 		} else {
@@ -539,6 +696,78 @@ class Product {
 		$this->available_wc_stock = $available_stock;
 		$this->mv_qty             = $mv_qty;
 	}
+
+	/**
+	 * Generates stock information for product
+	 *
+	 * @param array $mv_stock_details as mvStock.
+	 * @return void
+	 */
+	public function update_stock_properties_from_stock_update( $mv_stock_details ) {
+
+		$available_stock = 0;
+		$mv_qty          = $this->mv_qty;
+
+		if ( ! is_array( $mv_qty ) ) {
+			$mv_qty = array();
+		}
+
+		$stockqty               = $mv_stock_details['stock_data']['stockqty'];
+		$stockqtyonhold         = $mv_stock_details['stock_data']['stockqtyonhold'];
+		$stockalarmqty          = $mv_stock_details['stock_data']['stockalarmqty'];
+		$stocknonshippedqty     = $mv_stock_details['stock_data']['stocknonshippedqty'];
+		$stocknonreceivedqty    = $mv_stock_details['stock_data']['stocknonreceivedqty'];
+		$stockwipcomponentqty   = $mv_stock_details['stock_data']['stockwipcomponentqty'];
+		$stocknonreceivedwoqty  = $mv_stock_details['stock_data']['stocknonreceivedwoqty'];
+		$stocknonallocatedwoqty = $mv_stock_details['stock_data']['stocknonallocatedwoqty'];
+
+		$total = $stockqty;
+
+		/**
+		 * Megaventory code for on hand quantity.
+		 * newS.StockOnHand = (newS.StockPhysical + newS.StockNonReceivedPOs + newS.StockNonReceivedWOs) _
+		 *                   - (newS.StockNonShipped + newS.StockNonAllocatedWOs + newS.StockOnHold) 'For now the StockOnHold = 0. If we decide to add StockOnHold on Picking then, this will change
+		 */
+		$on_hand         = $stockqty + $stocknonreceivedqty + $stocknonreceivedwoqty - $stocknonshippedqty - $stocknonallocatedwoqty - $stockqtyonhold;
+		$non_shipped     = $stocknonshippedqty;
+		$non_allocated   = $stocknonallocatedwoqty;
+		$non_received_po = $stocknonreceivedqty;
+		$non_received_wo = $stocknonreceivedwoqty;
+
+		$mv_location_id_to_abbr = get_option( 'mv_location_id_to_abbr' );
+
+		$inventory_name = $mv_location_id_to_abbr[ $mv_stock_details['inventory_id'] ];
+
+		$string  = '' . $inventory_name;
+		$string .= ';' . $total;
+		$string .= ';' . $on_hand;
+		$string .= ';' . $non_shipped;
+		$string .= ';' . $non_allocated;
+		$string .= ';' . $non_received_po;
+		$string .= ';' . $non_received_wo;
+
+		// For old accounts that didn't have the inventory_id as key of the array.
+		foreach ( $mv_qty as $key => $value ) {
+
+			if ( ( substr( $value, 0, strlen( $inventory_name ) ) === $inventory_name ) && ( $key !== $mv_stock_details['inventory_id'] ) ) {
+
+				unset( $mv_qty[ $key ] );
+			}
+		}
+
+		$mv_qty[ $mv_stock_details['inventory_id'] ] = $string;
+
+		foreach ( $mv_qty as $key => $value ) {
+
+			$qty = explode( ';', $value );
+
+			$available_stock += $qty[2];
+		}
+
+		$this->available_wc_stock = $available_stock;
+		$this->mv_qty             = $mv_qty;
+	}
+
 
 	/**
 	 * Get Inventory Name from Megaventory.
@@ -592,9 +821,23 @@ class Product {
 	 */
 	public static function mv_find_by_sku( $sku ) {
 
-		$url       = create_json_url_filter( self::$product_get_call, 'ProductSKU', 'Equals', rawurlencode( $sku ) );
-		$json_data = perform_call_to_megaventory( $url );
-		$data      = json_decode( $json_data, true );
+		$filters = array(
+			'0' => array(
+				'FieldName'      => 'ProductSKU',
+				'SearchOperator' => 'Equals',
+				'SearchValue'    => $sku,
+			),
+		);
+
+		$product_get_body = array(
+			'APIKEY'      => get_api_key(),
+			'showDeleted' => 'showAllDeletedAndUndeleted',
+			'Filters'     => $filters,
+		);
+
+		$url  = get_url_for_call( MV_Constants::PRODUCT_GET );
+		$data = send_request_to_megaventory( $url, $product_get_body );
+
 		if ( count( $data['mvProducts'] ) <= 0 ) {
 			return null; // No such sku.
 		}
@@ -640,15 +883,13 @@ class Product {
 
 		$product->version = $mv_prod['ProductVersion'];
 
-		$product->pull_stock();
-
 		return $product;
 	}
 
 	/**
 	 * Converts a WooCommerce Product to Product.
 	 *
-	 * @param WP_Post[]|int[] $wc_prod as WooCommerce product.
+	 * @param WP_Post $wc_prod as WooCommerce product.
 	 * @return Product
 	 */
 	private static function wc_convert( $wc_prod ) {
@@ -674,6 +915,7 @@ class Product {
 		/* prices */
 		$prod->regular_price = get_post_meta( $id, '_regular_price', true );
 		$prod->sale_price    = get_post_meta( $id, '_sale_price', true );
+		$prod->unit_cost     = ( empty( get_post_meta( $id, '_wc_cog_cost', true ) ) ? 0 : empty( get_post_meta( $id, '_wc_cog_cost', true ) ) );
 		$sale_from           = get_post_meta( $id, '_sale_price_dates_from', true );
 		$sale_to             = get_post_meta( $id, '_sale_price_dates_to', true );
 
@@ -778,12 +1020,16 @@ class Product {
 		$prod     = new Product();
 
 		$prod->wc_id         = $var_prod_id;
-		$prod->mv_id         = get_post_meta( $var_prod_id, 'mv_id', true );
+		$prod->mv_id         = (int) get_post_meta( $var_prod_id, 'mv_id', true );
 		$prod->sku           = $var_prod->get_sku();
 		$prod->description   = $var_prod->get_name() ? $var_prod->get_name() : $parent->description;
 		$prod->type          = 'variable-child';
 		$prod->regular_price = $var_prod->get_regular_price() ? $var_prod->get_regular_price() : $parent->regular_price;
 		$prod->sale_price    = $var_prod->get_sale_price() ? $var_prod->get_sale_price() : $parent->sale_price;
+		$prod->unit_cost     = ( empty( get_post_meta( $var_prod_id, '_wc_cog_cost_variable', true ) ) ? 0 : empty( get_post_meta( $var_prod_id, '_wc_cog_cost_variable', true ) ) );
+
+		$prod->available_wc_stock = (int) get_post_meta( $var_prod_id, '_stock', true );
+		$prod->mv_qty             = get_post_meta( $var_prod_id, '_mv_qty', true );
 
 		$prod->weight  = $var_prod->get_weight() ? $var_prod->get_weight() : $parent->weight;
 		$prod->height  = $var_prod->get_height() ? $var_prod->get_height() : $parent->height;
@@ -820,7 +1066,7 @@ class Product {
 	 * @param Product              $product as Product.
 	 * @return void
 	 */
-	public function update_variable_product_in_megaventory( $wc_product, $product ) {
+	public static function update_variable_product_in_megaventory( $wc_product, $product ) {
 
 		$variation_ids = $wc_product->get_children();
 
@@ -1084,7 +1330,7 @@ class Product {
 
 				$internal_error_code = ' [' . $data['InternalErrorCode'] . ']';
 
-				$this->log_error( 'Product not saved to Megaventory' . $internal_error_code, $data['ResponseStatus']['Message'], -1, 'error', $data['json_object'] );
+				$this->log_error( 'Product not saved to Megaventory ' . $internal_error_code, $data['ResponseStatus']['Message'], -1, 'error', $data['json_object'] );
 
 				return false;
 			}
@@ -1095,12 +1341,11 @@ class Product {
 			$undelete_data = perform_call_to_megaventory( $url );
 
 			if ( array_key_exists( 'InternalErrorCode', json_decode( $undelete_data ) ) ) {
-				$this->log_error( 'Product not saved to Megaventory', 'Product is deleted. Undelete failed', -1, 'error', $data['json_object'] );
+				$this->log_error( 'Product is deleted. Undelete failed', $undelete_data['ResponseStatus']['Message'], -1, 'error', $data['json_object'] );
 				return false;
 			}
 
-			$json_request = $this->generate_update_json( $category_id );
-			$data         = send_json( $url, $json_request );
+			return $this->mv_save( $categories );
 		}
 
 		/*Otherwise the product will either be created or updated.*/
@@ -1121,7 +1366,7 @@ class Product {
 	 * Create a json.
 	 *
 	 * @param null|bool $category_id filter with categories.
-	 * @return string
+	 * @return stdClass
 	 */
 	private function generate_update_json( $category_id = null ) {
 
@@ -1375,71 +1620,357 @@ class Product {
 	}
 
 	/**
-	 * Sync product meta data on initial sync operation only.
+	 * Resets product meta data on initial sync operation only.
 	 *
 	 * @return void
 	 */
-	public function sync_post_meta_with_id() {
+	public function reset_megaventory_post_meta() {
 
-		update_post_meta( $this->wc_id, 'mv_id', $this->mv_id );
-		update_post_meta( $this->wc_id, '_mv_qty', $this->mv_qty );
-
-		if ( 0 === (int) get_post_meta( $this->wc_id, '_stock', true ) ) {
-
-			update_post_meta( $this->wc_id, '_manage_stock', 'yes' );
-			update_post_meta( $this->wc_id, '_stock', (string) $this->available_wc_stock );
-			update_post_meta( $this->wc_id, '_stock_status', ( $this->available_wc_stock > 0 ? 'instock' : 'outofstock' ) );
-		}
+		update_post_meta( $this->wc_id, 'mv_id', 0 );
+		update_post_meta( $this->wc_id, '_mv_qty', '' );
+		update_post_meta( $this->wc_id, '_last_mv_stock_update', 0 );
 
 	}
 
 	/**
-	 * Synchronize stock from Megaventory to WooCommerce.
+	 * Synchronize stock for a product.
 	 *
+	 * @param WC_Product_Variation|WC_Product_Simple $wc_product as WC variation.
+	 * @param array                                  $mv_product_stock_details as MV stock data.
+	 * @param int                                    $integration_update_id as integration update id.
 	 * @return void
 	 */
-	public function sync_stock() {
+	public static function sync_stock_update( $wc_product, $mv_product_stock_details, $integration_update_id ) {
 
-		if ( null === $this->mv_id ) {
-			return; // this should not happen.
+		$product         = new Product();
+		$product->wc_id  = $wc_product->get_id();
+		$product->mv_id  = $mv_product_stock_details['productID'];
+		$product->sku    = $wc_product->get_sku();
+		$product->mv_qty = get_post_meta( $product->wc_id, '_mv_qty', true );
+
+		if ( get_post_meta( $product->wc_id, '_last_mv_stock_update', true ) > $integration_update_id ) {
+			return;
 		}
 
-		foreach ( self::wc_all() as $wc_product ) {
+		$product->update_stock_properties_from_stock_update( $mv_product_stock_details );
 
-			if ( $this->sku === $wc_product->sku ) {
+		update_post_meta( $product->wc_id, '_mv_qty', $product->mv_qty );
+		update_post_meta( $product->wc_id, '_manage_stock', 'yes' );
+		update_post_meta( $product->wc_id, '_stock', (string) $product->available_wc_stock );
 
-				$this->wc_id = $wc_product->wc_id;
-				break;
+		if ( 'no' === $wc_product->backorders ) {
+
+			update_post_meta( $product->wc_id, '_stock_status', ( $product->available_wc_stock > 0 ? 'instock' : 'outofstock' ) );
+		} else {
+
+			update_post_meta( $product->wc_id, '_stock_status', ( $product->available_wc_stock >= 0 ? 'instock' : 'onbackorder' ) );
+		}
+
+		update_post_meta( $product->wc_id, '_last_mv_stock_update', $integration_update_id );
+
+	}
+
+	/**
+	 * Push stock to Megaventory.
+	 *
+	 * @param int $starting_index as the position.
+	 * @return array['starting_index','next_index','error_occurred','finished','message']
+	 */
+	public static function push_stock( $starting_index ) {
+
+		$return_values = array(
+			'starting_index' => $starting_index,
+			'next_index'     => 0,
+			'error_occurred' => false,
+			'finished'       => false,
+			'message'        => '',
+		);
+
+		$all_wc_products = self::wc_all_with_variable();
+
+		$all_simple_products = array();
+
+		foreach ( $all_wc_products as $wc_product ) {
+
+			if ( empty( $wc_product->sku ) || empty( $wc_product->mv_id ) || ( 'simple' !== $wc_product->type && 'variable-child' !== $wc_product->type ) ) {
+				continue;
+			}
+			array_push( $all_simple_products, $wc_product );
+		}
+
+		$all_simple_products_count = count( $all_simple_products );
+
+		$selected_products_to_sync_stock = array_slice( $all_simple_products, $starting_index, MV_Constants::STOCK_BATCH_COUNT );
+
+		$selected_products_to_sync_stock_count = count( $selected_products_to_sync_stock );
+
+		if ( 0 === $selected_products_to_sync_stock_count ) {
+
+			$return_values = array(
+				'starting_index' => $starting_index,
+				'next_index'     => -1,
+				'error_occurred' => false,
+				'finished'       => true,
+				'message'        => 'Current synchronization: ' . $all_simple_products_count . ' of ' . $all_simple_products_count,
+			);
+
+			update_option( 'is_megaventory_stock_adjusted', 1 );
+
+			$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+
+			$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+
+			$synchronized_message = 'Quantity adjusted to Megaventory on ' . $current_date;
+
+			update_option( 'megaventory_stock_synchronized_time', $synchronized_message );
+
+			return $return_values;
+		}
+
+		$document_details_adj_plus  = array();
+		$document_details_adj_minus = array();
+
+		$filters = array();
+
+		foreach ( $selected_products_to_sync_stock as $selected_product ) {
+
+			$filter = array(
+				'AndOr'          => 'Or',
+				'FieldName'      => 'productID',
+				'SearchOperator' => 'Equals',
+				'SearchValue'    => $selected_product->mv_id,
+			);
+
+			array_push( $filters, $filter );
+		}
+		// call to get stock information for ids.
+
+		$stock_get_body = array(
+			'APIKEY'  => get_api_key(),
+			'Filters' => $filters,
+		);
+
+		$url      = get_url_for_call( MV_Constants::INVENTORY_LOCATION_STOCK_GET );
+		$response = send_request_to_megaventory( $url, $stock_get_body );
+
+		if ( '0' !== ( $response['ResponseStatus']['ErrorCode'] ) ) {
+
+			$args = array(
+				'type'        => 'error',
+				'entity_name' => 'Stock Get',
+				'entity_id'   => 0,
+				'problem'     => 'Error on Stock Get, check the the quantity on adjustments before approve them',
+				'full_msg'    => $response['ResponseStatus']['Message'],
+				'error_code'  => $response['ResponseStatus']['ErrorCode'],
+				'json_object' => '',
+			);
+
+			$e = new MVWC_Error( $args );
+		}
+
+		$megaventory_product_stock_list = $response['mvProductStockList'];
+
+		foreach ( $selected_products_to_sync_stock as $selected_product ) {
+
+			$index  = array_search( $selected_product->mv_id, array_column( $megaventory_product_stock_list, 'productID' ), true );
+			$mv_qty = 0;
+
+			if ( false !== $index ) {
+				$mv_qty = $megaventory_product_stock_list[ $index ]['StockOnHoldTotal'];
+			}
+			$wc_qty = 0;
+
+			if ( ! empty( $selected_product->available_wc_stock ) ) {
+
+				$wc_qty = $selected_product->available_wc_stock;
+			}
+
+			$adjust = $wc_qty - $mv_qty;
+
+			if ( 0 < $adjust ) {
+
+				$detail = array(
+					'DocumentRowProductSKU' => $selected_product->sku,
+					'DocumentRowQuantity'   => $adjust,
+					'DocumentRowUnitPriceWithoutTaxOrDiscount' => $selected_product->unit_cost,
+				);
+
+				array_push( $document_details_adj_plus, $detail );
+
+			} elseif ( 0 > $adjust ) {
+
+				$detail = array(
+					'DocumentRowProductSKU' => $selected_product->sku,
+					'DocumentRowQuantity'   => $adjust * ( -1 ),
+					'DocumentRowUnitPriceWithoutTaxOrDiscount' => $selected_product->unit_cost,
+				);
+
+				array_push( $document_details_adj_minus, $detail );
 			}
 		}
 
-		$this->pull_stock();
-		update_post_meta( $this->wc_id, '_mv_qty', $this->mv_qty );
-		update_post_meta( $this->wc_id, '_manage_stock', 'yes' );
-		update_post_meta( $this->wc_id, '_stock', (string) $this->available_wc_stock );
-		update_post_meta( $this->wc_id, '_stock_status', ( $this->available_wc_stock > 0 ? 'instock' : 'outofstock' ) );
-	}
+		if ( 0 === count( $document_details_adj_plus ) && 0 === count( $document_details_adj_minus ) ) {
 
-	/**
-	 * Syncronize stock for a variation of a product.
-	 *
-	 * @param WC_Product_Variation $wc_product as WC variation.
-	 * @param array                $mv_product_stock_details as MV stock data.
-	 * @return void
-	 */
-	public static function sync_variation_stock( $wc_product, $mv_product_stock_details ) {
+			$args = array(
+				'type'        => 'notice',
+				'entity_name' => 'Adjustment creation',
+				'entity_id'   => 0,
+				'problem'     => 'No adjustment was needed for this iteration',
+				'full_msg'    => '',
+				'error_code'  => 0,
+				'json_object' => '',
+			);
 
-		$product        = new Product();
-		$product->wc_id = $wc_product->get_id();
-		$product->mv_id = $mv_product_stock_details['productID'];
-		$product->sku   = $wc_product->get_sku();
+			$e = new MVWC_Error( $args );
 
-		$product->pull_stock();
+			$return_values = array(
+				'starting_index' => $starting_index,
+				'next_index'     => $starting_index + MV_Constants::STOCK_BATCH_COUNT,
+				'error_occurred' => false,
+				'finished'       => false,
+				'message'        => 'Current synchronization: ' . ( $starting_index + $selected_products_to_sync_stock_count ) . ' of ' . $all_simple_products_count,
+			);
 
-		update_post_meta( $product->wc_id, '_manage_stock', 'yes' );
-		update_post_meta( $product->wc_id, '_stock', (string) $product->available_wc_stock );
-		update_post_meta( $product->wc_id, '_stock_status', ( $product->available_wc_stock > 0 ? 'instock' : 'outofstock' ) );
+			return $return_values;
+		}
 
+		$action = 'Insert';
+
+		if ( 0 < count( $document_details_adj_plus ) ) {
+
+			$mv_document_plus = array(
+				'DocumentTypeId'           => -99,
+				'DocumentSupplierClientID' => -1,
+				'DocumentComments'         => 'This is the initial stock document that was created based on available quantity for the following products',
+				'DocumentDetails'          => $document_details_adj_plus,
+				'DocumentStatus'           => 'Pending',
+			);
+
+			$document_update = array(
+				'APIKEY'                                => get_api_key(),
+				'mvDocument'                            => $mv_document_plus,
+				'mvRecordAction'                        => $action,
+				'mvInsertUpdateDeleteSourceApplication' => 'woocommerce',
+			);
+
+			$url      = get_url_for_call( MV_Constants::DOCUMENT_UPDATE );
+			$response = send_request_to_megaventory( $url, $document_update );
+
+			if ( '0' === ( $response['ResponseStatus']['ErrorCode'] ) ) {
+
+				$args = array(
+					'entity_id'          => array(
+						'wc' => 0,
+						'mv' => $response['mvDocument']['DocumentId'],
+					),
+					'entity_type'        => 'adjustment',
+					'entity_name'        => $response['mvDocument']['DocumentTypeAbbreviation'] . ' ' . $response['mvDocument']['DocumentNo'],
+					'transaction_status' => 'Insert',
+					'full_msg'           => 'The adjustment has been created to your Megaventory account',
+					'success_code'       => 1,
+				);
+
+				$e = new MVWC_Success( $args );
+			} else {
+
+				$args = array(
+					'type'        => 'error',
+					'entity_name' => 'Adjustment plus creation',
+					'entity_id'   => 0,
+					'problem'     => 'Error on adjustment creation',
+					'full_msg'    => $response['ResponseStatus']['Message'],
+					'error_code'  => $response['ResponseStatus']['ErrorCode'],
+					'json_object' => '',
+				);
+
+				$e = new MVWC_Error( $args );
+			}
+		}
+
+		if ( 0 < count( $document_details_adj_minus ) ) {
+
+			$mv_document_minus = array(
+				'DocumentTypeId'           => -98,
+				'DocumentSupplierClientID' => -1,
+				'DocumentComments'         => 'This is the initial stock document that was created based on available quantity for the following products',
+				'DocumentDetails'          => $document_details_adj_minus,
+				'DocumentStatus'           => 'Pending',
+			);
+
+			$document_update = array(
+				'APIKEY'                                => get_api_key(),
+				'mvDocument'                            => $mv_document_minus,
+				'mvRecordAction'                        => $action,
+				'mvInsertUpdateDeleteSourceApplication' => 'woocommerce',
+			);
+
+			$url      = get_url_for_call( MV_Constants::DOCUMENT_UPDATE );
+			$response = send_request_to_megaventory( $url, $document_update );
+
+			if ( '0' === ( $response['ResponseStatus']['ErrorCode'] ) ) {
+
+				$args = array(
+					'entity_id'          => array(
+						'wc' => 0,
+						'mv' => $response['mvDocument']['DocumentId'],
+					),
+					'entity_type'        => 'adjustment',
+					'entity_name'        => $response['mvDocument']['DocumentTypeAbbreviation'] . ' ' . $response['mvDocument']['DocumentNo'],
+					'transaction_status' => 'Insert',
+					'full_msg'           => 'The adjustment has been created to your Megaventory account',
+					'success_code'       => 1,
+				);
+
+				$e = new MVWC_Success( $args );
+			} else {
+
+				$args = array(
+					'type'        => 'error',
+					'entity_name' => 'Adjustment creation',
+					'entity_id'   => 0,
+					'problem'     => 'Error on adjustment minus creation',
+					'full_msg'    => $response['ResponseStatus']['Message'],
+					'error_code'  => $response['ResponseStatus']['ErrorCode'],
+					'json_object' => '',
+				);
+
+				$e = new MVWC_Error( $args );
+			}
+		}
+
+		if ( MV_Constants::STOCK_BATCH_COUNT > $selected_products_to_sync_stock_count ) {
+
+			$return_values = array(
+				'starting_index' => $starting_index,
+				'next_index'     => -1,
+				'error_occurred' => false,
+				'finished'       => true,
+				'message'        => 'Current synchronization: ' . ( $starting_index + $selected_products_to_sync_stock_count ) . ' of ' . $all_simple_products_count,
+			);
+
+			update_option( 'is_megaventory_stock_adjusted', 1 );
+
+			$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+
+			$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+
+			$synchronized_message = 'Quantity adjusted to Megaventory on ' . $current_date;
+
+			update_option( 'megaventory_stock_synchronized_time', $synchronized_message );
+
+		} else {
+
+			$return_values = array(
+				'starting_index' => $starting_index,
+				'next_index'     => $starting_index + MV_Constants::STOCK_BATCH_COUNT,
+				'error_occurred' => false,
+				'finished'       => false,
+				'message'        => 'Current synchronization: ' . ( $starting_index + $selected_products_to_sync_stock_count ) . ' of ' . $all_simple_products_count,
+			);
+
+		}
+
+		return $return_values;
 	}
 
 	/**
@@ -1447,10 +1978,11 @@ class Product {
 	 *
 	 * @return void
 	 */
-	public function wc_reset_mv_data() {
+	public function wc_delete_mv_data() {
 
 		delete_post_meta( $this->wc_id, 'mv_id' );
 		delete_post_meta( $this->wc_id, '_mv_qty' );
+		delete_post_meta( $this->wc_id, '_last_mv_stock_update' );
 	}
 }
 

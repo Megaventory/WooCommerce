@@ -39,11 +39,18 @@ function ajaxImport(startingIndex, numberOfIndToProcess, successes, errors, call
 				var message          = obj.success_message;
 
 				if (message.includes( 'continue' )) {
+
 					jQuery( '#loading h1' ).html( CurrentSyncCount );
 					ajaxImport( startingIndex, numberOfIndToProcess, successes, errors, call );// new ajax call.
-				}
-				if (message.includes( 'FinishedSuccessfully' )) {
+
+				} else if ( message.includes( 'FinishedSuccessfully' ) ) {
+
 					jQuery( '#loading h1' ).html( "Current Sync Count: 100%" );
+					setTimeout( function () {jQuery( '#loading' ).hide();}, 2000 );
+					location.reload();
+				} else if ( message.includes( 'Error' ) ) {
+
+					alert( 'Error on ' + call + ', try again! If the error persist contact to Megaventory!' );
 					setTimeout( function () {jQuery( '#loading' ).hide();}, 2000 );
 					location.reload();
 				}
@@ -75,6 +82,108 @@ function ajaxPullUpdates() {
 
 			error: function (errorThrown) {
 				alert( 'Error on updates synchronization, try again! If the error persists, contact Megaventory support.' );
+				jQuery( '#loading_operation' ).hide();
+			}
+		}
+	);
+}
+
+/**
+ * Pull Integration Updates manually.
+ */
+function SyncStockToMegaventory(starting_index) {
+	jQuery( '#loading_operation' ).show();
+	jQuery.ajax(
+		{
+			url: "admin-ajax.php",
+			type: "POST",
+			data: {
+				'action': 'sync_stock_to_megaventory',
+				'startingIndex': starting_index,
+				'async-nonce': ajax_object.nonce
+			},
+			success: function (data) { // This outputs the result of the ajax request.
+				var obj = JSON.parse( data.data );
+
+				var startingIndex  = obj.starting_index;
+				var next_index     = obj.next_index;
+				var error_occurred = obj.error_occurred;
+				var finished       = obj.finished;
+				var message        = obj.message;
+
+				if ( error_occurred ) {
+
+					setTimeout( function () {jQuery( '#loading_operation' ).hide();}, 2000 );
+					location.reload();
+
+				}
+
+				jQuery( '#loading_operation h1' ).html( message );
+
+				if ( ! finished ) {
+
+					SyncStockToMegaventory( next_index );// new ajax call.
+
+				} else {
+
+					setTimeout( function () {jQuery( '#loading_operation' ).hide();}, 2000 );
+					location.reload();
+				}
+			},
+
+			error: function (errorThrown) {
+				alert( 'Error on pushing stock, try again! If the error persists, contact Megaventory support.' );
+				jQuery( '#loading_operation' ).hide();
+			}
+		}
+	);
+}
+
+/**
+ * Pull Integration Updates manually.
+ */
+function SyncStockFromMegaventory(starting_index) {
+	jQuery( '#loading_operation' ).show();
+	jQuery.ajax(
+		{
+			url: "admin-ajax.php",
+			type: "POST",
+			data: {
+				'action': 'sync_stock_from_megaventory',
+				'startingIndex': starting_index,
+				'async-nonce': ajax_object.nonce
+			},
+			success: function (data) { // This outputs the result of the ajax request.
+				var obj = JSON.parse( data.data );
+
+				var startingIndex  = obj.starting_index;
+				var next_index     = obj.next_index;
+				var error_occurred = obj.error_occurred;
+				var finished       = obj.finished;
+				var message        = obj.message;
+
+				if ( error_occurred ) {
+
+					setTimeout( function () {jQuery( '#loading_operation' ).hide();}, 2000 );
+					location.reload();
+
+				}
+
+				jQuery( '#loading_operation h1' ).html( message );
+
+				if ( ! finished ) {
+
+					SyncStockFromMegaventory( next_index );// new ajax call.
+
+				} else {
+
+					setTimeout( function () {jQuery( '#loading_operation' ).hide();}, 2000 );
+					location.reload();
+				}
+			},
+
+			error: function (errorThrown) {
+				alert( 'Error on pushing stock, try again! If the error persists, contact Megaventory support.' );
 				jQuery( '#loading_operation' ).hide();
 			}
 		}

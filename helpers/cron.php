@@ -29,7 +29,4 @@ function cron_deactivation() {
 	if ( wp_next_scheduled( 'pull_changes_event' ) ) {
 		wp_clear_scheduled_hook( 'pull_changes_event' );
 	}
-	if ( wp_next_scheduled( 'pull_stock_event' ) ) {
-		wp_clear_scheduled_hook( 'pull_stock_event' );
-	}
 }

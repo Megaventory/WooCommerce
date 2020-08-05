@@ -36,4 +36,23 @@ class MV_Constants {
 	 * Discounts that applied for Document tags.
 	 */
 	const COUPONS_APPLIED = 'Discounts Applied: ';
+
+	/**
+	 * We use it to create adjustments in Megaventory in batches.
+	 */
+	const STOCK_BATCH_COUNT = 100;
+
+	const SYNC_STOCK_FROM_MEGAVENTORY = 100;
+
+	const DOCUMENT_UPDATE = 'DocumentUpdate';
+
+	const INVENTORY_LOCATION_STOCK_GET = 'InventoryLocationStockGet';
+
+	const CURRENCY_GET = 'CurrencyGet';
+
+	const INTEGRATION_UPDATE_GET = 'IntegrationUpdateGet';
+
+	const INTEGRATION_UPDATE_DELETE = 'IntegrationUpdateDelete';
+
+	const PRODUCT_GET = 'ProductGet';
 }

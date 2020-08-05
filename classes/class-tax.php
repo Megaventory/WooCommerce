@@ -194,7 +194,7 @@ class Tax {
 	/**
 	 * Get all WooCommerce taxes.
 	 *
-	 * @return array
+	 * @return Tax[]
 	 */
 	public static function wc_all() {
 
@@ -224,7 +224,7 @@ class Tax {
 	 * @param int $id as tax id.
 	 * @return Tax|bool
 	 */
-	public static function wc_find( $id ) {
+	public static function wc_find_tax( $id ) {
 
 		global $wpdb;
 
@@ -274,7 +274,7 @@ class Tax {
 	/**
 	 * Get all Taxes from Megaventory.
 	 *
-	 * @return array
+	 * @return Tax[]
 	 */
 	public static function mv_all() {
 
@@ -337,7 +337,7 @@ class Tax {
 	 *
 	 * @param string $name as tax name.
 	 * @param double $rate as tax rate.
-	 * @return Tax
+	 * @return Tax|null
 	 */
 	public static function mv_find_by_name_and_rate( $name, $rate ) {
 
@@ -379,7 +379,7 @@ class Tax {
 	public function mv_save() {
 
 		$create_new = false;
-		if ( null === $this->mv_id ) { // find by name first.
+		if ( empty( $this->mv_id ) ) { // find by name first.
 
 			$tax = self::mv_find_by_name_and_rate( $this->name, $this->rate );
 
@@ -421,97 +421,39 @@ class Tax {
 
 			// ensure correct id.
 			$new_id = $data['mvTax']['TaxID'];
-			$this->log_success( $action, 'Tax successfully ' . $action . ' in Megaventory', 1 );
 			if ( $new_id !== $this->mv_id ) {
 
 				$this->mv_id = $new_id;
-
-				global $wpdb;
-
-				$sql_results = $wpdb->query(
-					$wpdb->prepare(
-						"
-						UPDATE {$wpdb->prefix}woocommerce_tax_rates 
-						SET mv_id= %d 
-						WHERE tax_rate_id= %d 
-						",
-						array( $new_id, $this->wc_id )
-					)
-				); // db call ok; no-cache ok.
-
+				$this->wc_save();
 			}
+
+			$this->log_success( $action, 'Tax successfully ' . $action . ' in Megaventory', 1 );
 		}
 
 		return $data;
 	}
 
 	/**
-	 * Save Tax in WooCommerce
+	 * Save Megaventory Tax Id in WooCommerce
 	 *
 	 * @return bool
 	 */
 	public function wc_save() {
 
-		foreach ( self::wc_all() as $wc_tax ) {
-
-			if ( $wc_tax->equals( $this ) ) {
-
-				$this->wc_id = $wc_tax->wc_id;
-				break;
-			}
-		}
-
 		global $wpdb;
-		$create_new = ( null === $this->wc_id );
 
-		$table_name = $wpdb->prefix . self::$table_name;
-		$sql        = '';
-		if ( $create_new ) {
-
-			$sql_results = $wpdb->insert(
-				$table_name,
-				array(
-					'tax_rate'      => (string) $this->rate,
-					'tax_rate_name' => $this->name,
-					'mv_id'         => ( null !== $this->mv_id ? (string) $this->mv_id : '' ),
-				),
-				array(
-					'%s',
-					'%s',
-					'%s',
-				)
-			); // db call ok; no-cache ok.
-
-			if ( ! $sql_results ) {
-
-				$this->log_error( 'Tax insertion error', $wpdb->last_error, -1, 'error', '' );
-
-				return false;
-			}
-			$this->wc_id = $wpdb->insert_id;
-
-		} else {
-
-			$sql_results = $wpdb->update(
-				$table_name,
-				array(
-					'tax_rate'      => (string) $this->rate,
-					'tax_rate_name' => $this->name,
-					'mv_id'         => ( null !== $this->mv_id ? (string) $this->mv_id : '' ),
-				),
-				array( 'tax_rate_id' => $this->wc_id ),
-				array(
-					'%s',
-					'%s',
-					'%s',
-				),
-				array( '%d' )
-			); // db call ok; no-cache ok.
-
-		}
+		$sql_results = $wpdb->query(
+			$wpdb->prepare(
+				"
+				UPDATE {$wpdb->prefix}woocommerce_tax_rates 
+				SET mv_id= %d 
+				WHERE tax_rate_id= %d 
+				",
+				array( $this->mv_id, $this->wc_id )
+			)
+		); // db call ok; no-cache ok.
 
 		return true;
-
 	}
 
 	/**
@@ -563,7 +505,7 @@ class Tax {
 		$taxes = array();
 		foreach ( $sales_row->get_data()['taxes']['total'] as $id => $rate ) {
 
-			array_push( $taxes, self::wc_find( $id ) );
+			array_push( $taxes, self::wc_find_tax( $id ) );
 		}
 
 		return $taxes;

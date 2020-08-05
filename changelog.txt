@@ -1,5 +1,14 @@
 *** Megaventory Extension Template Changelog ***
 
+2020-08-05 - version 2.2.0
+* Fixed bug on tax-coupon hooks
+* Improved synchronization process
+* New functionality to Initial synchronization of quantity to/from Megaventory
+* On products list, Megaventory Quantity information also for variables
+* Fixed bug with product status if backorders are allowed
+* Compatible with WooCommerce 4.3.1
+* Various bugs fixed
+
 2020-07-01 - version 2.1.4
 * Button to pull updates from Megaventory manually
 * Keep Megaventory product barcode

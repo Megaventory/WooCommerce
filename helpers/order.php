@@ -41,9 +41,10 @@ function place_sales_order( $order, $client ) {
 
 	foreach ( $order->get_coupons() as $order_coupon ) {
 
-		$coupon_code = $order_coupon->get_data()['code'];
+		$coupon_post_obj = get_page_by_title( $order_coupon->get_code(), OBJECT, 'shop_coupon' );
+		$coupon_id       = $coupon_post_obj->ID;
 
-		$coupon = Coupon::wc_find_by_name( $coupon_code );
+		$coupon = Coupon::wc_find_coupon( $coupon_id );
 
 		if ( 'fixed_product' === $coupon->type ) {
 
@@ -157,30 +158,11 @@ function place_sales_order( $order, $client ) {
 
 	foreach ( $order->get_items( 'shipping' ) as $shipping_method ) {
 
-		$shipping_exists_in_megaventory = Product::mv_find_by_sku( 'shipping' );
-
-		if ( null === $shipping_exists_in_megaventory ) {
-
-			$shipping_product              = new Product();
-			$shipping_product->sku         = 'shipping';
-			$shipping_product->type        = 'service';
-			$shipping_product->description = 'shipping method';
-
-			$shipping_product = $shipping_product->mv_save();
-
-			$shipping_product->mv_id = $shipping_product['entityID'];
-
-			$shipping_exists_in_megaventory = new Product();
-
-			$shipping_exists_in_megaventory->sku = 'shipping';
-
-		}
-
 		$tax = Tax::get_sales_row_tax( $shipping_method );
 
 		$shippingrowelement = new \stdClass();
 
-		$shippingrowelement->salesorderrowproductsku                    = $shipping_exists_in_megaventory->sku;
+		$shippingrowelement->salesorderrowproductsku                    = 'shipping';
 		$shippingrowelement->salesorderrowquantity                      = 1;
 		$shippingrowelement->salesorderrowshippedquantity               = 0;
 		$shippingrowelement->salesorderrowinvoicedquantity              = 0;
@@ -220,8 +202,8 @@ function place_sales_order( $order, $client ) {
 	$order_object->salesorderreferenceapplication = 'woocommerce';
 	$order_object->salesorderclientid             = $client->mv_id;
 	$order_object->salesordercontactperson        = $client->contact_name;
-	$order_object->salesorderbillingaddress       = str_replace( "\n", ' ', $shipping_address );
-	$order_object->salesordershippingaddress      = str_replace( "\n", ' ', $billing_address );
+	$order_object->salesorderbillingaddress       = str_replace( "\n", ' ', $billing_address );
+	$order_object->salesordershippingaddress      = str_replace( "\n", ' ', $shipping_address );
 	$order_object->salesordercomments             = $order->get_customer_note();
 	$order_object->salesordertags                 = $coupon_names_order_tags;
 	$order_object->salesorderdetails              = $sales_array;

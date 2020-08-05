@@ -21,11 +21,7 @@ require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/address.php';
 $default_host = 'https://api.megaventory.com/v2017a/';
 $host         = get_api_host();
 $url          = $host . 'json/reply/';
-$api_key      = get_api_key();
 
-$integration_get_call    = 'IntegrationUpdateGet';
-$integration_delete_call = 'IntegrationUpdateDelete';
-$currency_get_call       = 'CurrencyGet';
 
 /* MV status => WC status */
 $translate_order_status = array(
@@ -93,11 +89,22 @@ function get_guest_mv_client() {
 /**
  * Create URL using the API key and call.
  *
- * @param array $call as array.
+ * @param string $call as string.
  */
 function create_json_url( $call ) {
-	global $url, $api_key;
+	$api_key = get_option( 'megaventory_api_key' );
+	global $url;
 	return $url . $call . '?APIKEY=' . rawurlencode( $api_key );
+}
+
+/**
+ * Create URL.
+ *
+ * @param array $call as array.
+ */
+function get_url_for_call( $call ) {
+	global $url;
+	return $url . $call;
 }
 
 /**
@@ -169,12 +176,56 @@ function send_json( $url, $json_request ) {
 		'headers' => array(
 			'Content-Type' => 'application/json',
 		),
+		'method'  => 'POST',
+		'timeout' => 15,
 		'body'    => wp_json_encode( $body_to_send ),
 	);
 
 	$response = wp_remote_post( $url, $data_to_send );
 
 	$data = json_decode( wp_remote_retrieve_body( $response ), true );
+
+	if ( is_wp_error( $response ) && ! isset( $data['ResponseStatus']['Message'] ) ) {
+
+		$data['InternalErrorCode']         = 'WordPress Request timeout';
+		$data['ResponseStatus']['Message'] = $response->get_error_message();
+	}
+
+	$data['json_object'] = wp_json_encode( $body_to_send );
+
+	return $data;
+
+}
+
+/**
+ * Send json.
+ *
+ * @param string $url as string.
+ * @param mixed  $request as array.
+ * @return array
+ */
+function send_request_to_megaventory( $url, $request ) {
+
+	$body_to_send = $request;
+
+	$data_to_send = array(
+		'headers' => array(
+			'Content-Type' => 'application/json',
+		),
+		'method'  => 'POST',
+		'timeout' => 15,
+		'body'    => wp_json_encode( $body_to_send ),
+	);
+
+	$response = wp_remote_post( $url, $data_to_send );
+
+	$data = json_decode( wp_remote_retrieve_body( $response ), true );
+
+	if ( is_wp_error( $response ) && ! isset( $data['ResponseStatus']['Message'] ) ) {
+
+		$data['InternalErrorCode']         = 'WordPress Request timeout';
+		$data['ResponseStatus']['Message'] = $response->get_error_message();
+	}
 
 	$data['json_object'] = wp_json_encode( $body_to_send );
 
@@ -209,11 +260,11 @@ function create_array_from_object( $my_object ) {
 /**
  * Wrap api key to object.
  *
- * @param string $json_object as string.
+ * @param object $json_object as string.
  */
 function wrap_json( $json_object ) {
 
-	global $api_key;
+	$api_key = get_option( 'megaventory_api_key' );
 
 	$json_object->apikey = $api_key;
 
@@ -247,8 +298,7 @@ function perform_call_to_megaventory( $url ) {
  * Get Default Currency.
  */
 function get_default_currency() {
-	global $currency_get_call;
-	$url                  = create_json_url_filter( $currency_get_call, 'CurrencyIsDefault', 'Equals', 'true' );
+	$url                  = create_json_url_filter( MV_Constants::CURRENCY_GET, 'CurrencyIsDefault', 'Equals', 'true' );
 	$json_data            = perform_call_to_megaventory( $url );
 	$megaventory_currency = json_decode( $json_data, true )['mvCurrencies'][0]['CurrencyCode'];
 	return $megaventory_currency;
@@ -280,31 +330,32 @@ function check_connectivity() {
 
 /**
  * Check API key.
+ *
+ * @return array with ApiKeyGet response.
  */
 function check_key() {
 
-	global $api_key;
-	global $api_key_error_response_status_message;
+	$api_key = get_option( 'megaventory_api_key' );
 
 	if ( empty( $api_key ) ) {
-		return false;
+
+		$response['ResponseStatus']['ErrorCode'] = 500;
+		$response['ResponseStatus']['Message']   = 'Empty Api Key, create an API key under My Profile.';
+
+		return $response;
 	}
 
-	$url                                   = create_json_url( 'ApiKeyGet' );
-	$json_data                             = perform_call_to_megaventory( $url );
-	$data                                  = json_decode( $json_data, true );
-	$api_key_error_response_status_message = $data['ResponseStatus']['Message'];
-	$code                                  = (int) $data['ResponseStatus']['ErrorCode'];
+	$url       = create_json_url( 'ApiKeyGet' );
+	$json_data = perform_call_to_megaventory( $url );
+	$data      = json_decode( $json_data, true );
+	$code      = (int) $data['ResponseStatus']['ErrorCode'];
 
 	/* 401-wrong key | 500-no key */
-	if ( 401 === $code || 500 === $code ) {
-		return false;
+	if ( ! ( 401 === $code ) && ! ( 500 === $code ) ) {
+		log_apikey( $api_key );
 	}
 
-	log_apikey( $api_key );
-
-	return true;
-
+	return $data;
 }
 
 /**
@@ -338,9 +389,7 @@ function check_if_integration_is_enabled() {
  */
 function remove_integration_update( $id ) {
 
-	global $integration_delete_call;
-
-	$url       = create_json_url( $integration_delete_call ) . '&IntegrationUpdateIDToDelete=' . rawurlencode( $id );
+	$url       = create_json_url( MV_Constants::INTEGRATION_UPDATE_DELETE ) . '&IntegrationUpdateIDToDelete=' . rawurlencode( $id );
 	$json_data = perform_call_to_megaventory( $url );
 	$data      = json_decode( $json_data, true );
 
@@ -349,11 +398,9 @@ function remove_integration_update( $id ) {
 /**
  * Pull Product changes.
  */
-function pull_product_changes() {
+function get_integration_updates() {
 
-	global $integration_get_call;
-
-	$url       = create_json_url_filter( $integration_get_call, 'Application', 'Equals', 'Woocommerce' );
+	$url       = create_json_url_filter( MV_Constants::INTEGRATION_UPDATE_GET, 'Application', 'Equals', 'Woocommerce' );
 	$json_data = perform_call_to_megaventory( $url );
 	$data      = json_decode( $json_data, true );
 

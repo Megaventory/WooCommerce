@@ -42,22 +42,47 @@ function ajaxInitialize(block, startingInd, numberOfIndToProcess, call) {
 				var percentMessage = obj.percent_message;
 
 				if (message.includes( 'continue' )) {
+
 					jQuery( '#loading h1' ).html( percentMessage );
 					ajaxInitialize( block, startingInd, numberOfIndToProcess, call );// new ajax call.
-				}
 
-				if (message.includes( 'FinishedSuccessfully' )) {
+				} else if ( message.includes( 'FinishedSuccessfully' ) ) {
+
 					jQuery( '#loading h1' ).html( "Current Sync Count: 100%" );
 					setTimeout( function () {jQuery( '#loading' ).hide(); jQuery( 'body>*' ).css( "filter", "none" );}, 2000 );
+					location.reload();
+
+				} else if ( message.includes( 'Error' ) ) {
+
+					alert( 'Error on ' + call + ', try again! If the error persist contact to Megaventory!' );
+					setTimeout( function () {jQuery( '#loading' ).hide();}, 2000 );
 					location.reload();
 				}
 			},
 
 			error: function (errorThrown) {
-				alert( 'error on import' );
+				alert( 'Error on initialization, try again! If the error persist contact to Megaventory!' );
 			}
 		}
 	);
+}
+
+/**
+ * Initialize javascript function.
+ *
+ * @param {string} block                 as the type that will initialized.
+ * @param {integer} startingInd          as the starting point.
+ * @param {integer} numberOfIndToProcess as the end point.
+ * @param {string} call                  as the entity code block.
+ */
+function ajaxReInitialize(block, startingInd, numberOfIndToProcess, call) {
+
+	if ( ! confirm( "Are you sure you want to re-initialize the Megaventory plugin? After that you need to synchronize products, clients, coupons and product stock again." ) ) {
+		return;
+	}
+
+	ajaxInitialize( block, startingInd, numberOfIndToProcess, call )
+
 }
 
 function changeDefaultInventory(inventory_id) {
@@ -77,7 +102,7 @@ function changeDefaultInventory(inventory_id) {
 			},
 
 			error: function (errorThrown) {
-				alert( 'error on import' );
+				alert( 'Error occurred, try again! If the error persist contact to Megaventory!' );
 				jQuery( '#loading' ).hide();
 			}
 		}

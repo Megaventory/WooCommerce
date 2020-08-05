@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.1.4
+ * Version: 2.2.0
  * Text Domain: megaventory
  * Plugin URI: https://github.com/Megaventory/WooCommerce
  * Description: Integration between WooCommerce and Megaventory.
@@ -28,7 +28,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-set_time_limit( 20000 ); // 20000 seconds
+if ( 300 > (int) ini_get( 'max_execution_time' ) ) {
+
+	set_time_limit( 300 ); // So if the script has already run for 15 seconds and set_time_limit(30) is called, then it would run for a total of 30+15 = 45 seconds.
+}
+/**
+ ** With this code we can track all our request.
+ **
+ ** add_filter( 'http_request_args', 'http_request_args_custom', 10, 2 );
+ **
+ ** /**
+ ** * Increase request timeout for Megaventory requests.
+ ** *
+ ** * @param array  $request as array.
+ ** * @param string $url Request url.
+ ** * @return array
+ **
+ ** function http_request_args_custom( $request, $url ) {
+ **
+ ** if ( false !== strpos( $url, get_api_host() ) ) {
+ ** // write to file
+ ** }
+ ** return $request;
+ ** }
+*/
 
 define( 'MEGAVENTORY__PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 /**
@@ -59,19 +82,22 @@ add_action( 'wp_ajax_nopriv_changeDefaultMegaventoryLocation', 'change_default_m
 add_action( 'wp_ajax_pull_integration_updates', 'pull_integration_updates' );
 add_action( 'wp_ajax_nopriv_pull_integration_updates', 'pull_integration_updates' );
 
+add_action( 'wp_ajax_sync_stock_to_megaventory', 'sync_stock_to_megaventory' );
+add_action( 'wp_ajax_nopriv_sync_stock_to_megaventory', 'sync_stock_to_megaventory' );
+
+add_action( 'wp_ajax_sync_stock_from_megaventory', 'sync_stock_from_megaventory' );
+add_action( 'wp_ajax_nopriv_sync_stock_from_megaventory', 'sync_stock_from_megaventory' );
+
 $mv_admin_slug = 'megaventory-plugin';
 
 /* when lock is true, edited product will not update mv products */
 $save_product_lock = false;
 $execute_lock      = false; // this lock prevents all sync between WC and MV.
 
-$correct_currency;
-$correct_connection;
-$correct_key;
+update_option( 'last_valid_api_key', get_last_valid_api_key() );
 
-$last_valid_api_key = get_last_valid_api_key();
-$home_url           = get_home_url();
-$plugin_url         = $home_url . '/wp-admin/admin.php?page=megaventory-plugin';
+$home_url   = get_home_url();
+$plugin_url = $home_url . '/wp-admin/admin.php?page=megaventory-plugin';
 
 /**
  * Starts the session.
@@ -91,9 +117,6 @@ define( 'ALTERNATE_WP_CRON', true );
 /**
  * PLUGIN INITIALIZATION
  */
-$errs  = array();
-$warns = array();
-$succs = array();
 
 /**
  * Registration errors.
@@ -104,16 +127,28 @@ $succs = array();
  */
 function register_error( $str1 = null, $str2 = null ) {
 
-	global $errs;
+	$session_messages = get_option( 'mv_session_messages' );
 
-	if ( isset( $errs ) ) {
-
-		global $errs;
-
-		$message = array( $str1, $str2 );
-
-		array_push( $errs, $message );
+	if ( ! isset( $session_messages ) ) {
+		$session_messages = array();
 	}
+	$errs = $session_messages['errors'];
+
+	if ( ! is_array( $errs ) ) {
+		$errs = array();
+	}
+
+	if ( null !== $str1 && ! in_array( $str1, $errs, true ) ) {
+		array_push( $errs, $str1 );
+	}
+
+	if ( null !== $str2 && ! in_array( $str2, $errs, true ) ) {
+		array_push( $errs, $str2 );
+	}
+
+	$session_messages['errors'] = $errs;
+
+	update_option( 'mv_session_messages', $session_messages );
 }
 
 /**
@@ -125,12 +160,28 @@ function register_error( $str1 = null, $str2 = null ) {
  */
 function register_warning( $str1 = null, $str2 = null ) {
 
-	global $warns;
+	$session_messages = get_option( 'mv_session_messages' );
 
-	$message = array( $str1, $str2 );
+	if ( ! isset( $session_messages ) ) {
+		$session_messages = array();
+	}
+	$warns = $session_messages['warnings'];
 
-	array_push( $warns, $message );
+	if ( ! is_array( $warns ) ) {
+		$warns = array();
+	}
 
+	if ( null !== $str1 && ! in_array( $str1, $warns, true ) ) {
+		array_push( $warns, $str1 );
+	}
+
+	if ( null !== $str2 && ! in_array( $str2, $warns, true ) ) {
+		array_push( $warns, $str2 );
+	}
+
+	$session_messages['warnings'] = $warns;
+
+	update_option( 'mv_session_messages', $session_messages );
 }
 
 /**
@@ -142,53 +193,176 @@ function register_warning( $str1 = null, $str2 = null ) {
  */
 function register_success( $str1 = null, $str2 = null ) {
 
-	global $succs;
+	$session_messages = get_option( 'mv_session_messages' );
 
-	$message = array( $str1, $str2 );
+	if ( ! isset( $session_messages ) ) {
+		$session_messages = array();
+	}
+	$succs = $session_messages['successes'];
 
-	array_push( $succs, $message );
+	if ( ! is_array( $succs ) ) {
+		$succs = array();
+	}
+
+	if ( null !== $str1 && ! in_array( $str1, $succs, true ) ) {
+		array_push( $succs, $str1 );
+	}
+
+	if ( null !== $str2 && ! in_array( $str2, $succs, true ) ) {
+		array_push( $succs, $str2 );
+	}
+
+	$session_messages['successes'] = $succs;
+
+	update_option( 'mv_session_messages', $session_messages );
 }
 
 /**
- * Add to session errors.
+ * Admin errors.
  *
  * @return void
  */
-function errors_to_session() {
+function sample_admin_notice_error() {
 
-	global $errs;
+	$class = 'notice notice-error';
 
-	$_SESSION['errs'] = $errs;
+	global $pagenow;
+
+	if ( 'admin.php' === $pagenow ) {
+
+		$session_messages = get_option( 'mv_session_messages' );
+
+		if ( ! isset( $session_messages ) ) {
+			$session_messages = array();
+		}
+
+		$errs = ( isset( $session_messages['errors'] ) ? $session_messages['errors'] : array() );
+
+		if ( null !== $errs && count( $errs ) > 0 ) {
+
+			foreach ( $errs as $err ) {
+
+				printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), esc_html( $err ) );
+			}
+
+			unset( $session_messages['errors'] );
+
+			update_option( 'mv_session_messages', $session_messages );
+		}
+	}
 }
 
 /**
- * Add to session warnings.
+ * Admin warnings.
  *
  * @return void
  */
-function warnings_to_session() {
+function sample_admin_notice_warning() {
 
-	global $warns;
+	$class = 'notice notice-warning';
 
-	$_SESSION['warns'] = $warns;
+	global $pagenow;
+
+	if ( 'admin.php' === $pagenow ) {
+
+		$session_messages = get_option( 'mv_session_messages' );
+
+		if ( ! isset( $session_messages ) ) {
+			$session_messages = array();
+		}
+
+		if ( ! isset( $session_messages['warnings'] ) ) {
+			$warns = array();
+		}
+
+		$warns = ( isset( $session_messages['warnings'] ) ? $session_messages['warnings'] : array() );
+
+		if ( null !== $warns && count( $warns ) > 0 ) {
+
+			foreach ( $warns as $warn ) {
+				printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), esc_html( $warn ) );
+			}
+
+			unset( $session_messages['warnings'] );
+
+			update_option( 'mv_session_messages', $session_messages );
+		}
+	}
 }
 
 /**
- * Add to session successes.
+ * Admin successes.
  *
  * @return void
  */
-function successes_to_session() {
+function sample_admin_notice_success() {
+	$class = 'notice notice-success';
 
-	global $succs;
+	global $pagenow;
 
-	$_SESSION['succs'] = $succs;
+	if ( 'admin.php' === $pagenow ) {
 
+		$session_messages = get_option( 'mv_session_messages' );
+
+		if ( ! isset( $session_messages ) ) {
+			$session_messages = array();
+		}
+
+		$succs = ( isset( $session_messages['successes'] ) ? $session_messages['successes'] : array() );
+
+		if ( null !== $succs && count( $succs ) > 0 ) {
+
+			foreach ( $succs as $succ ) {
+
+				printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), esc_html( $succ ) );
+			}
+
+			unset( $session_messages['successes'] );
+
+			update_option( 'mv_session_messages', $session_messages );
+		}
+	}
 }
 
-add_action( 'init', 'errors_to_session' );
-add_action( 'init', 'warnings_to_session' );
-add_action( 'init', 'successes_to_session' );
+/**
+ * Admin database notices.
+ *
+ * @return void
+ */
+function sample_admin_database_notices() {
+
+	$success_class = 'notice notice-success';
+
+	$error_class = 'notice notice-error';
+
+	$notice_class = 'notice notice-info';
+
+	global $wpdb;
+
+	$notices = (array) $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}megaventory_notices_log ORDER BY id ASC LIMIT 50;" ); // db call ok. no-cache ok.
+
+	global $pagenow;
+
+	foreach ( $notices as $notice ) {
+
+		if ( 'success' === $notice->type ) {
+
+			printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $success_class ), esc_html( $notice->message ) );
+		}
+
+		if ( 'error' === $notice->type ) {
+
+			printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $error_class ), esc_html( $notice->message ) );
+		}
+
+		if ( 'notice' === $notice->type ) {
+
+			printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $notice_class ), esc_html( $notice->message ) );
+		}
+	}
+
+	$wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}megaventory_notices_log" ); // db call ok. no-cache ok.
+}
 
 /**
  * This code is executed only if woocommerce is an installed and activated plugin.
@@ -198,7 +372,6 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 	/* configure admin panel */
 	add_action( 'admin_menu', 'plugin_setup_menu' );
 
-
 	/* custom product columns (display stock in product table) */
 	add_filter( 'manage_edit-product_columns', 'add_quantity_column_to_product_table', 15 );
 	add_action( 'manage_product_posts_custom_column', 'column', 10, 2 );
@@ -207,10 +380,11 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 	add_action( 'init', 'register_style' );
 	add_action( 'admin_enqueue_scripts', 'enqueue_style' ); // Needed only in admin so far.
 
-	/* halt sync? */
-	$can_execute = check_status();
+	if ( 5 === random_int( 0, 30 ) ) {
+		check_status();
+	}
 
-	if ( $can_execute ) {
+	if ( get_option( 'correct_currency' ) && get_option( 'correct_connection' ) && get_option( 'correct_key' ) ) {
 		/*
 			Placed order
 			woocommerce_new_order hook, comes with no items data. Do not use it!
@@ -219,12 +393,18 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 
 		/* on add / edit product */
 		add_action( 'save_post', 'sync_on_product_save', 99, 3 );
+
+		/* Customer add/edit */
 		add_action( 'profile_update', 'sync_on_profile_update', 10, 2 );
 		add_action( 'user_register', 'sync_on_profile_create', 10, 1 );
 
-		/* tax add the actions */
-		add_action( 'woocommerce_tax_rate_updated', 'on_tax_update', 10, 2 );
+		/* tax add/edit  */
 		add_action( 'woocommerce_tax_rate_added', 'on_tax_update', 10, 2 );
+		add_action( 'woocommerce_tax_rate_updated', 'on_tax_update', 10, 2 );
+
+		/* coupon add/edit  */
+		add_action( 'woocommerce_new_coupon', 'on_coupon_update', 10, 2 );
+		add_action( 'woocommerce_update_coupon', 'on_coupon_update', 10, 2 );
 
 	} else {
 
@@ -250,33 +430,18 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
  */
 function check_status() {
 
-	global $correct_currency, $correct_connection, $correct_key,$last_valid_api_key;
-	global $connection_value,$currency_value,$key_value,$initialize_value; // Variables with html attributes.
-	global $api_key_error_response_status_message;
-
-	$connection_value = '&dash;';
-	$key_value        = '&dash;';
-	$currency_value   = '&dash;';
-	$initialize_value = '&dash;';
-
 	/**
 	 * $correct_connection = check_connectivity();
 	 */
 
-	$correct_connection = true;
+	update_option( 'correct_connection', true );
 
-	if ( ! $correct_connection ) {
+	if ( ! get_option( 'correct_connection' ) ) {
 
 		register_error( 'Megaventory error! No connection to Megaventory!', 'Check if WordPress and Megaventory servers are online' );
 
-		$connection_value = '&cross;';
-
 		return false;
 	}
-
-	$connection_value = '&check;';
-
-	$correct_key = check_key();
 
 	if ( ! get_transient( 'api_key_is_set' ) ) {
 
@@ -285,24 +450,30 @@ function check_status() {
 		return false;
 	}
 
-	if ( ! $correct_key ) {
+	$response = check_key();
+
+	if ( 0 === (int) $response['ResponseStatus']['ErrorCode'] ) {
+
+		update_option( 'correct_key', true );
+	} else {
+
+		update_option( 'correct_key', false );
+	}
+
+	if ( ! get_option( 'correct_key' ) ) {
 
 		delete_option( 'megaventory_api_key' );
 
-		register_error( 'Megaventory error! Invalid API key!', $api_key_error_response_status_message );
-
-		$key_value = '&cross;';
+		register_error( 'Megaventory error! Invalid API key!', $response['ResponseStatus']['Message'] );
 
 		return false;
 	}
 
-	if ( null !== $api_key_error_response_status_message && strpos( $api_key_error_response_status_message, 'Administrator' ) === false ) {
+	if ( null !== $response['ResponseStatus']['Message'] && strpos( $response['ResponseStatus']['Message'], 'Administrator' ) === false ) {
 
 		delete_option( 'megaventory_api_key' );
 
 		register_error( "Megaventory error! WooCommerce integration needs administrator's credentials!", 'Please contact your Megaventory account administrator.' );
-
-		$key_value = '&cross;';
 
 		return false;
 	}
@@ -313,25 +484,18 @@ function check_status() {
 
 		register_error( 'Megaventory error! WooCommerce integration is not enabled in your Megaventory account. ', "Please visit your Megaventory account and enable WooCommerce from the Account Integrations' area." );
 
-		$key_value = '&cross;';
-
 		return false;
 	}
 
-	$key_value = '&check;';
-
 	$correct_currency = get_default_currency() === get_option( 'woocommerce_currency' );
+	update_option( 'correct_currency', $correct_currency );
 
-	if ( ! $correct_currency ) {
+	if ( ! get_option( 'correct_currency' ) ) {
 
 		register_error( 'Megaventory error! Currencies in WooCommerce and Megaventory do not match! Megaventory plugin will halt until this issue is resolved!', 'If you are sure that the currency is correct, please refresh until this warning disappears.' );
 
-		$currency_value = '&cross;';
-
 		return false;
 	}
-
-	$currency_value = '&check;';
 
 	$initialized = (bool) get_option( 'is_megaventory_initialized' );
 
@@ -339,18 +503,14 @@ function check_status() {
 
 		register_warning( 'You need to run the Initial Sync before any data synchronization takes place!' );
 
-		$initialize_value = '&cross;';
-
 		return false;
 	}
-
-	$initialize_value = '&check;';
 
 	$last_key = get_option( 'megaventory_api_key' );
 
 	$current_database_id_of_api_key = explode( '@', $last_key )[1];
 
-	$last_valid_database_id_of_api_key = explode( '@', $last_valid_api_key )[1];
+	$last_valid_database_id_of_api_key = explode( '@', get_option( 'last_valid_api_key' ) )[1];
 
 	if ( trim( $current_database_id_of_api_key ) !== trim( $last_valid_database_id_of_api_key ) ) {
 
@@ -358,68 +518,6 @@ function check_status() {
 	}
 
 	return true;
-}
-
-/**
- * Define the woocommerce_tax_rate_updated callback.
- *
- * @param int    $tax_rate_id as tax id.
- * @param double $tax_rate as tax rate.
- * @return void
- */
-function on_tax_update( $tax_rate_id, $tax_rate ) {
-
-	$tax = Tax::wc_find( $tax_rate_id );
-	if ( ! $tax ) {
-		return;
-	}
-
-	$wc_taxes = Tax::wc_all();
-
-	foreach ( $wc_taxes as $wc_tax ) {
-
-		if ( $wc_tax->wc_id === $tax->wc_id ) {
-			continue;
-		}
-
-		if ( $wc_tax->name === $tax->name && (float) $wc_tax->rate === (float) $tax->rate && $wc_tax->wc_id !== $tax->wc_id ) {
-			// if name is taken by different tax.
-
-			$tax->wc_delete();
-
-			array_push( $_SESSION['errs'], array( 'Cannot add a new tax with same name and rate', 'Please try again with different details' ) );
-
-			return;
-		}
-	}
-
-	/* can add, but cannot change rate afterwards - keep updated with MV */
-	$tax2 = Tax::mv_find_by_name_and_rate( $tax->name, $tax->rate );
-
-	if ( null !== $tax->mv_id || null !== $tax2 ) {
-
-		if ( ! $tax2 ) {
-			$tax2 = Tax::mv_find( $tax->mv_id );
-		}
-
-		$tax2->wc_id = $tax->wc_id;
-		$tax         = $tax2;
-		$tax->wc_save();
-	} else {
-		/* creating new tax in MV */
-
-		$tax->description = 'Woocommerce ' . $tax->type . ' tax';
-		$saved            = $tax->mv_save();
-
-		if ( ! $saved ) {
-
-			$tax->wc_delete(); // not saved.
-
-		} else {
-
-			$tax->wc_save(); // save with new mv_id.
-		}
-	}
 }
 
 /**
@@ -431,8 +529,8 @@ function ajax_calls() {
 
 	$nonce = wp_create_nonce( 'async-nonce' );
 
-	wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.1', true );
-	wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.1', true );
+	wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.3', true );
+	wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.3', true );
 
 	$nonce_array = array(
 		'nonce' => $nonce,
@@ -447,7 +545,7 @@ function ajax_calls() {
  * @return void
  */
 function register_style() {
-	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.1', 'all' );
+	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.3', 'all' );
 }
 
 /**
@@ -498,18 +596,53 @@ function column( $column, $prod_id ) {
 
 		$wc_product = wc_get_product( $prod_id );
 
-		if ( 'variable' === $wc_product->get_type() || 'grouped' === $wc_product->get_type() ) {
+		$mv_qty = array();
 
-			// Empty megaventory_stock column for variables.
+		if ( 'variable' === $wc_product->get_type() ) {
+
+			$variants_ids = $wc_product->get_children();
+
+			foreach ( $variants_ids as $variant_id ) {
+
+				$product = Product::wc_find( $variant_id );
+
+				if ( ! is_array( $product->mv_qty ) || 0 === count( $product->mv_qty ) ) {
+
+					continue;
+				}
+
+				foreach ( $product->mv_qty as $key => $value ) {
+
+					if ( array_key_exists( $key, $mv_qty ) ) {
+						$variable_values    = explode( ';', $mv_qty[ $key ] );
+						$simple_prod_values = explode( ';', $value );
+
+						$variable_values[1] += $simple_prod_values[1];
+						$variable_values[2] += $simple_prod_values[2];
+						$variable_values[3] += $simple_prod_values[3];
+						$variable_values[4] += $simple_prod_values[4];
+						$variable_values[5] += $simple_prod_values[5];
+						$variable_values[6] += $simple_prod_values[6];
+
+						$mv_qty[ $key ] = $variable_values[0] . ';' . $variable_values[1] . ';' . $variable_values[2] . ';' . $variable_values[3] . ';' . $variable_values[4] . ';' . $variable_values[5] . ';' . $variable_values[6];
+					} else {
+						$mv_qty[ $key ] = $value;
+					}
+				}
+			}
+		} elseif ( 'simple' === $wc_product->get_type() ) {
+
+			/* get product by id */
+			$prod   = Product::wc_find( $prod_id );
+			$mv_qty = $prod->mv_qty;
+
+		} else {
+			// Empty megaventory_stock column for anything else.
 			return;
-
 		}
 
-		/* get product by id */
-		$prod = Product::wc_find( $prod_id );
-
 		/* no stock */
-		if ( ! is_array( $prod->mv_qty ) ) {
+		if ( ! is_array( $mv_qty ) || 0 === count( $mv_qty ) ) {
 
 			echo 'No stock';
 
@@ -518,16 +651,21 @@ function column( $column, $prod_id ) {
 		/* build stock table */
 		?>
 		<table class="qty-row">
-		<?php foreach ( $prod->mv_qty as $qty ) : ?>
+		<?php foreach ( $mv_qty as $key => $qty ) : ?>
 			<tr>
+			<?php
+			$mv_location_id_to_abbr = get_option( 'mv_location_id_to_abbr' );
+
+			$inventory_name = $mv_location_id_to_abbr[ $key ];
+			?>
 			<?php $qty = explode( ';', $qty ); ?>
-				<td colspan="2"><span><?php echo esc_attr( $qty[0] ); ?></span></td>
-				<td class="mv-tooltip"><span class="tooltiptext">Total</span><span><?php echo esc_attr( $qty[1] ); ?></span></td>
-				<td class="mv-tooltip"><span class="tooltiptext">On Hand</span><span class="qty-on-hand">(<?php echo esc_attr( $qty[2] ); ?>)</span></td>
-				<td class="mv-tooltip"><span class="tooltiptext">Non-shipped</span><span class="qty-non-shipped"><?php echo esc_attr( $qty[3] ); ?></span></td>
-				<td class="mv-tooltip"><span class="tooltiptext">Non-allocated</span><span class="qty-non-allocated"><?php echo esc_attr( $qty[4] ); ?></span></td>
-				<td class="mv-tooltip"><span class="tooltiptext">Non-received-POs</span><span class="qty-non-received"><?php echo esc_attr( $qty[5] ); ?></span></td>
-				<td class="mv-tooltip"><span class="tooltiptext">Non-received-WOs</span><span class="qty-non-received"><?php echo esc_attr( $qty[6] ); ?></span></td>
+				<td colspan="2"><span><?php echo esc_attr( $inventory_name ); ?></span></td>
+				<td class="mv-tooltip" title="Total"><span><?php echo esc_attr( $qty[1] ); ?></span></td>
+				<td class="mv-tooltip" title="On Hand"><span class="qty-on-hand">(<?php echo esc_attr( $qty[2] ); ?>)</span></td>
+				<td class="mv-tooltip" title="Non-shipped"><span class="qty-non-shipped"><?php echo esc_attr( $qty[3] ); ?></span></td>
+				<td class="mv-tooltip" title="Non-allocated"><span class="qty-non-allocated"><?php echo esc_attr( $qty[4] ); ?></span></td>
+				<td class="mv-tooltip" title="Non-received-POs"><span class="qty-non-received"><?php echo esc_attr( $qty[5] ); ?></span></td>
+				<td class="mv-tooltip" title="Non-received-WOs"><span class="qty-non-received"><?php echo esc_attr( $qty[6] ); ?></span></td>
 			</tr>
 		<?php endforeach; ?>
 		</table>
@@ -547,7 +685,7 @@ function plugin_setup_menu() {
 }
 
 /**
- * Check Megaventory API key and host before apply the post.
+ * Update Megaventory API key and host.
  *
  * @return void
  */
@@ -557,7 +695,8 @@ function do_post() {
 
 	if ( isset( $_POST['api_key'], $_POST['update-credentials-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['update-credentials-nonce'] ), 'update-credentials-nonce' ) ) {
 
-		set_api_key( trim( sanitize_text_field( wp_unslash( $_POST['api_key'] ) ) ) );
+		update_option( 'megaventory_api_key', trim( sanitize_text_field( wp_unslash( $_POST['api_key'] ) ) ) );
+
 		set_transient( 'api_key_is_set', true );
 	}
 
@@ -565,55 +704,12 @@ function do_post() {
 		set_api_host( trim( sanitize_text_field( wp_unslash( $_POST['api_host'] ) ) ) );
 	}
 
+	check_status();
+
 	wp_safe_redirect( admin_url( 'admin.php' ) . '?page=' . $mv_admin_slug );
 }
 
 add_action( 'admin_post_megaventory', 'do_post' );
-
-/**
- * Error comparator - sort by date.
- *
- * @param object $a as error object.
- * @param object $b as error object.
- * @return int
- */
-function error_cmp( $a, $b ) {
-	return strcmp( $a->created_at, $b->created_at );
-}
-
-/**
- * Synchronize Coupons.
- *
- * @return void
- */
-function sync_coupons() {
-
-	remove_filter( 'wp_insert_post_data', 'new_post', 99, 2 );
-
-	$coupons = Coupon::wc_all();
-	$all     = 0;
-	$added   = 0;
-
-	foreach ( $coupons as $coupon ) {
-		++$all;
-		if ( $coupon->mv_save() ) {
-			++$added;
-		}
-	}
-
-	register_error( 'Synchronization WooCommerce to Megaventory.', 'Added ' . $added . ' coupons out of ' . $all . ' discounts found in WooCommerce. All other either were already in Megaventory or have overlap with existing records.' );
-	add_filter( 'wp_insert_post_data', 'new_post', 99, 2 );
-}
-
-/**
- * Setting up Megaventory API key.
- *
- * @param string $key as Megaventory API key.
- * @return void
- */
-function set_api_key( $key ) {
-	update_option( 'megaventory_api_key', (string) $key );
-}
 
 /**
  * Get last inserted Megaventory API key.
@@ -672,7 +768,7 @@ function set_api_host( $host ) {
 	update_option( 'megaventory_api_host', (string) $host );
 }
 
-/* SYNC */
+// SYNCHRONIZE FUNCTIONS ON CREATE/UPDATE.
 
 /**
  * Product edit or create.
@@ -711,8 +807,8 @@ function sync_on_product_save( $prod_id, $post, $update ) {
 /**
  * Updates a client to Megaventory.
  *
- * @param int          $user_id as user id.
- * @param array|Client $old_user_data as user data.
+ * @param int     $user_id as user id.
+ * @param WP_User $old_user_data as user data.
  * @return void
  */
 function sync_on_profile_update( $user_id, $old_user_data ) {
@@ -744,25 +840,55 @@ function sync_on_profile_create( $user_id ) {
 }
 
 /**
- * Initial integration of plugin.
- * Creates guest user.
- * Mapping mv_ids by sku.
+ * Define the woocommerce_tax_rate_added / woocommerce_tax_rate_updated callback.
  *
+ * @param int    $tax_rate_id as tax id.
+ * @param double $tax_rate as tax rate.
  * @return void
  */
-function map_existing_products_by_sku() {
+function on_tax_update( $tax_rate_id, $tax_rate ) {
 
-	$products = Product::wc_all();
-
-	foreach ( $products as $wc_product ) {
-
-		$mv_product = Product::mv_find_by_sku( $wc_product->sku );
-
-		if ( $mv_product ) {
-
-			update_post_meta( $wc_product->wc_id, 'mv_id', $mv_product->mv_id );
-		}
+	$tax = Tax::wc_find_tax( $tax_rate_id );
+	if ( ! $tax ) {
+		return;
 	}
+
+	$mv_tax = Tax::mv_find_by_name_and_rate( $tax->name, $tax->rate );
+
+	if ( null !== $mv_tax ) {
+
+		$tax->mv_id = $mv_tax->mv_id;
+
+		$tax->wc_save();
+	} else {
+		/* creating new tax in MV */
+
+		$tax->description = 'Woocommerce ' . $tax->type . ' tax';
+		$tax->mv_save();
+
+	}
+}
+
+/**
+ * Define the woocommerce_create_coupon/woocommerce_update_coupon callback.
+ *
+ * @param int $coupon_id as tax id.
+ * @return void
+ */
+function on_coupon_update( $coupon_id ) {
+
+	$coupon = Coupon::wc_find_coupon( $coupon_id );
+
+	if ( null === $coupon ) {
+		return;
+	}
+
+	if ( 'percent' !== $coupon->type ) {
+		return;
+	}
+
+	$coupon->description = 'Woocommerce ' . $coupon->type . ' coupon';
+	$coupon->mv_save();
 }
 
 /**
@@ -781,14 +907,14 @@ function initialize_taxes() {
 
 		foreach ( $mv_taxes as $tax ) { // Check if exists.
 
-			if ( $wc_tax->equals( $tax ) ) {
+			if ( $wc_tax->name === $tax->name && $wc_tax->rate === $tax->rate ) {
 
 				$mv_tax = $tax;
 				break;
 			}
 		}
 
-		if ( null !== $mv_tax && $wc_tax->rate === $mv_tax->rate ) { // Tax already exists in Megaventory.
+		if ( null !== $mv_tax ) { // Tax already exists in Megaventory.
 
 			/* Update in wooCommerce from Megaventory */
 
@@ -819,19 +945,12 @@ function order_placed( $order_id ) {
 		return; // Exit if already processed.
 	}
 
-	/*
-	The woocommerce_thankyou hook, happens when the customer reloads the order received page
-	with this meta information we prevent the order to send multiple times to megaventory
-	woocommerce_new_order hook, comes with no items data. Do not use it!
-	*/
-	update_post_meta( $order_id, 'order_sent_to_megaventory', esc_attr( $order_id ) );
-
 	$order = wc_get_order( $order_id );
 
 	$id     = $order->get_customer_id();
 	$client = Client::wc_find( $id );
 
-	if ( $client && ( null === $client->mv_id || '' === $client->mv_id ) ) {
+	if ( $client && empty( $client->mv_id ) ) {
 		$client->mv_save(); // make sure id exists.
 	}
 
@@ -840,8 +959,28 @@ function order_placed( $order_id ) {
 		$client = get_guest_mv_client();
 	}
 
-	/* place order through API */
-	$returned = place_sales_order( $order, $client );
+	$returned = array();
+	try {
+
+		/* place order through API */
+		$returned = place_sales_order( $order, $client );
+
+	} catch ( \Error $ex ) {
+
+		$args = array(
+			'type'        => 'error',
+			'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+			'entity_id'   => array( 'wc' => $order_id ),
+			'problem'     => 'Order not placed in Megaventory.',
+			'full_msg'    => $ex->getMessage(),
+			'error_code'  => 500,
+			'json_object' => '',
+		);
+
+		$e = new MVWC_Error( $args );
+
+		return;
+	}
 
 	if ( ! array_key_exists( 'mvSalesOrder', $returned ) ) {
 		// Error happened. It needs to be reported.
@@ -849,7 +988,7 @@ function order_placed( $order_id ) {
 		$args = array(
 			'type'        => 'error',
 			'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
-			'entity_id'   => array( 'wc' => $order->get_order_number() ),
+			'entity_id'   => array( 'wc' => $order_id ),
 			'problem'     => 'Order not placed in Megaventory.',
 			'full_msg'    => $returned['ResponseStatus']['Message'],
 			'error_code'  => $returned['ResponseStatus']['ErrorCode'],
@@ -857,308 +996,37 @@ function order_placed( $order_id ) {
 		);
 
 		$e = new MVWC_Error( $args );
+
+		return;
 	}
-}
-/* activation messages */
 
-register_activation_hook( __FILE__, 'admin_notice_plugin_activation' );
-
-/**
- * Set admin notice.
- *
- * @return void
- */
-function admin_notice_plugin_activation() {
-
-	/* Create transient data */
-	set_transient( 'plugin_activation_notice', true, 5 );
-	set_transient( 'api_key_is_set', false );
-
-}
-
-add_action( 'admin_notices', 'plugin_activation_admin_notice' );
-
-/**
- * Set notice in admin panel when plug in is activated.
- *
- * @return void
- */
-function plugin_activation_admin_notice() {
-	global $plugin_url;
-
-	/* Check transient */
-	if ( get_transient( 'plugin_activation_notice' ) ) {
-		?>
-		<div class="updated notice is-dismissible">
-			<p>The Megaventory plugin is now activated! Visit the Megaventory <a href =<?php echo esc_url( $plugin_url ); ?>>plugin section</a> to enter your API key and initialize the synchronization to get started.</p>
-		</div>
-		<?php
-		delete_transient( 'plugin_activation_notice' );
-	}
-}
-
-/* CRON */
-
-register_activation_hook( __FILE__, 'cron_activation' );
-
-register_deactivation_hook( __FILE__, 'cron_deactivation' );
-
-/**
- * Every 1 mins.
- *
- * @param array $schedules as tasks.
- * @return array
- */
-function schedule( $schedules ) {
-	$schedules['1min'] = array(
-		'interval' => 1 * 60, /* 1 * 60, //1min */
-		'display'  => __( 'Every 1 Minutes', 'textdomain' ),
+	$args = array(
+		'entity_id'          => array(
+			'wc' => $order_id,
+			'mv' => $returned['mvSalesOrder']['SalesOrderId'],
+		),
+		'entity_type'        => 'order',
+		'entity_name'        => $returned['mvSalesOrder']['SalesOrderTypeAbbreviation'] . ' ' . $returned['mvSalesOrder']['SalesOrderNo'],
+		'transaction_status' => 'Insert',
+		'full_msg'           => 'The order has been placed to your Megaventory account',
+		'success_code'       => 1,
 	);
-	return $schedules;
+
+	$e = new MVWC_Success( $args );
+
+	/*
+	The woocommerce_thankyou hook, happens when the customer reloads the order received page
+	with this meta information we prevent the order to send multiple times to megaventory
+	woocommerce_new_order hook, comes with no items data. Do not use it!
+	*/
+	update_post_meta( $order_id, 'order_sent_to_megaventory', $returned['mvSalesOrder']['SalesOrderId'] );
 }
 
-/* Add 5min to cron schedule */
-add_filter( 'cron_schedules', 'schedule' ); // @codingStandardsIgnoreLine. It is critical to maintain updated inventory/stock levels in wooCommerce
+// END SYNCHRONIZE FUNCTIONS ON CREATE/UPDATE.
 
-/**
- * The WordPress Cron event callback function.
- *
- * @return void
- */
-function pull_changes() {
+// PLUGIN ACTIVATION TRIGGERS.
 
-	if ( ! check_status() ) {
-
-		register_error( 'Megaventory automatic synchronization failed', 'Check that Currency, API Key are correct and your store is initialized' );
-
-		return;
-	}
-
-	$changes = pull_product_changes();
-
-	if ( count( $changes['mvIntegrationUpdates'] ) === 0 ) { // No need to do anything if there are no changes.
-
-		return;
-	}
-
-	foreach ( $changes['mvIntegrationUpdates'] as $change ) {
-		if ( 'product' === $change['Entity'] ) {
-
-			/**
-			 **It's very dangerous to apply product updates. Because for example, for short description we take the product title.
-			 **The description on e-commerces has some html tags, also they can be more than 400 or 4000 chars.
-			 **We can't change his business models!
-			 **Only the stock and the order's status.
-			 **global $save_product_lock;
-			 **$save_product_lock = true;// prevent changes from megaventory to be pushed back to megaventory again (prevent infinite loop of updates)
-			 **
-			 **if ( 'update' === $change['Action'] ) {
-			 **
-			 **$product = Product::mv_find( $change['EntityIDs'] );
-			 **
-			 **save new info.
-			 **only update synchronized prods so they are not added.
-			 **$product->wc_save( null, false );
-			 **
-			 **} elseif ( 'delete' === $change['Action'] ) {
-			 **
-			 **$data    = json_decode( $change['JsonData'], true );
-			 **$product = Product::wc_find_by_sku( $data['ProductSKU'] );
-			 **
-			 **
-			 **if ( null !== $product ) {
-			 **
-			 **$product->wc_destroy();
-			 **}
-			 **}
-			 **$save_product_lock = false;
-			*/
-			remove_integration_update( $change['IntegrationUpdateID'] );
-
-		} elseif ( 'stock' === $change['Entity'] ) { // stock changed.
-
-			$prods = json_decode( $change['JsonData'], true );
-
-			foreach ( $prods as $prod ) {
-
-				$id           = $prod['productID'];
-				$post_meta_id = get_post_meta_by_key_value( 'mv_id', $id );
-
-				$wc_product = wc_get_product( $post_meta_id );
-
-				if ( false === $wc_product || null === $wc_product ) {
-					continue;
-				}
-
-				if ( 'variation' === $wc_product->get_type() ) {
-
-					// Sync variation stock.
-
-					Product::sync_variation_stock( $wc_product, $prod );
-
-				} else {
-
-					// Sync product stock.
-
-					$product = Product::mv_find( $id );
-
-					$product->sync_stock();
-				}
-			}
-
-			$data = remove_integration_update( $change['IntegrationUpdateID'] );
-
-		} elseif ( 'document' === $change['Entity'] ) { // Order changed.
-
-			global $document_status, $translate_order_status;
-
-			$json_data = json_decode( $change['JsonData'], true );
-
-			if ( 'SO' !== $json_data['DocumentTypeAbbreviation'] ) {
-
-				continue; // only sales order.
-			}
-
-			$status = $document_status[ $json_data['DocumentStatus'] ];
-			$order  = new WC_Order( $json_data['DocumentReferenceNo'] );
-
-			$order->set_status( $translate_order_status[ $status ] );
-			$order->save();
-
-			$data = remove_integration_update( $change['IntegrationUpdateID'] );
-		}
-	}
-}
-
-/**
- * Get post id by value and key.
- *
- * @param string $key as post key.
- * @param int    $value as post value.
- * @return int|bool
- */
-function get_post_meta_by_key_value( $key, $value ) {
-
-	global $wpdb;
-	$meta = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . $wpdb->postmeta . ' WHERE meta_key=%s AND meta_value=%d', array( $key, $value ) ), ARRAY_A ); // db call ok. no-cache ok.
-
-	if ( is_array( $meta ) && ! empty( $meta ) && isset( $meta[0] ) ) {
-
-		return (int) $meta[0]['post_id'];
-	}
-	if ( is_object( $meta ) ) {
-
-		return $meta->post_id;
-	} else {
-
-		return false;
-	}
-}
-
-/* on event, run pull_changes function */
-add_action( 'pull_changes_event', 'pull_changes' );
-
-/* COUPONS */
-
-/**
- * Discount rules before it be added in Megaventory.
- *
- * @param object $data as discount object.
- * @param array  $postarr as coupon data.
- * @return object
- */
-function new_post( $data, $postarr ) {
-
-	/* If it's not a new coupon being added, don't influence the process */
-	if ( ( ( 'shop_coupon' !== $data['post_type'] ) || ( 'publish' !== $data['post_status'] ) ) ) {
-
-		return $data;
-	}
-
-	/* Rate of a coupon is compulsory in Megaventory, thereby has to be in WooCommerce as well */
-	if ( empty( $postarr['coupon_amount'] ) ) {
-
-		register_error( 'Coupon amount', 'You have to specify rate of the coupon.' );
-
-		$data['post_status'] = 'draft';
-
-		return $data;
-	}
-
-	if ( ( $postarr['coupon_amount'] <= 0 ) || ( $postarr['coupon_amount'] > 100 ) ) {
-
-		register_error( 'Coupon amount', 'Coupon amount must be a positive number smaller or equal to 100.' );
-
-		$data['post_status'] = 'draft';
-
-		return $data;
-	}
-
-	return new_discount( $data, $postarr );
-}
-
-add_filter( 'wp_insert_post_data', 'new_post', 99, 2 );
-
-/**
- * Create and add coupon to Megaventory.
- *
- * @param object $data as coupon data.
- * @param array  $postarr coupon data.
- * @return object
- */
-function new_discount( $data, $postarr ) {
-
-	$coupon       = new Coupon();
-	$coupon->name = $postarr['post_title'];
-	$coupon->rate = $postarr['coupon_amount'];
-
-	if ( 'percent' === $postarr['discount_type'] ) {
-
-		$coupon->type = 'percent';
-
-	}
-
-	if ( $coupon->load_corresponding_discount_from_megaventory() ) {
-
-		if ( 'auto-draft' === $postarr['original_post_status'] ) {
-
-			register_error( 'Code restricted', 'Coupon ' . $coupon->name . ' with ' . $coupon->rate . ' rate is already present in Megaventory and can be copied here only through synchronization (available in Megaventory plugin).' );
-
-			$data['post_status'] = 'draft';
-
-		} else {
-
-			register_error( 'Coupon ' . $coupon->name . ' already present in Megaventory.', 'Coupon already present in Megaventory. Its old description: ' . $coupon->description . ' will be updated to ' . $postarr['post_excerpt'] . '.' );
-
-			$coupon->description = $postarr['post_excerpt']; // Overwrite loaded value with user input.
-															// Should be whole content here, but for whatever.
-															// Reason fields responsible for that in $data.
-															// $postarr are always empty.
-
-			$coupon->rate = $postarr['coupon_amount'];  // If the discount is fixed, then rate can be edited.
-
-			$coupon->update_discount_in_megaventory();
-		}
-	} else {
-
-		$coupon->description = $postarr['post_excerpt']; // 1. Overwrite loaded value.
-														// 2. Should be whole content here, but for whatever.
-														// reason fields responsible for that in $data.
-														// $postarr are always empty.
-		if ( $coupon->mv_save() ) {
-
-			register_error( 'Synchronization', 'Coupon ' . $coupon->name . ' has been added to Megaventory.' );
-
-		} else {
-
-			register_error( 'Code restricted', 'Coupon ' . $coupon->name . ' had already been added to your Megaventory account and then deleted. Unfortunately this name cannot be reused. Please choose a different one.' );
-
-			$data['post_status'] = 'draft';
-		}
-	}
-
-	return $data;
-}
+register_activation_hook( __FILE__, 'create_plugin_database_table' );
 
 /**
  * DataBase creation.
@@ -1271,123 +1139,213 @@ function create_plugin_database_table() {
 
 }
 
-register_activation_hook( __FILE__, 'create_plugin_database_table' );
+register_activation_hook( __FILE__, 'admin_notice_plugin_activation' );
 
 /**
- * Admin errors.
+ * Set admin notice.
  *
  * @return void
  */
-function sample_admin_notice_error() {
+function admin_notice_plugin_activation() {
 
-	$class = 'notice notice-error';
+	/* Create transient data */
+	set_transient( 'plugin_activation_notice', true, 5 );
+	set_transient( 'api_key_is_set', false );
 
-	global $pagenow;
+	update_option( 'megaventory_api_key', '' );
 
-	if ( 'admin.php' === $pagenow ) {
+	delete_option( 'correct_currency' );
+	delete_option( 'correct_connection' );
+	delete_option( 'correct_key' );
+	delete_option( 'last_valid_api_key' );
 
-		if ( null !== $_SESSION['errs'] && count( $_SESSION['errs'] ) > 0 ) {
+	delete_option( 'mv_session_messages' );
+	delete_option( 'mv_location_id_to_abbr' );
 
-			foreach ( $_SESSION['errs'] as $err ) {
+}
 
-				printf( '<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr( $class ), esc_html( $err[0] ), esc_html( $err[1] ) );
+add_action( 'admin_notices', 'plugin_activation_admin_notice' );
+
+/**
+ * Set notice in admin panel when plug in is activated.
+ *
+ * @return void
+ */
+function plugin_activation_admin_notice() {
+	global $plugin_url;
+
+	/* Check transient */
+	if ( get_transient( 'plugin_activation_notice' ) ) {
+		?>
+		<div class="updated notice is-dismissible">
+			<p>The Megaventory plugin is now activated! Visit the Megaventory <a href =<?php echo esc_url( $plugin_url ); ?>>plugin section</a> to enter your API key and initialize the synchronization to get started.</p>
+		</div>
+		<?php
+		delete_transient( 'plugin_activation_notice' );
+	}
+}
+
+/* CRON */
+
+register_activation_hook( __FILE__, 'cron_activation' );
+
+register_deactivation_hook( __FILE__, 'cron_deactivation' );
+
+/***************** END PLUGIN ACTIVATION TRIGGERS *****************/
+
+/***************** CRON FUNCTIONS *****************/
+
+/**
+ * Every 1 min check.
+ *
+ * @param array $schedules as tasks.
+ * @return array
+ */
+function schedule( $schedules ) {
+
+	$schedules['1min'] = array(
+		'interval' => 1 * 60, /* 1 * 60, //1min */
+		'display'  => __( 'Every Minute', 'textdomain' ),
+	);
+
+	return $schedules;
+}
+
+/* Add 1min to cron schedule */
+add_filter( 'cron_schedules', 'schedule' ); // @codingStandardsIgnoreLine. It is critical to maintain updated inventory/stock levels in wooCommerce
+
+/* on event, run pull_changes function */
+add_action( 'pull_changes_event', 'pull_changes' );
+
+/**
+ * The WordPress Cron event callback function.
+ *
+ * @return void
+ */
+function pull_changes() {
+
+	if ( ! get_transient( 'api_key_is_set' ) ) {
+
+		register_warning( 'Welcome to Megaventory plugin!', "Please apply your API key to get started. You can find it in your Megaventory account under 'My Profile' where your user icon is." );
+
+		return;
+	}
+
+	if ( ! ( get_option( 'is_megaventory_initialized' ) && get_option( 'correct_currency' ) && get_option( 'correct_connection' ) && get_option( 'correct_key' ) ) ) {
+
+		register_error( 'Megaventory automatic synchronization failed', 'Check that Currency and API Key are correct and your store is initialized' );
+
+		return;
+	}
+
+	$changes = get_integration_updates();
+
+	if ( count( $changes['mvIntegrationUpdates'] ) === 0 ) { // No need to do anything if there are no changes.
+
+		return;
+	}
+
+	foreach ( $changes['mvIntegrationUpdates'] as $change ) {
+		if ( 'product' === $change['Entity'] ) {
+
+			/**
+			 **It's very dangerous to apply product updates. Because for example, for short description we take the product title.
+			 **The description on e-commerces has some html tags, also they can be more than 400 or 4000 chars.
+			 **We can't change his business models!
+			 **Only the stock and the order's status.
+			 **global $save_product_lock;
+			 **$save_product_lock = true;// prevent changes from megaventory to be pushed back to megaventory again (prevent infinite loop of updates)
+			 **
+			 **if ( 'update' === $change['Action'] ) {
+			 **
+			 **$product = Product::mv_find( $change['EntityIDs'] );
+			 **
+			 **save new info.
+			 **only update synchronized prods so they are not added.
+			 **$product->wc_save( null, false );
+			 **
+			 **} elseif ( 'delete' === $change['Action'] ) {
+			 **
+			 **$data    = json_decode( $change['JsonData'], true );
+			 **$product = Product::wc_find_by_sku( $data['ProductSKU'] );
+			 **
+			 **
+			 **if ( null !== $product ) {
+			 **
+			 **$product->wc_destroy();
+			 **}
+			 **}
+			 **$save_product_lock = false;
+			*/
+			remove_integration_update( $change['IntegrationUpdateID'] );
+
+		} elseif ( 'stock' === $change['Entity'] ) { // stock changed.
+
+			$prods = json_decode( $change['JsonData'], true );
+
+			foreach ( $prods as $prod ) {
+
+				$id           = $prod['productID'];
+				$post_meta_id = get_post_meta_by_key_value( 'mv_id', $id );
+
+				$wc_product = wc_get_product( $post_meta_id );
+
+				if ( false === $wc_product || null === $wc_product ) {
+					continue;
+				}
+
+				Product::sync_stock_update( $wc_product, $prod, $change['IntegrationUpdateID'] );
 			}
 
-			unset( $_SESSION['errs'] );
+			$data = remove_integration_update( $change['IntegrationUpdateID'] );
 
-			$_SESSION['errs'] = array();
+		} elseif ( 'document' === $change['Entity'] ) { // Order changed.
+
+			global $document_status, $translate_order_status;
+
+			$json_data = json_decode( $change['JsonData'], true );
+
+			if ( 3 !== $json_data['DocumentTypeId'] ) {
+
+				continue; // only sales order.
+			}
+
+			$status = $document_status[ $json_data['DocumentStatus'] ];
+			$order  = wc_get_order( $json_data['DocumentReferenceNo'] );
+
+			if ( false !== $order ) {
+
+				$order->set_status( $translate_order_status[ $status ] );
+				$order->save();
+			}
+
+			$data = remove_integration_update( $change['IntegrationUpdateID'] );
 		}
 	}
 }
 
 /**
- * Admin warnings.
+ * Get post id by value and key.
  *
- * @return void
+ * @param string $key as post key.
+ * @param int    $value as post value.
+ * @return int|bool
  */
-function sample_admin_notice_warning() {
-
-	$class = 'notice notice-warning';
-
-	global $pagenow;
-
-	if ( 'admin.php' === $pagenow ) {
-
-		if ( null !== $_SESSION['warns'] && count( $_SESSION['warns'] ) > 0 ) {
-
-			foreach ( $_SESSION['warns'] as $warns ) {
-				printf( '<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr( $class ), esc_html( $warns[0] ), esc_html( $warns[1] ) );
-			}
-
-			unset( $_SESSION['warns'] );
-
-			$_SESSION['warns'] = array();
-		}
-	}
-}
-
-/**
- * Admin successes.
- *
- * @return void
- */
-function sample_admin_notice_success() {
-	$class = 'notice notice-success';
-
-	global $pagenow;
-
-	if ( 'admin.php' === $pagenow ) {
-
-		if ( null !== $_SESSION['succs'] && count( $_SESSION['succs'] ) > 0 ) {
-
-			foreach ( $_SESSION['succs'] as $succs ) {
-
-				printf( '<div class="%1$s"><p>%2$s</p><p>%3$s</p></div>', esc_attr( $class ), esc_html( $succs[0] ), esc_html( $succs[1] ) );
-			}
-
-			unset( $_SESSION['succs'] );
-
-			$_SESSION['succs'] = array();
-		}
-	}
-}
-
-/**
- * Admin database notices.
- *
- * @return void
- */
-function sample_admin_database_notices() {
-
-	$success_class = 'notice notice-success';
-
-	$error_class = 'notice notice-error';
-
-	$notice_class = 'notice notice-info';
+function get_post_meta_by_key_value( $key, $value ) {
 
 	global $wpdb;
+	$meta = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . $wpdb->postmeta . ' WHERE meta_key=%s AND meta_value=%d', array( $key, $value ) ), ARRAY_A ); // db call ok. no-cache ok.
 
-	$notices = (array) $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}megaventory_notices_log ORDER BY id ASC LIMIT 50;" ); // db call ok. no-cache ok.
+	if ( is_array( $meta ) && ! empty( $meta ) && isset( $meta[0] ) ) {
 
-	global $pagenow;
-
-	foreach ( $notices as $notice ) {
-
-		if ( 'success' === $notice->type ) {
-
-			printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $success_class ), esc_html( $notice->message ) );
-		}
-
-		if ( 'error' === $notice->type ) {
-
-			printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $error_class ), esc_html( $notice->message ) );
-		}
-
-		if ( 'notice' === $notice->type ) {
-
-			printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $notice_class ), esc_html( $notice->message ) );
-		}
+		return (int) $meta[0]['post_id'];
 	}
+	if ( is_object( $meta ) ) {
 
-	$wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}megaventory_notices_log" ); // db call ok. no-cache ok.
+		return $meta->post_id;
+	} else {
+
+		return false;
+	}
 }
+

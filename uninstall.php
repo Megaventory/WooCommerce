@@ -21,15 +21,13 @@ if ( ! defined( 'MEGAVENTORY__PLUGIN_DIR' ) ) {
 }
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-product.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-client.php';
-require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-coupon.php';
 
 $products = Product::wc_all_with_variable();
 $clients  = Client::wc_all();
-$coupons  = Coupon::WC_all();
 
 foreach ( $products as $product ) {
 
-	$product->wc_reset_mv_data();
+	$product->wc_delete_mv_data();
 }
 
 foreach ( $clients as $client ) {
@@ -40,12 +38,30 @@ foreach ( $clients as $client ) {
 	}
 }
 
+delete_option( 'correct_currency' );
+delete_option( 'correct_connection' );
+delete_option( 'correct_key' );
+delete_option( 'last_valid_api_key' );
+
+delete_option( 'mv_session_messages' );
+delete_option( 'mv_location_id_to_abbr' );
+
 delete_option( 'megaventory_api_key' );
 delete_option( 'megaventory_api_host' );
-delete_option( 'is_megaventory_initialized' );
 delete_option( 'woocommerce_guest' );
 delete_option( 'default-megaventory-inventory-location' );
+
+delete_option( 'is_megaventory_initialized' );
+delete_option( 'are_megaventory_products_synchronized' );
+delete_option( 'are_megaventory_clients_synchronized' );
+delete_option( 'are_megaventory_coupons_synchronized' );
+delete_option( 'is_megaventory_stock_adjusted' );
+
 delete_option( 'megaventory_initialized_time' );
+delete_option( 'megaventory_products_synchronized_time' );
+delete_option( 'megaventory_clients_synchronized_time' );
+delete_option( 'megaventory_coupons_synchronized_time' );
+delete_option( 'megaventory_stock_synchronized_time' );
 
 global $wpdb;
 
