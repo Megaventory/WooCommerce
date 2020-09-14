@@ -22,8 +22,10 @@ if ( ! defined( 'MEGAVENTORY__PLUGIN_DIR' ) ) {
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-product.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-client.php';
 
-$products = Product::wc_all_with_variable();
-$clients  = Client::wc_all();
+$products = Product::wc_get_all_products();
+
+Client::delete_default_client();
+$clients = Client::wc_get_all_clients();
 
 foreach ( $products as $product ) {
 
@@ -37,6 +39,8 @@ foreach ( $clients as $client ) {
 		$client->wc_reset_mv_data();
 	}
 }
+
+delete_mv_data_from_orders();
 
 delete_option( 'correct_currency' );
 delete_option( 'correct_connection' );

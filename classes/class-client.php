@@ -152,13 +152,6 @@ class Client {
 	private static $supplierclient_undelete_call = 'SupplierClientUndelete';
 
 	/**
-	 * Supplier-client delete call.
-	 *
-	 * @var string
-	 */
-	private static $supplierclient_delete_call = 'SupplierClientDelete';
-
-	/**
 	 * Constructor
 	 */
 	public function __construct() {
@@ -240,11 +233,13 @@ class Client {
 	 *
 	 * @return Client[]
 	 */
-	public static function wc_all() {
+	public static function wc_get_all_clients() {
 
 		$clients = array();
 
-		foreach ( get_users() as $user ) {
+		$wp_users = self::wc_get_all_wordpress_clients();
+
+		foreach ( $wp_users as $user ) {
 
 			$client = self::wc_convert( $user );
 
@@ -256,6 +251,72 @@ class Client {
 		}
 
 		return $clients;
+	}
+
+	/**
+	 * Get clients in batches.
+	 *
+	 * @param int $limit number of clients to return.
+	 * @param int $page pagination.
+	 * @return Client[]
+	 */
+	public static function wc_get_wordpress_clients_in_batches( $limit, $page ) {
+
+		$args = array(
+			'role__in' => array( 'customer', 'subscriber' ),
+			'number'   => $limit,
+			'offset'   => ( $page - 1 ) * $limit,
+		);
+
+		$wp_users = get_users( $args );
+
+		$clients = array();
+
+		foreach ( $wp_users as $user ) {
+
+			$client = self::wc_convert( $user );
+
+			if ( null === $client ) {
+				continue;
+			}
+
+			array_push( $clients, $client );
+		}
+
+		return $clients;
+	}
+
+	/**
+	 * Get all clients.
+	 *
+	 * @return array List of users.
+	 */
+	public static function wc_get_all_wordpress_clients() {
+
+		$args = array(
+			'role__in' => array( 'customer', 'subscriber' ),
+		);
+
+		$wp_users = get_users( $args );
+
+		return $wp_users;
+	}
+
+	/**
+	 * Get the count of clients.
+	 *
+	 * @return int
+	 */
+	public static function wc_get_all_wordpress_clients_count() {
+
+		$args = array(
+			'role__in' => array( 'customer', 'subscriber' ),
+			'fields'   => 'ids',
+		);
+
+		$wp_users = get_users( $args );
+
+		return count( $wp_users );
 	}
 
 	/**
@@ -280,7 +341,7 @@ class Client {
 	 * Finds client in wooCommerce by id.
 	 *
 	 * @param integer $id as client's id.
-	 * @return client.
+	 * @return Client|null
 	 */
 	public static function wc_find( $id ) {
 
@@ -295,7 +356,7 @@ class Client {
 	 * Finds client in Megaventory by id.
 	 *
 	 * @param integer $id as client's id.
-	 * @return null|client.
+	 * @return null|Client.
 	 */
 	public static function mv_find( $id ) {
 
@@ -312,7 +373,7 @@ class Client {
 	 * Finds client in Megaventory by name.
 	 *
 	 * @param string $name as client's name.
-	 * @return client.
+	 * @return Client
 	 */
 	public static function mv_find_by_name( $name ) {
 
@@ -329,7 +390,7 @@ class Client {
 	 * Finds client in Megaventory by e-mail.
 	 *
 	 * @param string $email as client's e-mail.
-	 * @return client.
+	 * @return Client
 	 */
 	public static function mv_find_by_email( $email ) {
 
@@ -354,15 +415,24 @@ class Client {
 		$user_name = 'WooCommerce_Guest';
 		$id        = username_exists( $user_name );
 		if ( ! $id ) {
-			$id = wp_create_user( 'WooCommerce_Guest', 'Random Garbage', 'WooCommerce@wordpress.com' );
-			update_user_meta( $id, 'first_name', 'WooCommerce' );
-			update_user_meta( $id, 'last_name', 'Guest' );
+
+			$user_data = array(
+				'user_login'   => 'WooCommerce_Guest',
+				'user_pass'    => wp_generate_password( 12, false ),
+				'user_email'   => '',
+				'first_name'   => 'WooCommerce',
+				'last_name'    => 'Guest',
+				'display_name' => 'WooCommerce_Guest',
+				'role'         => 'customer',
+			);
+
+			$id = wp_insert_user( $user_data );
 		}
 
 		$wc_main  = self::wc_find( $id );
 		$response = $wc_main->mv_save();
 
-		update_option( 'woocommerce_guest', (string) $wc_main->wc_id );
+		update_option( 'woocommerce_guest', $wc_main->wc_id );
 
 		if ( $response ) {
 
@@ -373,10 +443,27 @@ class Client {
 	}
 
 	/**
+	 * Deletes default client in WordPress.
+	 *
+	 * @return bool
+	 */
+	public static function delete_default_client() {
+
+		$user_name = 'WooCommerce_Guest';
+		$id        = username_exists( $user_name );
+		if ( ! $id ) {
+
+			wp_delete_user( $id );
+		}
+
+		return true;
+	}
+
+	/**
 	 * Converts wooCommerce client to client.
 	 *
 	 * @param WP_User $wc_client as wooCommerce client.
-	 * @return Client
+	 * @return Client|null
 	 */
 	private static function wc_convert( $wc_client ) {
 
@@ -388,36 +475,38 @@ class Client {
 			return null;
 		}
 
+		$user_meta = get_user_meta( $wc_client->ID );
+
 		$client        = new Client();
 		$client->wc_id = $wc_client->ID;
-		$client->mv_id = (int) get_user_meta( $wc_client->ID, 'mv_id', true );
+		$client->mv_id = empty( $user_meta['mv_id'][0] ) ? 0 : (int) $user_meta['mv_id'][0];
 		$client->email = $wc_client->user_email;
 
 		$client->username = $wc_client->user_login;
 
-		$client->contact_name = trim( get_user_meta( $wc_client->ID, 'first_name', true ) . ' ' . get_user_meta( $wc_client->ID, 'last_name', true ) );
-		$ship_name            = get_user_meta( $wc_client->ID, 'shipping_first_name', true ) . ' ' . get_user_meta( $wc_client->ID, 'shipping_last_name', true );
-		$client->company      = get_user_meta( $wc_client->ID, 'billing_company', true );
+		$client->contact_name = trim( strval( $user_meta['first_name'][0] ) . ' ' . strval( $user_meta['last_name'][0] ) );
+		$ship_name            = trim( strval( $user_meta['shipping_first_name'][0] ) . ' ' . strval( $user_meta['shipping_last_name'][0] ) );
+		$client->company      = strval( $user_meta['billing_company'][0] );
 
 		$shipping_address['name']     = $ship_name;
 		$shipping_address['company']  = $client->company;
-		$shipping_address['line_1']   = get_user_meta( $wc_client->ID, 'shipping_address_1', true );
-		$shipping_address['line_2']   = get_user_meta( $wc_client->ID, 'shipping_address_2', true );
-		$shipping_address['city']     = get_user_meta( $wc_client->ID, 'shipping_city', true );
-		$shipping_address['postcode'] = get_user_meta( $wc_client->ID, 'shipping_postcode', true );
-		$shipping_address['country']  = get_user_meta( $wc_client->ID, 'shipping_country', true );
+		$shipping_address['line_1']   = strval( $user_meta['shipping_address_1'][0] );
+		$shipping_address['line_2']   = strval( $user_meta['shipping_address_2'][0] );
+		$shipping_address['city']     = strval( $user_meta['shipping_city'][0] );
+		$shipping_address['postcode'] = strval( $user_meta['shipping_postcode'][0] );
+		$shipping_address['country']  = strval( $user_meta['shipping_country'][0] );
 		$client->shipping_address     = format_address( $shipping_address );
 
 		$billing_address['name']     = $client->contact_name;
 		$billing_address['company']  = $client->company;
-		$billing_address['line_1']   = get_user_meta( $wc_client->ID, 'billing_address_1', true );
-		$billing_address['line_2']   = get_user_meta( $wc_client->ID, 'billing_address_2', true );
-		$billing_address['city']     = get_user_meta( $wc_client->ID, 'billing_city', true );
-		$billing_address['postcode'] = get_user_meta( $wc_client->ID, 'billing_postcode', true );
-		$billing_address['country']  = get_user_meta( $wc_client->ID, 'billing_country', true );
+		$billing_address['line_1']   = strval( $user_meta['billing_address_1'][0] );
+		$billing_address['line_2']   = strval( $user_meta['billing_address_2'][0] );
+		$billing_address['city']     = strval( $user_meta['billing_city'][0] );
+		$billing_address['postcode'] = strval( $user_meta['billing_postcode'][0] );
+		$billing_address['country']  = strval( $user_meta['billing_country'][0] );
 		$client->billing_address     = format_address( $billing_address );
 
-		$client->phone = get_user_meta( $wc_client->ID, 'billing_phone', true );
+		$client->phone = strval( $user_meta['billing_phone'][0] );
 		$client->type  = 'Client'; // you can change it to 'Both' aka supplier and client.
 
 		return $client;
@@ -427,7 +516,7 @@ class Client {
 	 * Converts Megaventory client to Client.
 	 *
 	 * @param array $supplierclient as Megaventory client class.
-	 * @return client
+	 * @return Client
 	 */
 	private static function mv_convert( $supplierclient ) {
 
@@ -464,7 +553,7 @@ class Client {
 				$undelete_data = self::mv_undelete( $data['entityID'] );
 
 				if ( array_key_exists( 'InternalErrorCode', $undelete_data ) ) {
-					$this->log_error( 'Client is deleted. Undelete failed', $undelete_data['ResponseStatus']['Message'], -1, 'error', $data['json_object'] );
+					$this->log_error( 'Customer is deleted. Undelete failed', $undelete_data['ResponseStatus']['Message'], -1, 'error', $data['json_object'] );
 					return false;
 				}
 
@@ -496,13 +585,47 @@ class Client {
 		} else {
 			/* failed to save */
 			$internal_error_code = ' [' . $data['InternalErrorCode'] . ']';
-			$this->log_error( 'Client not saved to Megaventory' . $internal_error_code, $data['ResponseStatus']['Message'], -1, 'error', $data['json_object'] );
+			$this->log_error( 'Customer not saved to Megaventory' . $internal_error_code, $data['ResponseStatus']['Message'], -1, 'error', $data['json_object'] );
 			return false;
 
 		}
 
 		return $data;
 	}
+
+	/**
+	 * Delete client in Megaventory.
+	 *
+	 * @return bool
+	 */
+	public function delete_client_in_megaventory() {
+
+		$data_to_send = array(
+			'APIKEY'                                => get_api_key(),
+			'SupplierClientIDToDelete'              => $this->mv_id,
+			'SupplierClientDeleteAction'            => 'DefaultAction',
+			'mvInsertUpdateDeleteSourceApplication' => 'woocommerce',
+		);
+
+		$url = get_url_for_call( MV_Constants::SUPPLIER_CLIENT_DELETE );
+
+		$response = send_request_to_megaventory( $url, $data_to_send );
+
+		if ( '0' === ( $response['ResponseStatus']['ErrorCode'] ) ) {
+
+			$this->log_success( 'deleted', 'customer successfully deleted in Megaventory', 1 );
+
+			return true;
+		} else {
+
+			$internal_error_code = ' [' . $response['InternalErrorCode'] . ']';
+
+			$this->log_error( 'Customer not deleted to Megaventory ' . $internal_error_code, $response['ResponseStatus']['Message'], -1, 'error', $response['json_object'] );
+
+			return false;
+		}
+	}
+
 
 	/**
 	 * Create an object for client update.
@@ -532,7 +655,7 @@ class Client {
 		$product_client->supplierclienttype = $this->type ? $this->type : 'Client';
 		$product_client->supplierclientname = $this->username;
 
-		$this->billing_address ? $product_client->supplierclientbillingaddress    = $this->contact_name . '\n' . $this->billing_address : '';
+		$this->billing_address ? $product_client->supplierclientbillingaddress    = $this->contact_name . " \n " . $this->billing_address : '';
 		$this->shipping_address ? $product_client->supplierclientshippingaddress1 = $this->shipping_address : '';
 		$this->phone ? $product_client->supplierclientphone1                      = $this->phone : '';
 		$this->email ? $product_client->supplierclientemail                       = $this->email : '';

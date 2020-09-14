@@ -40,9 +40,9 @@ class MV_Constants {
 	/**
 	 * We use it to create adjustments in Megaventory in batches.
 	 */
-	const STOCK_BATCH_COUNT = 100;
+	const STOCK_BATCH_COUNT = 40;
 
-	const SYNC_STOCK_FROM_MEGAVENTORY = 100;
+	const SYNC_STOCK_FROM_MEGAVENTORY = 40;
 
 	const DOCUMENT_UPDATE = 'DocumentUpdate';
 
@@ -55,4 +55,8 @@ class MV_Constants {
 	const INTEGRATION_UPDATE_DELETE = 'IntegrationUpdateDelete';
 
 	const PRODUCT_GET = 'ProductGet';
+
+	const PRODUCT_DELETE = 'ProductDelete';
+
+	const SUPPLIER_CLIENT_DELETE = 'SupplierClientDelete';
 }

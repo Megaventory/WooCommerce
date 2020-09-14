@@ -1,4 +1,18 @@
 *** Megaventory Extension Template Changelog ***
+2020-09-14 - version 2.2.3
+* Improvements
+
+2020-09-14 - version 2.2.2
+* Improved synchronization process
+* Compatible with WooCommerce 4.5.1
+
+2020-09-01 - version 2.2.1
+* Manually Order Synchronization.
+* Megaventory Order column in Orders list
+* New hook for Automatically Order Synchronization (woocommerce_after_order_object_save)
+* Automatically delete product in Megaventory when is deleted permanently in WooCommerce
+* Automatically delete Customer in Megaventory when is deleted in WooCommerce
+* Compatible with WooCommerce 4.4.0
 
 2020-08-05 - version 2.2.0
 * Fixed bug on tax-coupon hooks

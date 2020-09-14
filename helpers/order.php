@@ -77,10 +77,10 @@ function place_sales_order( $order, $client ) {
 		$product = new Product();
 		if ( 0 === $item['variation_id'] ) {
 
-			$product = Product::wc_find( $item['product_id'] );
+			$product = Product::wc_find_product( $item['product_id'] );
 		} else {
 
-			$product = Product::wc_find( $item['variation_id'] );
+			$product = Product::wc_find_product( $item['variation_id'] );
 		}
 
 		array_push( $product_ids_in_cart, $product->wc_id );
@@ -263,3 +263,35 @@ function get_unit_price_prediscounted( $item_data, $discount ) {
 
 }
 
+/**
+ * Delete megaventory data from orders.
+ *
+ * @return void
+ */
+function delete_mv_data_from_orders() {
+
+	$page      = 1;
+	$order_ids = array();
+
+	$page_ids = array();
+
+	while ( 1 === $page || ! empty( $page_ids ) ) {
+
+		$page_ids = wc_get_orders(
+			array(
+				'return' => 'ids',
+				'page'   => $page,
+			)
+		);
+
+		$order_ids = array_merge( $order_ids, $page_ids );
+
+		$page++;
+	}
+
+	foreach ( $order_ids as $order_id ) {
+
+		delete_post_meta( $order_id, 'order_sent_to_megaventory' );
+		delete_post_meta( $order_id, 'megaventory_order_name' );
+	}
+}

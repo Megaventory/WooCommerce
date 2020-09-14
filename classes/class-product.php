@@ -347,54 +347,104 @@ class Product {
 	}
 
 	/**
-	 * Gets all Products.
+	 * Gets all simple and variation Products converted to Product class.
 	 *
+	 * @param int $limit number of products to retrieve.
+	 * @param int $page pagination.
 	 * @return Product[]
 	 */
-	public static function wc_all() {
+	public static function wc_get_products_in_batches( $limit, $page ) {
 
-		$args     = array(
-			'post_type'   => 'product',
-			'numberposts' => -1,
+		$all_products = array();
+
+		$args        = array(
+			'limit' => $limit,
+			'page'  => $page,
 		);
-		$products = get_posts( $args );
-		$temp     = array();
+		$wc_products = wc_get_products( $args );
 
-		foreach ( $products as $product ) {
+		foreach ( $wc_products as $wc_product ) {
 
-			array_push( $temp, self::wc_convert( $product ) );
-		}
+			if ( 'simple' === $wc_product->get_type() ) {
 
-		$products = $temp;
+				$product = self::wc_convert( $wc_product );
+				array_push( $all_products, $product );
 
-		return $temp;
+			} elseif ( 'variable' === $wc_product->get_type() ) {
 
-	}
-
-	/**
-	 * Get configurable Products from WooCommerce.
-	 *
-	 * @return Product[]
-	 */
-	public static function wc_all_with_variable() {
-
-		$products = self::wc_all();
-		$temp     = array();
-
-		foreach ( $products as $prod ) {
-
-			array_push( $temp, $prod );
-
-			$vars = $prod->wc_get_variations();
-
-			if ( count( $vars ) > 0 ) {
-
-				$temp = array_merge( $temp, $vars );
+				$products     = self::wc_get_variations( $wc_product );
+				$all_products = array_merge( $all_products, $products );
 			}
 		}
 
-		return $temp;
+		return $all_products;
+	}
 
+	/**
+	 * Gets all simple and variation Products converted to Product class.
+	 *
+	 * @return Product[]
+	 */
+	public static function wc_get_all_products() {
+
+		$limit        = -1;
+		$all_products = array();
+
+		$args        = array(
+			'limit' => $limit,
+		);
+		$wc_products = wc_get_products( $args );
+
+		foreach ( $wc_products as $wc_product ) {
+
+			if ( 'simple' === $wc_product->get_type() ) {
+
+				$product = self::wc_convert( $wc_product );
+				array_push( $all_products, $product );
+
+			} elseif ( 'variable' === $wc_product->get_type() ) {
+
+				$products     = self::wc_get_variations( $wc_product );
+				$all_products = array_merge( $all_products, $products );
+			}
+		}
+
+		return $all_products;
+	}
+
+	/**
+	 * Get all simple and variations WooCommerce products.
+	 *
+	 * @return array of WC_Product_Simple and WC_Product_Variation
+	 */
+	public static function wc_get_all_woocommerce_products() {
+
+		$args = array(
+			'type'  => array( 'simple', 'variation' ),
+			'limit' => -1,
+		);
+
+		$all_wc_products = wc_get_products( $args );
+
+		return $all_wc_products;
+	}
+
+	/**
+	 * Get the count of all simple and variations WooCommerce products.
+	 *
+	 * @return int
+	 */
+	public static function wc_get_all_woocommerce_products_count() {
+
+		$args = array(
+			'type'   => array( 'simple', 'variation' ),
+			'return' => 'ids',
+			'limit'  => -1,
+		);
+
+		$all_wc_products = wc_get_products( $args );
+
+		return count( $all_wc_products );
 	}
 
 	/**
@@ -429,15 +479,26 @@ class Product {
 	 * @param int $id product id.
 	 * @return Product|null
 	 */
-	public static function wc_find( $id ) {
+	public static function wc_find_product( $id ) {
 
-		$wc_prod = get_post( $id );
-		if ( $wc_prod ) {
-			$product = self::wc_convert( $wc_prod );
-			return $product;// Product after meta fields set.
+		$wc_prod = wc_get_product( $id );
+
+		if ( empty( $wc_prod ) ) {
+			return null;
+		}
+
+		if ( 'variation' === $wc_prod->get_type() ) {
+
+			$wc_variable_id = $wc_prod->get_parent_id();
+			$wc_variable    = wc_get_product( $wc_variable_id );
+
+			$product = self::wc_variation_convert( $wc_prod, $wc_variable );
+			return $product;
+
 		} else {
 
-			return null;
+			$product = self::wc_convert( $wc_prod );
+			return $product;
 		}
 	}
 
@@ -498,21 +559,11 @@ class Product {
 			'message'        => '',
 		);
 
-		$all_wc_products = self::wc_all_with_variable();
+		$all_simple_products_count = self::wc_get_all_woocommerce_products_count();
 
-		$all_simple_products = array();
+		$page = ( $starting_index / MV_Constants::SYNC_STOCK_FROM_MEGAVENTORY ) + 1; // starts from 1.
 
-		foreach ( $all_wc_products as $wc_product ) {
-
-			if ( empty( $wc_product->sku ) || empty( $wc_product->mv_id ) || ( 'simple' !== $wc_product->type && 'variable-child' !== $wc_product->type ) ) {
-				continue;
-			}
-			array_push( $all_simple_products, $wc_product );
-		}
-
-		$all_simple_products_count = count( $all_simple_products );
-
-		$selected_products_to_sync_stock = array_slice( $all_simple_products, $starting_index, MV_Constants::SYNC_STOCK_FROM_MEGAVENTORY );
+		$selected_products_to_sync_stock = self::wc_get_products_in_batches( MV_Constants::SYNC_STOCK_FROM_MEGAVENTORY, $page );
 
 		$selected_products_to_sync_stock_count = count( $selected_products_to_sync_stock );
 
@@ -542,6 +593,10 @@ class Product {
 		$filters = array();
 
 		foreach ( $selected_products_to_sync_stock as $selected_product ) {
+
+			if ( empty( $selected_product->sku ) || empty( $selected_product->mv_id ) ) {
+				continue;
+			}
 
 			$filter = array(
 				'AndOr'          => 'Or',
@@ -590,6 +645,10 @@ class Product {
 		$megaventory_product_stock_list = $response['mvProductStockList'];
 
 		foreach ( $selected_products_to_sync_stock as $selected_product ) {
+
+			if ( empty( $selected_product->sku ) || empty( $selected_product->mv_id ) ) {
+				continue;
+			}
 
 			$index = array_search( $selected_product->mv_id, array_column( $megaventory_product_stock_list, 'productID' ), true );
 
@@ -794,26 +853,6 @@ class Product {
 	}
 
 	/**
-	 * Get Product from WooCommerce by sku.
-	 *
-	 * @param string $sku as product's sku.
-	 * @return Product|null
-	 */
-	public static function wc_find_by_sku( $sku ) {
-
-		$prods = self::wc_all_with_variable();
-		foreach ( $prods as $prod ) {
-
-			if ( $prod->sku === $sku ) {
-
-				return $prod;
-			}
-		}
-
-		return null;
-	}
-
-	/**
 	 * Get Product from Megaventory by sku.
 	 *
 	 * @param string $sku as product's sku.
@@ -887,37 +926,36 @@ class Product {
 	}
 
 	/**
-	 * Converts a WooCommerce Product to Product.
+	 * Converts a WC_Product to Product.
 	 *
-	 * @param WP_Post $wc_prod as WooCommerce product.
+	 * @param WC_Product $wc_prod as WooCommerce product.
 	 * @return Product
 	 */
 	private static function wc_convert( $wc_prod ) {
-		/*
-		Generate Product data from WC_PRODUCT.
-		$woocommerce_product = wc_get_product( $wc_prod->ID );
-		*/
 
-		$prod        = new Product();
-		$id          = $wc_prod->ID;
-		$prod->wc_id = $wc_prod->ID;
-		$prod->mv_id = (int) get_post_meta( $id, 'mv_id', true );
+		$post_meta = get_post_meta( $wc_prod->get_id() );
 
-		$prod->name             = $wc_prod->post_name;
-		$prod->long_description = $wc_prod->post_content;
-		$prod->description      = $wc_prod->post_title;
+		$prod = new Product();
 
-		$terms      = get_the_terms( $id, 'product_type' );
-		$prod->type = ( ! empty( $terms ) ) ? sanitize_title( current( $terms )->name ) : 'simple';
+		$id          = $wc_prod->get_id();
+		$prod->wc_id = $id;
+		$prod->mv_id = (int) $post_meta['mv_id'][0];
 
-		$prod->sku = get_post_meta( $id, '_sku', true );
+		$prod->name             = $wc_prod->get_name();
+		$prod->long_description = $wc_prod->get_description();
+		$prod->description      = $wc_prod->get_title();
+
+		$prod->type = $wc_prod->get_type();
+
+		$prod->sku = $wc_prod->get_sku();
 
 		/* prices */
-		$prod->regular_price = get_post_meta( $id, '_regular_price', true );
-		$prod->sale_price    = get_post_meta( $id, '_sale_price', true );
-		$prod->unit_cost     = ( empty( get_post_meta( $id, '_wc_cog_cost', true ) ) ? 0 : empty( get_post_meta( $id, '_wc_cog_cost', true ) ) );
-		$sale_from           = get_post_meta( $id, '_sale_price_dates_from', true );
-		$sale_to             = get_post_meta( $id, '_sale_price_dates_to', true );
+		$prod->regular_price = $wc_prod->get_regular_price();
+		$prod->sale_price    = $wc_prod->get_sale_price();
+		$sale_from           = $wc_prod->get_date_on_sale_from();
+		$sale_to             = $wc_prod->get_date_on_sale_to();
+
+		$prod->unit_cost = empty( $post_meta['_wc_cog_cost'][0] ) ? 0 : (float) $post_meta['_wc_cog_cost'][0];
 
 		if ( $prod->sale_price ) {
 
@@ -937,15 +975,15 @@ class Product {
 			}
 		}
 
-		$prod->weight  = get_post_meta( $id, '_weight', true );
-		$prod->length  = get_post_meta( $id, '_length', true );
-		$prod->breadth = get_post_meta( $id, '_width', true );
-		$prod->height  = get_post_meta( $id, '_height', true );
+		$prod->weight  = $wc_prod->get_weight();
+		$prod->length  = $wc_prod->get_length();
+		$prod->breadth = $wc_prod->get_width();
+		$prod->height  = $wc_prod->get_height();
 
-		$prod->available_wc_stock = (int) get_post_meta( $id, '_stock', true );
-		$prod->mv_qty             = get_post_meta( $id, '_mv_qty', true );
-		$cs                       = wp_get_object_terms( $id, 'product_cat' );
+		$prod->available_wc_stock = $wc_prod->get_stock_quantity();
+		$prod->mv_qty             = get_post_meta( $wc_prod->get_id(), '_mv_qty', true );
 
+		$cs = wp_get_object_terms( $id, 'product_cat' );
 		if ( count( $cs ) > 0 ) {
 
 			$prod->category = self::get_full_category_name( $cs[0] ); // Primary category.
@@ -957,6 +995,69 @@ class Product {
 
 			$prod->image_url = $img[0];
 		}
+
+		return $prod;
+	}
+
+	/**
+	 * Convert WC_Product_Variation to Product.
+	 *
+	 * @param WC_Product_Variation $wc_variation variation Product.
+	 * @param WC_Product_Variable  $wc_variable variable Product.
+	 * @return Product
+	 */
+	public static function wc_variation_convert( $wc_variation, $wc_variable ) {
+
+		$prod = new Product();
+
+		$post_meta = get_post_meta( $wc_variation->get_id() );
+
+		$prod->wc_id         = $wc_variation->get_id();
+		$prod->mv_id         = (int) $post_meta['mv_id'][0];
+		$prod->name          = $wc_variation->get_name();
+		$prod->sku           = $wc_variation->get_sku();
+		$prod->description   = $wc_variation->get_title();
+		$prod->type          = $wc_variation->get_type();
+		$prod->regular_price = $wc_variation->get_regular_price();
+		$prod->sale_price    = $wc_variation->get_sale_price();
+		$prod->unit_cost     = ( empty( $post_meta['_wc_cog_cost_variable'][0] ) ? 0 : $post_meta['_wc_cog_cost_variable'][0] );
+
+		$prod->available_wc_stock = $wc_variation->get_stock_quantity();
+		$prod->mv_qty             = get_post_meta( $wc_variation->get_id(), '_mv_qty', true );
+
+		$prod->weight  = empty( $wc_variation->get_weight() ) ? $wc_variable->get_weight() : $wc_variation->get_weight();
+		$prod->height  = empty( $wc_variation->get_height() ) ? $wc_variable->get_height() : $wc_variation->get_height();
+		$prod->length  = empty( $wc_variation->get_length() ) ? $wc_variable->get_length() : $wc_variation->get_length();
+		$prod->breadth = empty( $wc_variation->get_width() ) ? $wc_variable->get_width() : $wc_variation->get_width();
+
+		$image_array = wp_get_attachment_image_src( get_post_thumbnail_id( $prod->wc_id ) );
+		if ( $image_array ) {
+
+			$prod->image_url = $image_array[0];
+		} else {
+
+			// variable image.
+			$image_array = wp_get_attachment_image_src( get_post_thumbnail_id( $wc_variable->get_id() ) );
+			if ( $image_array ) {
+
+				$prod->image_url = $image_array[0];
+			}
+		}
+
+		$cs = wp_get_object_terms( $wc_variable->get_id(), 'product_cat' );
+		if ( count( $cs ) > 0 ) {
+
+			$prod->category = self::get_full_category_name( $cs[0] ); // Primary category.
+		}
+
+		// Version is | name - var1, var2, var3.
+		// Megaventory version should be | var1, var2, var3.
+		$version = $wc_variation->get_name();
+		$version = str_replace( ' ', '', $version ); // remove whitespaces.
+		$version = explode( '-', $version )[1]; // disregard name.
+		$version = str_replace( ',', '/', $version );
+
+		$prod->version = $version;
 
 		return $prod;
 	}
@@ -986,93 +1087,41 @@ class Product {
 	/**
 	 * Get WooCommerce variations.
 	 *
-	 * @return array
+	 * @param WC_Product_Variable $wc_variable variable product.
+	 * @return Product[]
 	 */
-	public function wc_get_variations() {
+	public static function wc_get_variations( $wc_variable ) {
 
-		$handle = new WC_Product_Variable( $this->wc_id );
-
-		$variations_ids = $handle->get_children();
+		$variations_ids = $wc_variable->get_children();
 
 		$prods = array();
 
 		foreach ( $variations_ids as $variation_id ) {
 
-			$new_variation_product = new Product();
-			$new_variation_product = self::wc_variable_convert( $variation_id, $this );
+			$wc_variation_product = new WC_Product_Variation( $variation_id );
+			$product              = self::wc_variation_convert( $wc_variation_product, $wc_variable );
 
-			array_push( $prods, $new_variation_product );
+			array_push( $prods, $product );
 		}
 
 		return $prods;
 	}
 
 	/**
-	 * Inherit parent values if no values are present.
-	 *
-	 * @param int     $var_prod_id as product id.
-	 * @param Product $parent as parent Product.
-	 * @return Product
-	 */
-	private static function wc_variable_convert( $var_prod_id, $parent ) {
-
-		$var_prod = new WC_Product_Variation( $var_prod_id );
-		$prod     = new Product();
-
-		$prod->wc_id         = $var_prod_id;
-		$prod->mv_id         = (int) get_post_meta( $var_prod_id, 'mv_id', true );
-		$prod->sku           = $var_prod->get_sku();
-		$prod->description   = $var_prod->get_name() ? $var_prod->get_name() : $parent->description;
-		$prod->type          = 'variable-child';
-		$prod->regular_price = $var_prod->get_regular_price() ? $var_prod->get_regular_price() : $parent->regular_price;
-		$prod->sale_price    = $var_prod->get_sale_price() ? $var_prod->get_sale_price() : $parent->sale_price;
-		$prod->unit_cost     = ( empty( get_post_meta( $var_prod_id, '_wc_cog_cost_variable', true ) ) ? 0 : empty( get_post_meta( $var_prod_id, '_wc_cog_cost_variable', true ) ) );
-
-		$prod->available_wc_stock = (int) get_post_meta( $var_prod_id, '_stock', true );
-		$prod->mv_qty             = get_post_meta( $var_prod_id, '_mv_qty', true );
-
-		$prod->weight  = $var_prod->get_weight() ? $var_prod->get_weight() : $parent->weight;
-		$prod->height  = $var_prod->get_height() ? $var_prod->get_height() : $parent->height;
-		$prod->length  = $var_prod->get_length() ? $var_prod->get_length() : $parent->length;
-		$prod->breadth = $var_prod->get_width() ? $var_prod->get_width() : $parent->breadth;
-
-		$image_array = wp_get_attachment_image_src( get_post_thumbnail_id( $prod->wc_id ) );
-		if ( $image_array ) {
-
-			$prod->image_url = $image_array[0];
-		} else {
-
-			$prod->image_url = $parent->image_url;
-		}
-
-		$prod->category = $parent->category;
-
-		// Version is | name - var1, var2, var3.
-		// Megaventory version should be | var1, var2, var3.
-		$version = $var_prod->get_name();
-		$version = str_replace( ' ', '', $version ); // remove whitespaces.
-		$version = explode( '-', $version )[1]; // disregard name.
-		$version = str_replace( ',', '/', $version );
-
-		$prod->version = $version;
-
-		return $prod;
-	}
-
-	/**
 	 * Update each option of a variable product in Megaventory.
 	 *
 	 * @param WC_Product_Variation $wc_product as variable product.
-	 * @param Product              $product as Product.
 	 * @return void
 	 */
-	public static function update_variable_product_in_megaventory( $wc_product, $product ) {
+	public static function update_variable_product_in_megaventory( $wc_product ) {
 
 		$variation_ids = $wc_product->get_children();
 
 		foreach ( $variation_ids as $variation_id ) {
 
-			$variation_product = self::wc_variable_convert( $variation_id, $product );
+			$wc_variation_product = new WC_Product_Variation( $variation_id );
+
+			$variation_product = self::wc_variation_convert( $wc_variation_product, $wc_product );
 
 			$variation_product->mv_save();
 
@@ -1115,157 +1164,6 @@ class Product {
 
 			return $temp;
 		}
-	}
-
-	/**
-	 * Save Products to WooCommerce.
-	 *
-	 * @param array[Product] $wc_products as array of products.
-	 * @param boolean        $create_upon_save as boolean.
-	 * @return bool
-	 */
-	public function wc_save( $wc_products = null, $create_upon_save = true ) {
-
-		if ( null === $wc_products ) {
-
-			$wc_products = ( null === $this->version ) ? self::wc_all() : self::wc_all_with_variable();
-		}
-
-		/*
-			Find if SKU exists, if so, update instead of insert
-			only insert if $create upon save
-		*/
-
-		if ( null === $this->wc_id ) {
-
-			foreach ( $wc_products as $wc_product ) {
-
-				if ( $this->sku === $wc_product->sku ) {
-
-					$this->wc_id = $wc_product->wc_id;
-					break;
-				}
-			}
-		}
-
-		if ( null === $this->wc_id && ! $create_upon_save ) {
-
-			return false;
-		}
-
-		/* Prevent null on empty */
-
-		if ( null === $this->long_description ) {
-
-			$this->long_description = '';
-		}
-
-		if ( '' === wp_strip_all_tags( $this->description ) || null === $this->description ) {
-
-			$this->log_error( 'Product not saved to WooCommerce', 'Short description cannot be empty', -1, 'error', '' );
-			return false;
-		}
-
-		if ( null === $this->sku ) {
-
-			$this->log_error( 'Product not saved to WooCommerce', 'SKU cannot be empty', -1, 'error', '' );
-			return false;
-		}
-
-		/* Don't update variables title! */
-
-		if ( null === $this->wc_id ) {
-
-			/*Create product.*/
-
-			$args = array(
-				'post_content' => $this->long_description,
-				'post_excerpt' => $this->description,
-				'post_status'  => 'publish',
-				'post_type'    => 'product',
-			);
-
-			if ( null === $this->version ) {
-
-				$args['post_title'] = $this->description;
-			}
-
-			$post_id = wp_insert_post( $args );
-
-			if ( is_wp_error( $post_id ) ) {
-
-				$this->log_error( 'Product not saved to WooCommerce', $post_id->get_error_message(), $post_id->get_error_code(), 'error', '' );
-
-				return false;
-			}
-
-			$this->wc_id = $post_id;
-
-		} else {
-
-			/* Never update product title. only on create.*/
-
-			$post = array(
-				'ID'           => $this->wc_id,
-				// Don't use it 'post_title' => $this->description, !
-				'post_content' => $this->long_description,
-				'post_excerpt' => $this->description,
-			);
-
-			$return = wp_update_post( $post );
-
-			if ( is_wp_error( $return ) ) {
-
-				$this->log_error( 'Product not saved to WooCommerce', $return->get_error_message(), $return->get_error_code(), 'error', '' );
-				return false;
-			}
-		}
-
-		/*
-			Set category to mv category only if product has no categories.
-			Otherwise, don't do anything.
-			Uncategorized is default.
-		*/
-
-		if ( null !== $this->category && count( wp_get_object_terms( $this->wc_id, 'product_cat' ) ) <= 1 ) {
-
-			$category_id = $this->wc_get_category_id_by_name( $this->category, true );
-
-			if ( $category_id ) {
-
-				wp_set_object_terms( $this->wc_id, $category_id, 'product_cat' );
-			}
-		}
-
-		wp_set_object_terms( $this->wc_id, 'simple', 'product_type' );
-		// set other information.
-		update_post_meta( $this->wc_id, '_visibility', 'visible' );
-		update_post_meta( $this->wc_id, '_regular_price', $this->regular_price );
-
-		if ( $this->sale_price ) {
-
-			update_post_meta( $this->wc_id, '_sale_price', $this->sale_price );
-		}
-
-		update_post_meta( $this->wc_id, '_weight', $this->weight );
-		update_post_meta( $this->wc_id, '_length', $this->length );
-		update_post_meta( $this->wc_id, '_width', $this->breadth );
-		update_post_meta( $this->wc_id, '_height', $this->height );
-		update_post_meta( $this->wc_id, '_sku', $this->sku );
-		update_post_meta( $this->wc_id, '_manage_stock', 'yes' );
-		update_post_meta( $this->wc_id, '_stock', (string) $this->available_wc_stock );
-		update_post_meta( $this->wc_id, '_stock_status', ( $this->available_wc_stock > 0 ? 'instock' : 'outofstock' ) );
-
-		if ( null !== $this->version ) {
-
-			update_post_meta( $this->wc_id, '_variation_description', $this->description );
-		}
-
-		$this->attach_image();
-
-		update_post_meta( $this->wc_id, 'mv_id', $this->mv_id );
-
-		return true;
 	}
 
 	/**
@@ -1421,36 +1319,39 @@ class Product {
 	}
 
 	/**
-	 * Delete product from WooCommerce.
+	 * Delete product in Megaventory.
 	 *
-	 * @return void
+	 * @return bool
 	 */
-	public function wc_destroy() {
+	public function delete_product_in_megaventory() {
 
-		if ( null === $this->wc_id ) {
-
-			$all = ( null === $this->version ) ? self::wc_all() : self::wc_all_with_variable();
-
-			foreach ( $all as $prod ) {
-
-				if ( $prod->sku === $this->sku ) {
-
-					$this->wc_id = $prod->sku;
-					break;
-				}
-			}
+		if ( empty( $this->mv_id ) ) {
+			return true;
 		}
 
-		wp_delete_post( $this->wc_id );
-	}
+		$data_to_send = array(
+			'APIKEY'                                => get_api_key(),
+			'ProductIDToDelete'                     => $this->mv_id,
+			'mvInsertUpdateDeleteSourceApplication' => 'woocommerce',
+		);
 
-	/**
-	 * Future work.
-	 *
-	 * @return void
-	 */
-	public function mv_destroy() {
+		$url = get_url_for_call( MV_Constants::PRODUCT_DELETE );
 
+		$response = send_request_to_megaventory( $url, $data_to_send );
+
+		if ( '0' === ( $response['ResponseStatus']['ErrorCode'] ) ) {
+
+			$this->log_success( 'deleted', 'product successfully deleted in Megaventory', 1 );
+
+			return true;
+		} else {
+
+			$internal_error_code = ' [' . $response['InternalErrorCode'] . ']';
+
+			$this->log_error( 'Product not deleted to Megaventory ' . $internal_error_code, $response['ResponseStatus']['Message'], -1, 'error', $response['json_object'] );
+
+			return false;
+		}
 	}
 
 	/**
@@ -1686,21 +1587,11 @@ class Product {
 			'message'        => '',
 		);
 
-		$all_wc_products = self::wc_all_with_variable();
+		$all_simple_products_count = self::wc_get_all_woocommerce_products_count();
 
-		$all_simple_products = array();
+		$page = ( $starting_index / MV_Constants::STOCK_BATCH_COUNT ) + 1; // starts from 1.
 
-		foreach ( $all_wc_products as $wc_product ) {
-
-			if ( empty( $wc_product->sku ) || empty( $wc_product->mv_id ) || ( 'simple' !== $wc_product->type && 'variable-child' !== $wc_product->type ) ) {
-				continue;
-			}
-			array_push( $all_simple_products, $wc_product );
-		}
-
-		$all_simple_products_count = count( $all_simple_products );
-
-		$selected_products_to_sync_stock = array_slice( $all_simple_products, $starting_index, MV_Constants::STOCK_BATCH_COUNT );
+		$selected_products_to_sync_stock = self::wc_get_products_in_batches( MV_Constants::STOCK_BATCH_COUNT, $page );
 
 		$selected_products_to_sync_stock_count = count( $selected_products_to_sync_stock );
 
@@ -1733,6 +1624,10 @@ class Product {
 		$filters = array();
 
 		foreach ( $selected_products_to_sync_stock as $selected_product ) {
+
+			if ( empty( $selected_product->sku ) || empty( $selected_product->mv_id ) ) {
+				continue;
+			}
 
 			$filter = array(
 				'AndOr'          => 'Or',
@@ -1772,11 +1667,15 @@ class Product {
 
 		foreach ( $selected_products_to_sync_stock as $selected_product ) {
 
+			if ( empty( $selected_product->sku ) || empty( $selected_product->mv_id ) ) {
+				continue;
+			}
+
 			$index  = array_search( $selected_product->mv_id, array_column( $megaventory_product_stock_list, 'productID' ), true );
 			$mv_qty = 0;
 
 			if ( false !== $index ) {
-				$mv_qty = $megaventory_product_stock_list[ $index ]['StockOnHoldTotal'];
+				$mv_qty = $megaventory_product_stock_list[ $index ]['StockOnHandTotal'];
 			}
 			$wc_qty = 0;
 

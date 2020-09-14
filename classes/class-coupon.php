@@ -296,7 +296,7 @@ class Coupon {
 		$temp = array();
 		foreach ( explode( ',', $ids ) as $id ) {
 			$id      = (int) $id;
-			$to_push = ( $by_ids ? $id : Product::wc_find( $id ) );
+			$to_push = ( $by_ids ? $id : Product::wc_find_product( $id ) );
 			array_push( $temp, $to_push );
 		}
 
@@ -319,7 +319,7 @@ class Coupon {
 		$temp = array();
 		foreach ( explode( ',', $ids ) as $id ) {
 			$id      = (int) $id;
-			$to_push = ( $by_ids ? $id : Product::wc_find( $id ) );
+			$to_push = ( $by_ids ? $id : Product::wc_find_product( $id ) );
 			array_push( $temp, $to_push );
 		}
 

@@ -100,7 +100,7 @@ function create_json_url( $call ) {
 /**
  * Create URL.
  *
- * @param array $call as array.
+ * @param string $call as Megaventory API method.
  */
 function get_url_for_call( $call ) {
 	global $url;

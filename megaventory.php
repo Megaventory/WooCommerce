@@ -1,20 +1,25 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.0
+ * Version: 2.2.3
  * Text Domain: megaventory
- * Plugin URI: https://github.com/Megaventory/WooCommerce
+ * Plugin URI: https://megaventory.com/
  * Description: Integration between WooCommerce and Megaventory.
  *
  * @package megaventory
  * @since 1.0.0
  *
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
+ * WC requires at least: 3.0
+ * WC tested up to: 4.5.1
+ * Requires at least: 4.4
+ * Tested up to: 5.5.0
+ * Stable tag: 5.4.2
  *
  * Author: Megaventory
- * Author URI: https://github.com/Megaventory/WooCommerce
+ * Author URI: https://megaventory.com/
  * Developer: Megaventory
- * Developer URI: https://megaventory.com/
+ * Developer URI: https://github.com/Megaventory/WooCommerce
  * Developer e-mail: support@megaventory.com
  * Copyright: © 2009-2020 WooCommerce.
  * License: GNU General Public License v3.0
@@ -87,6 +92,12 @@ add_action( 'wp_ajax_nopriv_sync_stock_to_megaventory', 'sync_stock_to_megavento
 
 add_action( 'wp_ajax_sync_stock_from_megaventory', 'sync_stock_from_megaventory' );
 add_action( 'wp_ajax_nopriv_sync_stock_from_megaventory', 'sync_stock_from_megaventory' );
+
+add_action( 'wp_ajax_skip_stock_synchronization', 'skip_stock_synchronization' );
+add_action( 'wp_ajax_nopriv_skip_stock_synchronization', 'skip_stock_synchronization' );
+
+add_action( 'wp_ajax_sync_order', 'sync_order' );
+add_action( 'wp_ajax_nopriv_sync_order', 'sync_order' );
 
 $mv_admin_slug = 'megaventory-plugin';
 
@@ -376,6 +387,9 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 	add_filter( 'manage_edit-product_columns', 'add_quantity_column_to_product_table', 15 );
 	add_action( 'manage_product_posts_custom_column', 'column', 10, 2 );
 
+	add_filter( 'manage_edit-shop_order_columns', 'megaventory_orders_list_column', 20 );
+	add_action( 'manage_shop_order_posts_custom_column', 'display_megaventory_order_info', 10, 2 );
+
 	/* styles */
 	add_action( 'init', 'register_style' );
 	add_action( 'admin_enqueue_scripts', 'enqueue_style' ); // Needed only in admin so far.
@@ -386,17 +400,20 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 
 	if ( get_option( 'correct_currency' ) && get_option( 'correct_connection' ) && get_option( 'correct_key' ) ) {
 		/*
-			Placed order
-			woocommerce_new_order hook, comes with no items data. Do not use it!
+			Hooks:
+			woocommerce_new_order hook, comes with no items. Because items are not saved in DB yet..
+			woocommerce_thankyou hook, can be ignored if checkout from paypal.
 		*/
-		add_action( 'woocommerce_thankyou', 'order_placed', 111, 1 );
+		add_action( 'woocommerce_after_order_object_save', 'order_placed', 10, 1 );
 
-		/* on add / edit product */
+		/* Product add/edit, delete */
 		add_action( 'save_post', 'sync_on_product_save', 99, 3 );
+		add_action( 'before_delete_post', 'delete_product_handler', 10, 2 );
 
-		/* Customer add/edit */
-		add_action( 'profile_update', 'sync_on_profile_update', 10, 2 );
+		/* Customer add, edit, delete */
 		add_action( 'user_register', 'sync_on_profile_create', 10, 1 );
+		add_action( 'profile_update', 'sync_on_profile_update', 10, 2 );
+		add_action( 'delete_user', 'delete_client_handler', 10, 2 );
 
 		/* tax add/edit  */
 		add_action( 'woocommerce_tax_rate_added', 'on_tax_update', 10, 2 );
@@ -529,8 +546,8 @@ function ajax_calls() {
 
 	$nonce = wp_create_nonce( 'async-nonce' );
 
-	wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.3', true );
-	wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.3', true );
+	wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.7', true );
+	wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.7', true );
 
 	$nonce_array = array(
 		'nonce' => $nonce,
@@ -545,7 +562,8 @@ function ajax_calls() {
  * @return void
  */
 function register_style() {
-	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.3', 'all' );
+	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.7', 'all' );
+	wp_register_style( 'mv_style_fonts', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css', false, '2.0.7', 'all' );
 }
 
 /**
@@ -555,6 +573,7 @@ function register_style() {
  */
 function enqueue_style() {
 	wp_enqueue_style( 'mv_style' );
+	wp_enqueue_style( 'mv_style_fonts' );
 }
 
 /**
@@ -604,7 +623,9 @@ function column( $column, $prod_id ) {
 
 			foreach ( $variants_ids as $variant_id ) {
 
-				$product = Product::wc_find( $variant_id );
+				$wc_variation_product = new WC_Product_Variation( $variant_id );
+
+				$product = Product::wc_variation_convert( $wc_variation_product, $wc_product );
 
 				if ( ! is_array( $product->mv_qty ) || 0 === count( $product->mv_qty ) ) {
 
@@ -633,7 +654,7 @@ function column( $column, $prod_id ) {
 		} elseif ( 'simple' === $wc_product->get_type() ) {
 
 			/* get product by id */
-			$prod   = Product::wc_find( $prod_id );
+			$prod   = Product::wc_find_product( $prod_id );
 			$mv_qty = $prod->mv_qty;
 
 		} else {
@@ -662,16 +683,63 @@ function column( $column, $prod_id ) {
 				<td colspan="2"><span><?php echo esc_attr( $inventory_name ); ?></span></td>
 				<td class="mv-tooltip" title="Total"><span><?php echo esc_attr( $qty[1] ); ?></span></td>
 				<td class="mv-tooltip" title="On Hand"><span class="qty-on-hand">(<?php echo esc_attr( $qty[2] ); ?>)</span></td>
-				<td class="mv-tooltip" title="Non-shipped"><span class="qty-non-shipped"><?php echo esc_attr( $qty[3] ); ?></span></td>
-				<td class="mv-tooltip" title="Non-allocated"><span class="qty-non-allocated"><?php echo esc_attr( $qty[4] ); ?></span></td>
-				<td class="mv-tooltip" title="Non-received-POs"><span class="qty-non-received"><?php echo esc_attr( $qty[5] ); ?></span></td>
-				<td class="mv-tooltip" title="Non-received-WOs"><span class="qty-non-received"><?php echo esc_attr( $qty[6] ); ?></span></td>
+				<td class="mv-tooltip" title="Non-shipped Quantity in Sales Orders"><span class="qty-non-shipped"><?php echo esc_attr( $qty[3] ); ?></span></td>
+				<td class="mv-tooltip" title="Non-Allocated Quantity in Production Orders"><span class="qty-non-allocated"><?php echo esc_attr( $qty[4] ); ?></span></td>
+				<td class="mv-tooltip" title="Non-Received Quantity in Purchase Orders"><span class="qty-non-received"><?php echo esc_attr( $qty[5] ); ?></span></td>
+				<td class="mv-tooltip" title="Non-Received Quantity in Production Orders"><span class="qty-non-received"><?php echo esc_attr( $qty[6] ); ?></span></td>
 			</tr>
 		<?php endforeach; ?>
 		</table>
 		<?php
 	}
 }
+
+/**
+ * Add Megaventory column in orders list.
+ *
+ * @param array $columns order list columns.
+ * @return array
+ */
+function megaventory_orders_list_column( $columns ) {
+	$columns['megaventory_order_column'] = __( 'Megaventory Order' );
+	return $columns;
+}
+
+/**
+ * Display Megaventory sales order id, or button to synchronize manually the order.
+ *
+ * @param array $column   as column in order grid.
+ * @param int   $order_id as product id.
+ * @return void
+ */
+function display_megaventory_order_info( $column, $order_id ) {
+
+	if ( 'megaventory_order_column' !== $column ) {
+		return;
+	}
+
+	$megaventory_order_id   = (int) get_post_meta( $order_id, 'order_sent_to_megaventory', true );
+	$megaventory_order_name = (string) get_post_meta( $order_id, 'megaventory_order_name', true );
+
+	if ( 0 < $megaventory_order_id ) {
+
+		if ( ! empty( $megaventory_order_name ) ) {
+
+			echo 'Megaventory order: ' . esc_attr( $megaventory_order_name );
+		} else {
+
+			echo 'Megaventory order id: ' . esc_attr( $megaventory_order_id );
+		}
+	} elseif ( get_option( 'correct_key' ) && get_option( 'is_megaventory_initialized' ) ) {
+		?>
+
+		<span id ='orderToSync_<?php echo esc_attr( $order_id ); ?>' class='Padd10' onclick='SyncOrder(<?php echo esc_attr( $order_id ); ?>)'><a href="#">Synchronize</a></span>
+
+		<?php
+	}
+
+}
+
 /**
  * Megaventory Plugin page.
  *
@@ -780,27 +848,47 @@ function set_api_host( $host ) {
  */
 function sync_on_product_save( $prod_id, $post, $update ) {
 
-	global $save_product_lock;
+	if ( 'product' !== get_post_type( $prod_id ) ) {
+		return;
+	}
 
-	if ( 'product' === get_post_type( $prod_id ) ) {
+	$wc_product = wc_get_product( $prod_id );
 
-		/* locked, don't do this */
-		if ( $save_product_lock ) {
+	if ( 'trash' === $wc_product->get_status() || 'auto-draft' === $wc_product->get_status() ) {
+		return;
+	}
 
-			return;
-		}
+	if ( 'variable' === $wc_product->get_type() ) {
 
-		$wc_product = wc_get_product( $prod_id );
-		$product    = Product::wc_find( $prod_id );
+		Product::update_variable_product_in_megaventory( $wc_product );
 
-		if ( 'variable' === $wc_product->get_type() ) {
+	} else {
 
-			Product::update_variable_product_in_megaventory( $wc_product, $product );
+		$product = Product::wc_find_product( $prod_id );
+		$product->mv_save();
+	}
+}
 
-		} else {
+/**
+ * Delete product event handler.
+ *
+ * @param int   $product_id as product id.
+ * @param array $wp_post as array.
+ * @return void
+ */
+function delete_product_handler( $product_id, $wp_post ) {
 
-			$response = $product->mv_save(); // To Fix handle response.
-		}
+	if ( 'product' !== get_post_type( $product_id ) && 'product_variation' !== get_post_type( $product_id ) ) {
+		return;
+	}
+
+	$wc_product = wc_get_product( $product_id );
+
+	// variations will trigger the same hook.
+	if ( 'simple' === $wc_product->get_type() || 'variation' === $wc_product->get_type() ) {
+
+		$product = Product::wc_find_product( $product_id );
+		$product->delete_product_in_megaventory();
 	}
 }
 
@@ -837,6 +925,26 @@ function sync_on_profile_create( $user_id ) {
 
 		$user->mv_save();
 	}
+}
+
+/**
+ * Delete client event handler.
+ *
+ * @param int      $client_id as client id.
+ * @param int|null $reassign ID of the user to whom posts will be automatically re-assigned (if one was selected).
+ * @return void
+ */
+function delete_client_handler( $client_id, $reassign ) {
+
+	$client = Client::wc_find( $client_id );
+
+	// Is not a client/subscriber.
+	if ( null === $client ) {
+		return;
+	}
+
+	$client->delete_client_in_megaventory();
+
 }
 
 /**
@@ -932,20 +1040,18 @@ function initialize_taxes() {
 }
 
 /**
- * This function will be called every time an order is finalized.
+ * This function will be called every time an order item is saved, this means multiple times.
  *
- * @param int $order_id as order's id.
+ * @param WC_Order $order as WC_Order.
  * @return void
  */
-function order_placed( $order_id ) {
+function order_placed( $order ) {
 
-	// Checking if this has already been done avoiding reload.
-	if ( get_post_meta( $order_id, 'order_sent_to_megaventory', true ) ) {
+	// Checking if this has already been synchronized.
+	if ( get_post_meta( $order->get_id(), 'order_sent_to_megaventory', true ) ) {
 
 		return; // Exit if already processed.
 	}
-
-	$order = wc_get_order( $order_id );
 
 	$id     = $order->get_customer_id();
 	$client = Client::wc_find( $id );
@@ -962,7 +1068,7 @@ function order_placed( $order_id ) {
 	$returned = array();
 	try {
 
-		/* place order through API */
+		/* place order through Megaventory API */
 		$returned = place_sales_order( $order, $client );
 
 	} catch ( \Error $ex ) {
@@ -970,7 +1076,7 @@ function order_placed( $order_id ) {
 		$args = array(
 			'type'        => 'error',
 			'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
-			'entity_id'   => array( 'wc' => $order_id ),
+			'entity_id'   => array( 'wc' => $order->get_id() ),
 			'problem'     => 'Order not placed in Megaventory.',
 			'full_msg'    => $ex->getMessage(),
 			'error_code'  => 500,
@@ -988,7 +1094,7 @@ function order_placed( $order_id ) {
 		$args = array(
 			'type'        => 'error',
 			'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
-			'entity_id'   => array( 'wc' => $order_id ),
+			'entity_id'   => array( 'wc' => $order->get_id() ),
 			'problem'     => 'Order not placed in Megaventory.',
 			'full_msg'    => $returned['ResponseStatus']['Message'],
 			'error_code'  => $returned['ResponseStatus']['ErrorCode'],
@@ -1002,7 +1108,7 @@ function order_placed( $order_id ) {
 
 	$args = array(
 		'entity_id'          => array(
-			'wc' => $order_id,
+			'wc' => $order->get_id(),
 			'mv' => $returned['mvSalesOrder']['SalesOrderId'],
 		),
 		'entity_type'        => 'order',
@@ -1015,11 +1121,12 @@ function order_placed( $order_id ) {
 	$e = new MVWC_Success( $args );
 
 	/*
-	The woocommerce_thankyou hook, happens when the customer reloads the order received page
-	with this meta information we prevent the order to send multiple times to megaventory
-	woocommerce_new_order hook, comes with no items data. Do not use it!
+		Hooks:
+		woocommerce_new_order hook, comes with no items. Because items are not saved in DB yet..
+		woocommerce_thankyou hook, can be ignored if checkout from paypal.
 	*/
-	update_post_meta( $order_id, 'order_sent_to_megaventory', $returned['mvSalesOrder']['SalesOrderId'] );
+	update_post_meta( $order->get_id(), 'order_sent_to_megaventory', $returned['mvSalesOrder']['SalesOrderId'] );
+	update_post_meta( $order->get_id(), 'megaventory_order_name', $returned['mvSalesOrder']['SalesOrderTypeAbbreviation'] . ' ' . $returned['mvSalesOrder']['SalesOrderNo'] );
 }
 
 // END SYNCHRONIZE FUNCTIONS ON CREATE/UPDATE.

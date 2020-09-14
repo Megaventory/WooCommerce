@@ -16,11 +16,11 @@
  * Initialize javascript function.
  *
  * @param {string} block                 as the type that will initialized.
- * @param {integer} startingInd          as the starting point.
+ * @param {integer} countOfEntity        as count of entities.
  * @param {integer} numberOfIndToProcess as the end point.
  * @param {string} call                  as the entity code block.
  */
-function ajaxInitialize(block, startingInd, numberOfIndToProcess, call) {
+function ajaxInitialize(block, countOfEntity, page, numberOfIndToProcess, call) {
 	jQuery( '#loading' ).show();
 	jQuery.ajax(
 		{
@@ -29,7 +29,8 @@ function ajaxInitialize(block, startingInd, numberOfIndToProcess, call) {
 			data: {
 				'action': 'asyncImport',
 				'block': block,
-				'startingIndex': startingInd,
+				'countOfEntity': countOfEntity,
+				'page': page,
 				'numberOfIndexesToProcess': numberOfIndToProcess,
 				'call': call,
 				'async-nonce': ajax_object.nonce
@@ -37,14 +38,15 @@ function ajaxInitialize(block, startingInd, numberOfIndToProcess, call) {
 			success: function (data) { // This outputs the result of the ajax request.
 				var obj            = JSON.parse( data.data );
 				var block          = obj.block;
-				var startingInd    = obj.starting_index;
 				var message        = obj.success_message;
+				var countOfEntity  = obj.count_of_entity;
 				var percentMessage = obj.percent_message;
+				var page           = obj.page;
 
 				if (message.includes( 'continue' )) {
 
 					jQuery( '#loading h1' ).html( percentMessage );
-					ajaxInitialize( block, startingInd, numberOfIndToProcess, call );// new ajax call.
+					ajaxInitialize( block, countOfEntity, page, numberOfIndToProcess, call );// new ajax call.
 
 				} else if ( message.includes( 'FinishedSuccessfully' ) ) {
 
@@ -71,17 +73,17 @@ function ajaxInitialize(block, startingInd, numberOfIndToProcess, call) {
  * Initialize javascript function.
  *
  * @param {string} block                 as the type that will initialized.
- * @param {integer} startingInd          as the starting point.
+ * @param {integer} countOfEntity        as count of entities.
  * @param {integer} numberOfIndToProcess as the end point.
  * @param {string} call                  as the entity code block.
  */
-function ajaxReInitialize(block, startingInd, numberOfIndToProcess, call) {
+function ajaxReInitialize(block, countOfEntity, page, numberOfIndToProcess, call) {
 
 	if ( ! confirm( "Are you sure you want to re-initialize the Megaventory plugin? After that you need to synchronize products, clients, coupons and product stock again." ) ) {
 		return;
 	}
 
-	ajaxInitialize( block, startingInd, numberOfIndToProcess, call )
+	ajaxInitialize( block, countOfEntity, page, numberOfIndToProcess, call )
 
 }
 

@@ -30,28 +30,28 @@ function format_address( $ar ) {
 
 	$address = '';
 	if ( null !== $name && ! ctype_space( $name ) ) {
-		$address .= $name . "\n";
+		$address .= $name . " \n ";
 	}
 	if ( null !== $company && ! ctype_space( $company ) ) {
-		$address .= $company . "\n";
+		$address .= $company . " \n ";
 	}
 	if ( null !== $line_1 && ! ctype_space( $line_1 ) ) {
-		$address .= $line_1 . "\n";
+		$address .= $line_1 . " \n ";
 	}
 	if ( null !== $line_2 && ! ctype_space( $line_2 ) ) {
-		$address .= $line_2 . "\n";
+		$address .= $line_2 . " \n ";
 	}
 	if ( null !== $city && ! ctype_space( $city ) ) {
-		$address .= $city . "\n";
+		$address .= $city . " \n ";
 	}
 	if ( null !== $country && ! ctype_space( $country ) ) {
-		$address .= $country . "\n";
+		$address .= $country . " \n ";
 	}
 	if ( null !== $postcode && ! ctype_space( $postcode ) ) {
-		$address .= $postcode . "\n";
+		$address .= $postcode . " \n ";
 	}
 	if ( null !== $country && ! ctype_space( $country ) ) {
-		$address .= $country . "\n";
+		$address .= $country . " \n ";
 	}
 
 	return $address;
