@@ -18,19 +18,53 @@
 	require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/address.php';
 	require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mv-constants.php';
 
-	const SALES_ORDER_UPDATE_CALL = 'SalesOrderUpdate';
+/**
+ * Get Megaventory Sales order based on Sales order ID
+ *
+ * @param WC_Order $order as WooCommerce Order.
+ * @return array|null as mvSalesOrder.
+ */
+function get_sales_order( $order ) {
+
+	$megaventory_sales_order_id = get_post_meta( $order->get_id(), 'order_sent_to_megaventory', true );
+
+	if ( empty( $megaventory_sales_order_id ) ) {
+
+		return null;
+	}
+
+	$get_body = array(
+		'APIKEY'  => get_api_key(),
+		'Filters' => array(
+			array(
+				'FieldName'      => 'SalesOrderId',
+				'SearchOperator' => 'Equals',
+				'SearchValue'    => $megaventory_sales_order_id,
+			),
+		),
+	);
+
+	$url      = get_url_for_call( MV_Constants::SALES_ORDER_GET );
+	$response = send_request_to_megaventory( $url, $get_body );
+
+	if ( 0 === count( $response['mvSalesOrders'] ) ) {
+		return null;
+	}
+
+	return $response['mvSalesOrders'][0];
+}
 
 /**
  * WooCommerce's Purchase Order is translated to a Megaventory Sales Order
  * Order is of type WC_ORDER - find documentation online
  *
- * @param WC_ORDER $order as wc_order.
+ * @param WC_Order $order as wc_order.
  * @param Client   $client as client object.
  * @return mixed
  */
 function place_sales_order( $order, $client ) {
 
-	$url                      = create_json_url( SALES_ORDER_UPDATE_CALL );
+	$url                      = create_json_url( MV_Constants::SALES_ORDER_UPDATE );
 	$percentage_order_coupons = array();
 	$product_coupons          = array();
 	$product_ids_in_cart      = array();
@@ -220,6 +254,86 @@ function place_sales_order( $order, $client ) {
 	$data = send_json( $url, $json_object );
 
 	return $data;
+}
+
+/**
+ * Cancel order in Megaventory
+ *
+ * @param WC_Order $order as WooCommerce order.
+ * @return void
+ */
+function cancel_sales_order( $order ) {
+
+	$megaventory_sales_order_id = get_post_meta( $order->get_id(), 'order_sent_to_megaventory', true );
+
+	if ( empty( $megaventory_sales_order_id ) ) {
+
+		return;
+	}
+
+	$mv_sales_order = get_sales_order( $order );
+
+	if ( null === $mv_sales_order ) {
+
+		$args = array(
+			'type'        => 'error',
+			'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+			'entity_id'   => array( 'wc' => $order->get_id() ),
+			'problem'     => 'Order Cancellation failed in Megaventory.',
+			'full_msg'    => "Sales Order with mvSalesOrderId:{$megaventory_sales_order_id} does not exist. Cancel Failed.",
+			'error_code'  => 'OrderNotFound',
+			'json_object' => '',
+		);
+
+		$e = new MVWC_Error( $args );
+
+		return;
+	}
+
+	if ( 'Cancelled' === $mv_sales_order['SalesOrderStatus'] ) {
+		return;
+	}
+
+	$cancel_body = array(
+		'APIKEY'                 => get_api_key(),
+		'mvSalesOrderNoToCancel' => $mv_sales_order['SalesOrderNo'],
+		'mvSalesOrderTypeId'     => $mv_sales_order['SalesOrderTypeId'],
+	);
+
+	$url      = get_url_for_call( MV_Constants::SALES_ORDER_CANCEL );
+	$response = send_request_to_megaventory( $url, $cancel_body );
+
+	if ( '0' !== $response['ResponseStatus']['ErrorCode'] ) {
+
+		$args = array(
+			'type'        => 'error',
+			'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+			'entity_id'   => array( 'wc' => $order->get_id() ),
+			'problem'     => 'Order Cancellation failed in Megaventory.',
+			'full_msg'    => $response['ResponseStatus']['Message'],
+			'error_code'  => $response['ResponseStatus']['ErrorCode'],
+			'json_object' => $response['json_object'],
+		);
+
+		$e = new MVWC_Error( $args );
+
+		return;
+	}
+
+	$args = array(
+		'entity_id'          => array(
+			'wc' => $order->get_id(),
+			'mv' => $megaventory_sales_order_id,
+		),
+		'entity_type'        => 'order',
+		'entity_name'        => $mv_sales_order['SalesOrderTypeAbbreviation'] . ' ' . $mv_sales_order['SalesOrderNo'],
+		'transaction_status' => 'Cancel',
+		'full_msg'           => 'The order has been cancelled to your Megaventory account',
+		'success_code'       => 1,
+	);
+
+	$e = new MVWC_Success( $args );
+
 }
 
 /**

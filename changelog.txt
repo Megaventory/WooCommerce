@@ -1,4 +1,9 @@
 *** Megaventory Extension Template Changelog ***
+2020-10-12 - version 2.2.4
+* Prevent order synchronization with status draft, pending payment or cancelled
+* When a synchronized order is marked as cancelled in WooCommerce then it is marked as cancelled in Megaventory
+* Improvements
+
 2020-09-14 - version 2.2.3
 * Improvements
 

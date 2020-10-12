@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.3
+ * Version: 2.2.4
  * Text Domain: megaventory
  * Plugin URI: https://megaventory.com/
  * Description: Integration between WooCommerce and Megaventory.
@@ -405,6 +405,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 			woocommerce_thankyou hook, can be ignored if checkout from paypal.
 		*/
 		add_action( 'woocommerce_after_order_object_save', 'order_placed', 10, 1 );
+		add_action( 'woocommerce_order_status_cancelled', 'order_cancelled_handler', 10, 1 );
 
 		/* Product add/edit, delete */
 		add_action( 'save_post', 'sync_on_product_save', 99, 3 );
@@ -1053,6 +1054,11 @@ function order_placed( $order ) {
 		return; // Exit if already processed.
 	}
 
+	if ( 'pending' === $order->get_status() || 'cancelled' === $order->get_status() || 'draft' === $order->get_status() ) {
+
+		return; // Exit draft, pending payment, cancelled orders.
+	}
+
 	$id     = $order->get_customer_id();
 	$client = Client::wc_find( $id );
 
@@ -1127,6 +1133,44 @@ function order_placed( $order ) {
 	*/
 	update_post_meta( $order->get_id(), 'order_sent_to_megaventory', $returned['mvSalesOrder']['SalesOrderId'] );
 	update_post_meta( $order->get_id(), 'megaventory_order_name', $returned['mvSalesOrder']['SalesOrderTypeAbbreviation'] . ' ' . $returned['mvSalesOrder']['SalesOrderNo'] );
+}
+
+/**
+ * WooCommerce Order Cancellation handler
+ *
+ * @param int $order_id as WooCommerce order id.
+ * @return void
+ */
+function order_cancelled_handler( $order_id ) {
+
+	$order = wc_get_order( $order_id );
+
+	// Checking if has been synchronized.
+	if ( empty( get_post_meta( $order->get_id(), 'order_sent_to_megaventory', true ) ) ) {
+
+		return;
+	}
+	try {
+
+		cancel_sales_order( $order );
+
+	} catch ( \Error $ex ) {
+
+		$args = array(
+			'type'        => 'error',
+			'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+			'entity_id'   => array( 'wc' => $order->get_id() ),
+			'problem'     => 'Order Cancellation failed in Megaventory.',
+			'full_msg'    => $ex->getMessage(),
+			'error_code'  => 500,
+			'json_object' => '',
+		);
+
+		$e = new MVWC_Error( $args );
+
+		return;
+	}
+
 }
 
 // END SYNCHRONIZE FUNCTIONS ON CREATE/UPDATE.

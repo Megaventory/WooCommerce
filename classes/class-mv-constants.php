@@ -59,4 +59,10 @@ class MV_Constants {
 	const PRODUCT_DELETE = 'ProductDelete';
 
 	const SUPPLIER_CLIENT_DELETE = 'SupplierClientDelete';
+
+	const SALES_ORDER_GET = 'SalesOrderGet';
+
+	const SALES_ORDER_UPDATE = 'SalesOrderUpdate';
+
+	const SALES_ORDER_CANCEL = 'SalesOrderCancel';
 }

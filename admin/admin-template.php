@@ -205,21 +205,21 @@ function generate_admin_page() {
 
 							<div class="initNoticeDiv">
 								<span>Initial Synchronization ran on <?php echo esc_attr( get_option( 'megaventory_initialized_time' ) ); ?>, 
-								<span class="CurPointer" onclick="ajaxReInitialize(0,-1,1,5,'initialize')" ><a href="#">Run again</a></span>
+								<span class="CurPointer" onclick="ajaxReInitialize(0,-1,1,3,'initialize')" ><a href="#">Run again</a></span>
 								</span>
 							</div>
 
 							<?php if ( $is_old_version ) : ?>
 
-								<div id="sync-wc-mv" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,5,-1,1,0,0,'products')" >
+								<div id="sync-wc-mv" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,3,-1,1,0,0,'products')" >
 									<span class="mv-action" title="Synchronize products from your WooCommerce to your Megaventory account">Push Products from WooCommerce to Megaventory </span>
 								</div>
 
-								<div id="sync-clients" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,5,-1,1,0,0,'clients')" >
+								<div id="sync-clients" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,3,-1,1,0,0,'clients')" >
 									<span class="mv-action" title="Synchronize clients from your WooCommerce to your Megaventory account">Push Clients from WooCommerce to Megaventory</span>
 								</div>
 
-								<div id="sync-coupons" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,5,-1,1,0,0,'coupons')" >
+								<div id="sync-coupons" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,3,-1,1,0,0,'coupons')" >
 									<span class="mv-action" title="Synchronize coupons from your WooCommerce to your Megaventory account">Push Coupons from WooCommerce to Megaventory</span>
 								</div>
 
@@ -233,7 +233,7 @@ function generate_admin_page() {
 
 									<div class="initNoticeDiv">
 										<span>Products Synchronization: <?php echo esc_attr( get_option( 'megaventory_products_synchronized_time' ) ); ?>, 
-										<span class="CurPointer" onclick="ajaxImport(0,5,-1,1,0,0,'products')" ><a href="#">Run again</a></span>
+										<span class="CurPointer" onclick="ajaxImport(0,3,-1,1,0,0,'products')" ><a href="#">Run again</a></span>
 										</span>
 									</div>
 								<?php endif; ?>
@@ -242,7 +242,7 @@ function generate_admin_page() {
 
 									<div class="initNoticeDiv">
 										<span>Clients Synchronization: <?php echo esc_attr( get_option( 'megaventory_clients_synchronized_time' ) ); ?>, 
-										<span class="CurPointer" onclick="ajaxImport(0,5,-1,1,0,0,'clients')" ><a href="#">Run again</a></span>
+										<span class="CurPointer" onclick="ajaxImport(0,3,-1,1,0,0,'clients')" ><a href="#">Run again</a></span>
 										</span>
 									</div>
 
@@ -252,7 +252,7 @@ function generate_admin_page() {
 
 									<div class="initNoticeDiv">
 										<span>Coupons Synchronization: <?php echo esc_attr( get_option( 'megaventory_coupons_synchronized_time' ) ); ?>, 
-										<span class="CurPointer" onclick="ajaxImport(0,5,-1,1,0,0,'coupons')" ><a href="#">Run again</a></span>
+										<span class="CurPointer" onclick="ajaxImport(0,3,-1,1,0,0,'coupons')" ><a href="#">Run again</a></span>
 										</span>
 									</div>
 
@@ -274,19 +274,19 @@ function generate_admin_page() {
 
 								<?php if ( false === $are_megaventory_products_synchronized ) : ?>
 
-									<div id="sync-wc-mv" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,5,-1,1,0,0,'products')" >
+									<div id="sync-wc-mv" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,3,-1,1,0,0,'products')" >
 										<span class="mv-action" title="Synchronize products from your WooCommerce to your Megaventory account">Push Products from WooCommerce to Megaventory </span>
 									</div>
 
 								<?php elseif ( false === $are_megaventory_clients_synchronized ) : ?>
 
-									<div id="sync-clients" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,5,-1,1,0,0,'clients')" >
+									<div id="sync-clients" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,3,-1,1,0,0,'clients')" >
 										<span class="mv-action" title="Synchronize clients from your WooCommerce to your Megaventory account">Push Clients from WooCommerce to Megaventory</span>
 									</div>
 
 								<?php elseif ( false === $are_megaventory_coupons_synchronized ) : ?>
 
-									<div id="sync-coupons" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,5,-1,1,0,0,'coupons')" >
+									<div id="sync-coupons" class="updateButton CurPointer pushAction" onclick="ajaxImport(0,3,-1,1,0,0,'coupons')" >
 										<span class="mv-action" title="Synchronize coupons from your WooCommerce to your Megaventory account">Push Coupons from WooCommerce to Megaventory</span>
 									</div>
 
@@ -346,7 +346,7 @@ function generate_admin_page() {
 							<?php endif; ?>
 
 						<?php else : ?>
-							<div id="initialize" class="updateButton CurPointer pushAction" onclick="ajaxInitialize(0,-1,1,5,'initialize')" >
+							<div id="initialize" class="updateButton CurPointer pushAction" onclick="ajaxInitialize(0,-1,1,3,'initialize')" >
 								<span class="mv-action" title="Initialize Megaventory plugin">Initial Synchronization</span>
 							</div>
 						<?php endif; ?>
