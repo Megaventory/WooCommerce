@@ -21,6 +21,7 @@ if ( ! defined( 'MEGAVENTORY__PLUGIN_DIR' ) ) {
 }
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-product.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-client.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/order.php';
 
 $products = Product::wc_get_all_products();
 
