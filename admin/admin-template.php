@@ -21,6 +21,10 @@
 function generate_admin_page() {
 	global $wpdb;
 
+	if ( ! wp_next_scheduled( 'pull_changes_event' ) ) {
+		wp_schedule_event( time(), '1min', 'pull_changes_event' );
+	}
+
 	$entities_errors = $wpdb->get_results(
 		"
 		SELECT * 

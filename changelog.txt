@@ -1,4 +1,7 @@
 *** Megaventory Extension Template Changelog ***
+2020-11-16 - version 2.2.6
+* Reschedule Cron Event for synchronization from Megaventory if has been removed.
+
 2020-10-27 - version 2.2.5
 * Fixed a bug on uninstall
 
