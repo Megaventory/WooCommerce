@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.6
+ * Version: 2.2.7
  * Text Domain: megaventory
  * Plugin URI: https://megaventory.com/
  * Description: Integration between WooCommerce and Megaventory.
@@ -11,10 +11,10 @@
  *
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
  * WC requires at least: 3.0
- * WC tested up to: 4.5.1
+ * WC tested up to: 4.8.0
  * Requires at least: 4.4
- * Tested up to: 5.5.0
- * Stable tag: 5.4.2
+ * Tested up to: 5.6.0
+ * Stable tag: 5.6.0
  *
  * Author: Megaventory
  * Author URI: https://megaventory.com/
@@ -1074,10 +1074,18 @@ function order_placed( $order ) {
 	$returned = array();
 	try {
 
+		if ( get_post_meta( $order->get_id(), 'megaventory_order_processing', true ) ) {
+
+			return; // Exit if already processed.
+		}
+		update_post_meta( $order->get_id(), 'megaventory_order_processing', 1 );
+
 		/* place order through Megaventory API */
 		$returned = place_sales_order( $order, $client );
 
 	} catch ( \Error $ex ) {
+
+		delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
 
 		$args = array(
 			'type'        => 'error',
@@ -1094,8 +1102,10 @@ function order_placed( $order ) {
 		return;
 	}
 
-	if ( ! array_key_exists( 'mvSalesOrder', $returned ) ) {
+	if ( '0' !== $returned['ResponseStatus']['ErrorCode'] || ! array_key_exists( 'mvSalesOrder', $returned ) ) {
 		// Error happened. It needs to be reported.
+
+		delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
 
 		$args = array(
 			'type'        => 'error',
@@ -1133,6 +1143,8 @@ function order_placed( $order ) {
 	*/
 	update_post_meta( $order->get_id(), 'order_sent_to_megaventory', $returned['mvSalesOrder']['SalesOrderId'] );
 	update_post_meta( $order->get_id(), 'megaventory_order_name', $returned['mvSalesOrder']['SalesOrderTypeAbbreviation'] . ' ' . $returned['mvSalesOrder']['SalesOrderNo'] );
+
+	delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
 }
 
 /**
