@@ -991,7 +991,7 @@ class Product {
 
 		$img = wp_get_attachment_image_src( get_post_thumbnail_id( $id ) );
 
-		if ( $img[0] ) {
+		if ( false !== $img && $img[0] ) {
 
 			$prod->image_url = $img[0];
 		}
@@ -1178,6 +1178,8 @@ class Product {
 			always use $categories when using this function in a loop with many users
 		*/
 
+		$wc_product = wc_get_product( $this->wc_id );
+
 		if ( 'grouped' === $this->type ) {
 
 			return null;
@@ -1192,7 +1194,6 @@ class Product {
 			return false;
 		}
 		if ( ! $this->sku ) {
-
 			$this->log_error( 'Product not saved to Megaventory', 'SKU cannot be empty', -1, 'error', '' );
 			return false;
 		}
@@ -1216,9 +1217,10 @@ class Product {
 
 		$urljson      = create_json_url( self::$product_update_call );
 		$json_request = $this->generate_update_json( $category_id );
-		$data         = send_json( $urljson, $json_request );
 
-		/*if product didn't save in Megaventory it will return an error code !=0*/
+		$data = send_json( $urljson, $json_request );
+
+		/*if product didn't save in Megaventory it will return an error code != 0*/
 
 		if ( '0' !== ( $data['ResponseStatus']['ErrorCode'] ) ) {
 

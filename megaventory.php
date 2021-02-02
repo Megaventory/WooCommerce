@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.7
+ * Version: 2.2.8
  * Text Domain: megaventory
  * Plugin URI: https://megaventory.com/
  * Description: Integration between WooCommerce and Megaventory.
@@ -59,6 +59,7 @@ if ( 300 > (int) ini_get( 'max_execution_time' ) ) {
 */
 
 define( 'MEGAVENTORY__PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+
 /**
  * Imports.
  */
@@ -74,6 +75,7 @@ require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-location.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/order.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'admin/admin-template.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/ajax-sync.php';
+require_once MEGAVENTORY__PLUGIN_DIR . '../../../wp-admin/includes/plugin.php'; // required to use is_plugin_active_for_network function.
 
 /*scripts hooks*/
 add_action( 'admin_enqueue_scripts', 'ajax_calls' );
@@ -378,7 +380,7 @@ function sample_admin_database_notices() {
 /**
  * This code is executed only if woocommerce is an installed and activated plugin.
  */
-if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) ) {
+if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) || is_plugin_active_for_network( 'woocommerce/woocommerce.php' ) ) {
 
 	/* configure admin panel */
 	add_action( 'admin_menu', 'plugin_setup_menu' );
@@ -399,17 +401,14 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 	}
 
 	if ( get_option( 'correct_currency' ) && get_option( 'correct_connection' ) && get_option( 'correct_key' ) ) {
-		/*
-			Hooks:
-			woocommerce_new_order hook, comes with no items. Because items are not saved in DB yet..
-			woocommerce_thankyou hook, can be ignored if checkout from paypal.
-		*/
-		add_action( 'woocommerce_after_order_object_save', 'order_placed', 10, 1 );
+
+		add_action( 'woocommerce_new_order', 'order_placed', 10, 1 );
 		add_action( 'woocommerce_order_status_cancelled', 'order_cancelled_handler', 10, 1 );
 
 		/* Product add/edit, delete */
-		add_action( 'save_post', 'sync_on_product_save', 99, 3 );
+		add_action( 'woocommerce_update_product', 'sync_on_product_save', 99, 1 );
 		add_action( 'before_delete_post', 'delete_product_handler', 10, 2 );
+		add_action( 'woocommerce_new_product', 'new_product_from_import', 10, 2 );
 
 		/* Customer add, edit, delete */
 		add_action( 'user_register', 'sync_on_profile_create', 10, 1 );
@@ -842,12 +841,10 @@ function set_api_host( $host ) {
 /**
  * Product edit or create.
  *
- * @param int     $prod_id as product id.
- * @param WP_Post $post as WP_Post.
- * @param bool    $update is a post update.
+ * @param int $prod_id as product id.
  * @return void
  */
-function sync_on_product_save( $prod_id, $post, $update ) {
+function sync_on_product_save( $prod_id ) {
 
 	if ( 'product' !== get_post_type( $prod_id ) ) {
 		return;
@@ -868,6 +865,17 @@ function sync_on_product_save( $prod_id, $post, $update ) {
 		$product = Product::wc_find_product( $prod_id );
 		$product->mv_save();
 	}
+}
+
+/**
+ * Product create from CSV Import.
+ *
+ * @param int        $product_id as product id.
+ * @param WC_Product $product as WC_Product.
+ * @return void
+ */
+function new_product_from_import( $product_id, $product ) {
+	sync_on_product_save( $product_id );
 }
 
 /**
@@ -1043,108 +1051,102 @@ function initialize_taxes() {
 /**
  * This function will be called every time an order item is saved, this means multiple times.
  *
- * @param WC_Order $order as WC_Order.
+ * @param int $order_id As int.
  * @return void
  */
-function order_placed( $order ) {
+function order_placed( $order_id ) {
+	$order = wc_get_order( $order_id );
+	// Synchronize only if the order is not synchronized and is not in the following states: pending, cancelled, draft.
+	$states_that_should_not_be_synced = array( 'pending', 'cancelled', 'draft' );
+	if ( ! get_post_meta( $order->get_id(), 'order_sent_to_megaventory', true ) && ( ! in_array( $order->get_status(), $states_that_should_not_be_synced, true ) ) ) {
 
-	// Checking if this has already been synchronized.
-	if ( get_post_meta( $order->get_id(), 'order_sent_to_megaventory', true ) ) {
+		$id     = $order->get_customer_id();
+		$client = Client::wc_find( $id );
 
-		return; // Exit if already processed.
-	}
-
-	if ( 'pending' === $order->get_status() || 'cancelled' === $order->get_status() || 'draft' === $order->get_status() ) {
-
-		return; // Exit draft, pending payment, cancelled orders.
-	}
-
-	$id     = $order->get_customer_id();
-	$client = Client::wc_find( $id );
-
-	if ( $client && empty( $client->mv_id ) ) {
-		$client->mv_save(); // make sure id exists.
-	}
-
-	if ( null === $client || null === $client->mv_id || '' === $client->mv_id ) { // Get guest.
-
-		$client = get_guest_mv_client();
-	}
-
-	$returned = array();
-	try {
-
-		if ( get_post_meta( $order->get_id(), 'megaventory_order_processing', true ) ) {
-
-			return; // Exit if already processed.
+		if ( $client && empty( $client->mv_id ) ) {
+			$client->mv_save(); // make sure id exists.
 		}
-		update_post_meta( $order->get_id(), 'megaventory_order_processing', 1 );
 
-		/* place order through Megaventory API */
-		$returned = place_sales_order( $order, $client );
+		if ( null === $client || null === $client->mv_id || '' === $client->mv_id ) { // Get guest.
 
-	} catch ( \Error $ex ) {
+			$client = get_guest_mv_client();
+		}
 
-		delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
+		$returned = array();
+		try {
+
+			if ( get_post_meta( $order->get_id(), 'megaventory_order_processing', true ) ) {
+
+				return; // Exit if already processed.
+			}
+			update_post_meta( $order->get_id(), 'megaventory_order_processing', 1 );
+
+			/* place order through Megaventory API */
+			$returned = place_sales_order( $order, $client );
+
+		} catch ( \Error $ex ) {
+
+			delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
+
+			$args = array(
+				'type'        => 'error',
+				'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+				'entity_id'   => array( 'wc' => $order->get_id() ),
+				'problem'     => 'Order not placed in Megaventory.',
+				'full_msg'    => $ex->getMessage(),
+				'error_code'  => 500,
+				'json_object' => '',
+			);
+
+			$e = new MVWC_Error( $args );
+
+			return;
+		}
+
+		if ( '0' !== $returned['ResponseStatus']['ErrorCode'] || ! array_key_exists( 'mvSalesOrder', $returned ) ) {
+			// Error happened. It needs to be reported.
+
+			delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
+
+			$args = array(
+				'type'        => 'error',
+				'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+				'entity_id'   => array( 'wc' => $order->get_id() ),
+				'problem'     => 'Order not placed in Megaventory.',
+				'full_msg'    => $returned['ResponseStatus']['Message'],
+				'error_code'  => $returned['ResponseStatus']['ErrorCode'],
+				'json_object' => $returned['json_object'],
+			);
+
+			$e = new MVWC_Error( $args );
+
+			return;
+		}
 
 		$args = array(
-			'type'        => 'error',
-			'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
-			'entity_id'   => array( 'wc' => $order->get_id() ),
-			'problem'     => 'Order not placed in Megaventory.',
-			'full_msg'    => $ex->getMessage(),
-			'error_code'  => 500,
-			'json_object' => '',
+			'entity_id'          => array(
+				'wc' => $order->get_id(),
+				'mv' => $returned['mvSalesOrder']['SalesOrderId'],
+			),
+			'entity_type'        => 'order',
+			'entity_name'        => $returned['mvSalesOrder']['SalesOrderTypeAbbreviation'] . ' ' . $returned['mvSalesOrder']['SalesOrderNo'],
+			'transaction_status' => 'Insert',
+			'full_msg'           => 'The order has been placed to your Megaventory account',
+			'success_code'       => 1,
 		);
 
-		$e = new MVWC_Error( $args );
+		$e = new MVWC_Success( $args );
 
-		return;
-	}
-
-	if ( '0' !== $returned['ResponseStatus']['ErrorCode'] || ! array_key_exists( 'mvSalesOrder', $returned ) ) {
-		// Error happened. It needs to be reported.
+		/*
+			Hooks:
+			woocommerce_new_order hook, comes with no items. Because items are not saved in DB yet..
+			woocommerce_thankyou hook, can be ignored if checkout from paypal.
+		*/
+		update_post_meta( $order->get_id(), 'order_sent_to_megaventory', $returned['mvSalesOrder']['SalesOrderId'] );
+		update_post_meta( $order->get_id(), 'megaventory_order_name', $returned['mvSalesOrder']['SalesOrderTypeAbbreviation'] . ' ' . $returned['mvSalesOrder']['SalesOrderNo'] );
 
 		delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
-
-		$args = array(
-			'type'        => 'error',
-			'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
-			'entity_id'   => array( 'wc' => $order->get_id() ),
-			'problem'     => 'Order not placed in Megaventory.',
-			'full_msg'    => $returned['ResponseStatus']['Message'],
-			'error_code'  => $returned['ResponseStatus']['ErrorCode'],
-			'json_object' => $returned['json_object'],
-		);
-
-		$e = new MVWC_Error( $args );
-
-		return;
 	}
-
-	$args = array(
-		'entity_id'          => array(
-			'wc' => $order->get_id(),
-			'mv' => $returned['mvSalesOrder']['SalesOrderId'],
-		),
-		'entity_type'        => 'order',
-		'entity_name'        => $returned['mvSalesOrder']['SalesOrderTypeAbbreviation'] . ' ' . $returned['mvSalesOrder']['SalesOrderNo'],
-		'transaction_status' => 'Insert',
-		'full_msg'           => 'The order has been placed to your Megaventory account',
-		'success_code'       => 1,
-	);
-
-	$e = new MVWC_Success( $args );
-
-	/*
-		Hooks:
-		woocommerce_new_order hook, comes with no items. Because items are not saved in DB yet..
-		woocommerce_thankyou hook, can be ignored if checkout from paypal.
-	*/
-	update_post_meta( $order->get_id(), 'order_sent_to_megaventory', $returned['mvSalesOrder']['SalesOrderId'] );
-	update_post_meta( $order->get_id(), 'megaventory_order_name', $returned['mvSalesOrder']['SalesOrderTypeAbbreviation'] . ' ' . $returned['mvSalesOrder']['SalesOrderNo'] );
-
-	delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
 }
 
 /**

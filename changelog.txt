@@ -1,4 +1,10 @@
 *** Megaventory Extension Template Changelog ***
+2021-02-01 - version 2.2.8
+* Bug with product synchronization displaying an error message even if the product synchronized successfully
+* Bug with CSV product import
+* Bug with multisite plugin detection
+* Updates to product and order hooks for a more robust implementation
+
 2020-12-09 - version 2.2.7
 * Bug with duplicate Orders
 * Compatible with WooCommerce 4.8.0 

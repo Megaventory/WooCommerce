@@ -607,9 +607,7 @@ function sync_order() {
 
 			$order_id = (int) sanitize_text_field( wp_unslash( $_POST['orderId'] ) );
 
-			$order = wc_get_order( $order_id );
-
-			$return_values = order_placed( $order );
+			$return_values = order_placed( $order_id );
 		}
 	} catch ( \Error $ex ) {
 
