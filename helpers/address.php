@@ -28,6 +28,12 @@ function format_address( $ar ) {
 	$postcode = $ar['postcode'];
 	$country  = $ar['country'];
 
+	$country_states = WC()->countries->get_states( $country );
+
+	if ( in_array( $county, array_keys( $country_states ), true ) ) {
+		$county = $country_states[ $county ];
+	}
+
 	$address = '';
 	if ( null !== $name && ! ctype_space( $name ) ) {
 		$address .= $name . " \n ";
@@ -44,8 +50,8 @@ function format_address( $ar ) {
 	if ( null !== $city && ! ctype_space( $city ) ) {
 		$address .= $city . " \n ";
 	}
-	if ( null !== $country && ! ctype_space( $country ) ) {
-		$address .= $country . " \n ";
+	if ( null !== $county && ! ctype_space( $county ) ) {
+		$address .= $county . " \n ";
 	}
 	if ( null !== $postcode && ! ctype_space( $postcode ) ) {
 		$address .= $postcode . " \n ";

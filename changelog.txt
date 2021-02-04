@@ -1,4 +1,7 @@
 *** Megaventory Extension Template Changelog ***
+2021-02-04 - version 2.2.9
+* Bug with order synchronization, specifically the address state/county was not properly synchronizing.
+
 2021-02-01 - version 2.2.8
 * Bug with product synchronization displaying an error message even if the product synchronized successfully
 * Bug with CSV product import
