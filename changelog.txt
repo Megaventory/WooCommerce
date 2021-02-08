@@ -1,4 +1,7 @@
 *** Megaventory Extension Template Changelog ***
+2021-02-04 - version 2.2.10
+* Bug with order synchronization from store front and order updates. Using another hook to account for syncing orders when status is changed from Pending Payment to Processing.
+
 2021-02-04 - version 2.2.9
 * Bug with order synchronization, specifically the address state/county was not properly synchronizing.
 

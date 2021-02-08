@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.9
+ * Version: 2.2.10
  * Text Domain: megaventory
  * Plugin URI: https://megaventory.com/
  * Description: Integration between WooCommerce and Megaventory.
@@ -403,6 +403,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 	if ( get_option( 'correct_currency' ) && get_option( 'correct_connection' ) && get_option( 'correct_key' ) ) {
 
 		add_action( 'woocommerce_new_order', 'order_placed', 10, 1 );
+		add_action( 'woocommerce_after_order_object_save', 'order_updated', 10, 1 );
 		add_action( 'woocommerce_order_status_cancelled', 'order_cancelled_handler', 10, 1 );
 
 		/* Product add/edit, delete */
@@ -1050,6 +1051,16 @@ function initialize_taxes() {
 
 /**
  * This function will be called every time an order item is saved, this means multiple times.
+ *
+ * @param WC_Order $order as WC_Order.
+ * @return void
+ */
+function order_updated( $order ) {
+	order_placed( $order->get_id() );
+}
+
+/**
+ * This function will be called every time an order item is created.
  *
  * @param int $order_id As int.
  * @return void
