@@ -24,7 +24,7 @@ function format_address( $ar ) {
 	$line_1   = $ar['line_1'];
 	$line_2   = $ar['line_2'];
 	$city     = $ar['city'];
-	$country  = $ar['country'];
+	$county   = $ar['county'];
 	$postcode = $ar['postcode'];
 	$country  = $ar['country'];
 

@@ -1,15 +1,15 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.10
+ * Version: 2.2.13
  * Text Domain: megaventory
- * Plugin URI: https://megaventory.com/
+ * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
+ * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
  * Description: Integration between WooCommerce and Megaventory.
  *
  * @package megaventory
  * @since 1.0.0
  *
- * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
  * WC requires at least: 3.0
  * WC tested up to: 4.8.0
  * Requires at least: 4.4
@@ -124,8 +124,6 @@ function sess_start() {
 }
 
 add_action( 'init', 'sess_start', 1 );
-
-define( 'ALTERNATE_WP_CRON', true );
 
 /**
  * PLUGIN INITIALIZATION

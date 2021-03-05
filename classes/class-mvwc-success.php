@@ -13,7 +13,7 @@
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  */
 
-$success_table_name = $wpdb->prefix . 'megaventory_success_log';
+$megaventory_success_table_name = $wpdb->prefix . 'megaventory_success_log';
 
 /**
  * Success class.
@@ -97,12 +97,12 @@ class MVWC_Success {
 	 */
 	public function save() {
 
-		global $success_table_name, $wpdb;
+		global $megaventory_success_table_name, $wpdb;
 
 		$charset_collate = $wpdb->get_charset_collate();
 
 		$sql_results = $wpdb->insert(
-			$success_table_name,
+			$megaventory_success_table_name,
 			array(
 				'created_at'         => get_date_from_gmt( gmdate( 'Y-m-d H:i:s' ), 'Y-m-d H:i:s' ),
 				'type'               => $this->entity_type,

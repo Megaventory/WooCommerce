@@ -1,5 +1,14 @@
 *** Megaventory Extension Template Changelog ***
-2021-02-04 - version 2.2.10
+2021-03-05 - version 2.2.13
+* Update global variables to prevent conflicts with other plugins.
+
+2021-02-10 - version 2.2.12
+* Remove a reduntant feature.
+
+2021-02-10 - version 2.2.11
+* Bug with products updating that should not be updating.
+
+2021-02-08 - version 2.2.10
 * Bug with order synchronization from store front and order updates. Using another hook to account for syncing orders when status is changed from Pending Payment to Processing.
 
 2021-02-04 - version 2.2.9

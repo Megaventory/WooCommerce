@@ -18,9 +18,9 @@
  */
 require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/address.php';
 
-$default_host = 'https://api.megaventory.com/v2017a/';
-$host         = get_api_host();
-$url          = $host . 'json/reply/';
+$megaventory_default_host = 'https://api.megaventory.com/v2017a/';
+$megaventory_host         = get_api_host();
+$megaventory_url          = $megaventory_host . 'json/reply/';
 
 
 /* MV status => WC status */
@@ -70,10 +70,10 @@ function get_api_key() {
  * Get host
  */
 function get_api_host() {
-	global $default_host;
+	global $megaventory_default_host;
 	$host = get_option( 'megaventory_api_host' );
 	if ( ! $host ) {
-		$host = $default_host;
+		$host = $megaventory_default_host;
 	}
 	return $host;
 }
@@ -93,8 +93,8 @@ function get_guest_mv_client() {
  */
 function create_json_url( $call ) {
 	$api_key = get_option( 'megaventory_api_key' );
-	global $url;
-	return $url . $call . '?APIKEY=' . rawurlencode( $api_key );
+	global $megaventory_url;
+	return $megaventory_url . $call . '?APIKEY=' . rawurlencode( $api_key );
 }
 
 /**
@@ -149,9 +149,10 @@ function create_json_url_filters( $call, $args ) {
  *
  * @param string $url as string.
  * @param mixed  $json_request as stdclass.
+ * @param mixed  $attempt as int.
  * @return mixed
  */
-function send_json( $url, $json_request ) {
+function send_json( $url, $json_request, $attempt = 0 ) {
 
 	/**
 	 * Old code did a curl, remove in the future if wp_remote_get is working fine.
@@ -186,8 +187,11 @@ function send_json( $url, $json_request ) {
 	$data = json_decode( wp_remote_retrieve_body( $response ), true );
 
 	if ( is_wp_error( $response ) && ! isset( $data['ResponseStatus']['Message'] ) ) {
-
-		$data['InternalErrorCode']         = 'WordPress Request timeout';
+		if ( 3 !== $attempt ) {
+			$attempt++;
+			return send_json( $url, $json_request, $attempt );
+		}
+		$data['InternalErrorCode']         = 'Unable to communicate with the API endpoint.';
 		$data['ResponseStatus']['Message'] = $response->get_error_message();
 	}
 
@@ -202,9 +206,10 @@ function send_json( $url, $json_request ) {
  *
  * @param string $url as string.
  * @param mixed  $request as array.
+ * @param mixed  $attempt as int.
  * @return array
  */
-function send_request_to_megaventory( $url, $request ) {
+function send_request_to_megaventory( $url, $request, $attempt = 0 ) {
 
 	$body_to_send = $request;
 
@@ -222,6 +227,11 @@ function send_request_to_megaventory( $url, $request ) {
 	$data = json_decode( wp_remote_retrieve_body( $response ), true );
 
 	if ( is_wp_error( $response ) && ! isset( $data['ResponseStatus']['Message'] ) ) {
+
+		if ( 3 !== $attempt ) {
+			$attempt++;
+			return send_request_to_megaventory( $url, $request, $attempt );
+		}
 
 		$data['InternalErrorCode']         = 'WordPress Request timeout';
 		$data['ResponseStatus']['Message'] = $response->get_error_message();
