@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.13
+ * Version: 2.2.14
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -83,6 +83,9 @@ add_action( 'admin_enqueue_scripts', 'ajax_calls' );
 add_action( 'wp_ajax_asyncImport', 'async_import' );
 add_action( 'wp_ajax_nopriv_asyncImport', 'async_import' );
 
+add_action( 'wp_ajax_alternateWpCronStatus', 'change_alternate_cron_status' );
+add_action( 'wp_ajax_nopriv_alternateWpCronStatus', 'change_alternate_cron_status' );
+
 add_action( 'wp_ajax_changeDefaultMegaventoryLocation', 'change_default_megaventory_location' );
 add_action( 'wp_ajax_nopriv_changeDefaultMegaventoryLocation', 'change_default_megaventory_location' );
 
@@ -100,6 +103,10 @@ add_action( 'wp_ajax_nopriv_skip_stock_synchronization', 'skip_stock_synchroniza
 
 add_action( 'wp_ajax_sync_order', 'sync_order' );
 add_action( 'wp_ajax_nopriv_sync_order', 'sync_order' );
+
+/* Plugin Upgrade hook */
+
+add_action( 'upgrader_process_complete', 'upgrade_plugin', 10, 2 );
 
 $mv_admin_slug = 'megaventory-plugin';
 
@@ -124,6 +131,10 @@ function sess_start() {
 }
 
 add_action( 'init', 'sess_start', 1 );
+
+if ( get_option( 'megaventory_alternate_wp_cron', false ) ) {
+	define( 'ALTERNATE_WP_CRON', true );
+}
 
 /**
  * PLUGIN INITIALIZATION
@@ -193,6 +204,19 @@ function register_warning( $str1 = null, $str2 = null ) {
 	$session_messages['warnings'] = $warns;
 
 	update_option( 'mv_session_messages', $session_messages );
+}
+
+/**
+ * Plugin upgrade hook.
+ *
+ * @param WP_Upgrader $upgrader_object as WP_Upgrader.
+ * @param array       $options as array.
+ */
+function upgrade_plugin( $upgrader_object, $options ) {
+	if ( array_key_exists( 'plugins', $options ) && in_array( plugin_basename( __FILE__ ), $options['plugins'], true ) ) {
+		update_option( 'correct_megaventory_apikey', get_option( 'correct_key', false ) );
+		delete_option( 'correct_key' );
+	}
 }
 
 /**
@@ -336,6 +360,13 @@ function sample_admin_notice_success() {
 }
 
 /**
+ * API call suspended for excessive failed request.
+ */
+function register_api_suspension_error() {
+	register_warning( 'Unable to verify Megaventory API key', 'Please check your API key and try again. All Megaventory synchronization tasks have been disabled due to excessive failed requests. Please ensure your Megaventory account is active and enter a valid API key or disable the plugin if you are not planning on using the integration.' );
+}
+
+/**
  * Admin database notices.
  *
  * @return void
@@ -394,11 +425,16 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 	add_action( 'init', 'register_style' );
 	add_action( 'admin_enqueue_scripts', 'enqueue_style' ); // Needed only in admin so far.
 
-	if ( 5 === random_int( 0, 30 ) ) {
+	if ( 5 === random_int( 0, 30 ) && get_option( 'do_megaventory_requests', true ) ) {
+		// Might check multiple times according to the logic and the resources needed from the API.
 		check_status();
 	}
 
-	if ( get_option( 'correct_currency' ) && get_option( 'correct_connection' ) && get_option( 'correct_key' ) ) {
+	if ( ! get_option( 'do_megaventory_requests', true ) ) {
+		register_api_suspension_error();
+	}
+
+	if ( get_option( 'correct_currency' ) && get_option( 'correct_connection' ) && get_option( 'correct_megaventory_apikey' ) ) {
 
 		add_action( 'woocommerce_new_order', 'order_placed', 10, 1 );
 		add_action( 'woocommerce_after_order_object_save', 'order_updated', 10, 1 );
@@ -439,6 +475,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 	add_action( 'admin_notices', 'sample_admin_notice_error' );
 }
 
+
 /**
  * Check plugin connection.
  *
@@ -446,11 +483,9 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
  */
 function check_status() {
 
-	/**
-	 * $correct_connection = check_connectivity();
-	 */
+	$attempts = get_option( 'failed_connection_attempts', 0 );
 
-	update_option( 'correct_connection', true );
+	$response = check_key();
 
 	if ( ! get_option( 'correct_connection' ) ) {
 
@@ -466,19 +501,25 @@ function check_status() {
 		return false;
 	}
 
-	$response = check_key();
-
 	if ( 0 === (int) $response['ResponseStatus']['ErrorCode'] ) {
 
-		update_option( 'correct_key', true );
+		update_option( 'correct_megaventory_apikey', true );
+		update_option( 'failed_connection_attempts', 0 );
+		update_option( 'do_megaventory_requests', true );
 	} else {
 
-		update_option( 'correct_key', false );
+		++$attempts;
+		if ( 101 === $attempts ) {
+			update_option( 'do_megaventory_requests', false );
+			update_option( 'failed_connection_attempts', 0 );
+			register_api_suspension_error();
+		}
+		update_option( 'failed_connection_attempts', $attempts );
+		update_option( 'correct_megaventory_apikey', false );
+		update_option( 'correct_currency', false );
 	}
 
-	if ( ! get_option( 'correct_key' ) ) {
-
-		delete_option( 'megaventory_api_key' );
+	if ( ! get_option( 'correct_megaventory_apikey' ) ) {
 
 		register_error( 'Megaventory error! Invalid API key!', $response['ResponseStatus']['Message'] );
 
@@ -486,8 +527,6 @@ function check_status() {
 	}
 
 	if ( null !== $response['ResponseStatus']['Message'] && strpos( $response['ResponseStatus']['Message'], 'Administrator' ) === false ) {
-
-		delete_option( 'megaventory_api_key' );
 
 		register_error( "Megaventory error! WooCommerce integration needs administrator's credentials!", 'Please contact your Megaventory account administrator.' );
 
@@ -547,13 +586,14 @@ function ajax_calls() {
 
 	wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.7', true );
 	wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.7', true );
-
+	wp_enqueue_script( 'ajaxWpCronStatus', plugins_url( '/js/ajaxWpCronStatus.js', __FILE__ ), array(), '2.0.7', true );
 	$nonce_array = array(
 		'nonce' => $nonce,
 	);
 
 	wp_localize_script( 'ajaxCallImport', 'ajax_object', $nonce_array );
 	wp_localize_script( 'ajaxCallInitialize', 'ajax_object', $nonce_array );
+	wp_localize_script( 'ajaxWpCronStatus', 'ajax_object', $nonce_array );
 }
 /**
  * Link CSS.
@@ -561,7 +601,7 @@ function ajax_calls() {
  * @return void
  */
 function register_style() {
-	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.7', 'all' );
+	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.8', 'all' );
 	wp_register_style( 'mv_style_fonts', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css', false, '2.0.7', 'all' );
 }
 
@@ -729,7 +769,7 @@ function display_megaventory_order_info( $column, $order_id ) {
 
 			echo 'Megaventory order id: ' . esc_attr( $megaventory_order_id );
 		}
-	} elseif ( get_option( 'correct_key' ) && get_option( 'is_megaventory_initialized' ) ) {
+	} elseif ( get_option( 'correct_megaventory_apikey' ) && get_option( 'is_megaventory_initialized' ) ) {
 		?>
 
 		<span id ='orderToSync_<?php echo esc_attr( $order_id ); ?>' class='Padd10' onclick='SyncOrder(<?php echo esc_attr( $order_id ); ?>)'><a href="#">Synchronize</a></span>
@@ -1330,7 +1370,7 @@ function admin_notice_plugin_activation() {
 
 	delete_option( 'correct_currency' );
 	delete_option( 'correct_connection' );
-	delete_option( 'correct_key' );
+	delete_option( 'correct_megaventory_apikey' );
 	delete_option( 'last_valid_api_key' );
 
 	delete_option( 'mv_session_messages' );
@@ -1405,7 +1445,7 @@ function pull_changes() {
 		return;
 	}
 
-	if ( ! ( get_option( 'is_megaventory_initialized' ) && get_option( 'correct_currency' ) && get_option( 'correct_connection' ) && get_option( 'correct_key' ) ) ) {
+	if ( ! ( get_option( 'is_megaventory_initialized' ) && get_option( 'correct_currency' ) && get_option( 'correct_connection' ) && get_option( 'correct_megaventory_apikey' ) ) ) {
 
 		register_error( 'Megaventory automatic synchronization failed', 'Check that Currency and API Key are correct and your store is initialized' );
 

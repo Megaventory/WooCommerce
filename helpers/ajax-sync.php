@@ -374,6 +374,20 @@ function async_import() {
 }
 
 /**
+ * Change alternate cron status.
+ */
+function change_alternate_cron_status() {
+	if ( isset( $_POST['newStatus'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
+		$status = (bool) sanitize_text_field( wp_unslash( $_POST['newStatus'] ) );
+		update_option( 'megaventory_alternate_wp_cron', $status );
+		wp_send_json_success( array( 'success' => true ), 200 );
+	} else {
+		wp_send_json_error( array( 'success' => false ), 200 );
+	}
+	wp_die();
+}
+
+/**
  * Notices.
  *
  * @param string $type as message type.

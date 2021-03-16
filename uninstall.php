@@ -45,7 +45,7 @@ delete_mv_data_from_orders();
 
 delete_option( 'correct_currency' );
 delete_option( 'correct_connection' );
-delete_option( 'correct_key' );
+delete_option( 'correct_megaventory_apikey' );
 delete_option( 'last_valid_api_key' );
 
 delete_option( 'mv_session_messages' );
@@ -61,6 +61,7 @@ delete_option( 'are_megaventory_products_synchronized' );
 delete_option( 'are_megaventory_clients_synchronized' );
 delete_option( 'are_megaventory_coupons_synchronized' );
 delete_option( 'is_megaventory_stock_adjusted' );
+delete_option( 'megaventory_alternate_wp_cron' );
 
 delete_option( 'megaventory_initialized_time' );
 delete_option( 'megaventory_products_synchronized_time' );

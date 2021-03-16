@@ -1,4 +1,7 @@
 *** Megaventory Extension Template Changelog ***
+2021-03-12 - version 2.2.14
+* Bug with API key retention.
+
 2021-03-05 - version 2.2.13
 * Update global variables to prevent conflicts with other plugins.
 

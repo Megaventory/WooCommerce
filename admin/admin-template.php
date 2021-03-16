@@ -47,7 +47,7 @@ function generate_admin_page() {
 
 	$correct_connection         = (bool) get_option( 'correct_connection' );
 	$correct_currency           = (bool) get_option( 'correct_currency' );
-	$correct_key                = (bool) get_option( 'correct_key' );
+	$correct_key                = (bool) get_option( 'correct_megaventory_apikey' );
 	$is_megaventory_initialized = (bool) get_option( 'is_megaventory_initialized' );
 
 	$are_megaventory_products_synchronized = get_option( 'are_megaventory_products_synchronized', null );
@@ -359,6 +359,27 @@ function generate_admin_page() {
 			</div>
 		<?php endif; ?>
 		<br>
+		<?php if ( $is_megaventory_initialized && $correct_connection && $correct_currency && $correct_key ) : ?>
+			<div class="mv-row row-main">
+				<div class="wp-cron">
+					<div class="actions">
+						<h3>Alternate WordPress Cron</h3>
+						<div class="MarTop10">
+							<form action="#" method="post">
+								<table class="form-table">
+									<tbody>
+										<tr>
+											<th scope="row"><label for="enable_alternate_wp_cron">Enable Alternate WordPress Cron</label></th>
+											<td><input id="enable_alternate_wp_cron" type="checkbox" name="alternate_wp_cron" onclick="changeWpCronStatus()" <?php echo ( (bool) get_option( 'megaventory_alternate_wp_cron', false ) ) ? 'checked' : ''; ?>/><br/><span class='description'>Enable this option only if the regular cron is unable to run properly</span></td>
+										</tr>
+									</tbody>
+								</table>
+							</form>
+						</div>
+					</div>
+				</div>
+			</div>	
+		<?php endif; ?>		
 		<?php
 		$inventories = array();
 

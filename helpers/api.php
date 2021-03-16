@@ -320,21 +320,16 @@ function get_default_currency() {
  * @return bool
  */
 function check_connectivity() {
-	global $host;
 
-	$results = wp_remote_get( $host );
+	$url    = get_megaventory_url();
+	$result = wp_remote_get( $url );
 
-	if ( ! is_array( $results ) ) {
+	if ( ! $result || ! is_array( $result ) || is_wp_error( $result ) ) {
 
 		return false;
 	}
 
-	if ( '200' === (string) $results['response']['code'] && 'OK' === (string) $results['response']['message'] ) {
-
-		return true;
-	}
-
-	return false;
+	return true;
 
 }
 
@@ -347,22 +342,35 @@ function check_key() {
 
 	$api_key = get_option( 'megaventory_api_key' );
 
-	if ( empty( $api_key ) ) {
+	$connectivity = check_connectivity();
 
-		$response['ResponseStatus']['ErrorCode'] = 500;
-		$response['ResponseStatus']['Message']   = 'Empty Api Key, create an API key under My Profile.';
-
-		return $response;
+	if ( ! $connectivity ) {
+		update_option( 'correct_connection', false );
+		$data                                = array();
+		$data['ResponseStatus']['ErrorCode'] = 500;
+		$data['ResponseStatus']['Message']   = 'Unable to reach host.';
+	} else {
+		update_option( 'correct_connection', true );
+		if ( empty( $api_key ) ) {
+			$data                                = array();
+			$data['ResponseStatus']['ErrorCode'] = 500;
+			$data['ResponseStatus']['Message']   = 'Empty Api Key, create an API key under My Profile.';
+		} else {
+			$url       = create_json_url( 'APIKeyGet' );
+			$json_data = perform_call_to_megaventory( $url );
+			$data      = json_decode( $json_data, true );
+		}
 	}
 
-	$url       = create_json_url( 'ApiKeyGet' );
-	$json_data = perform_call_to_megaventory( $url );
-	$data      = json_decode( $json_data, true );
-	$code      = (int) $data['ResponseStatus']['ErrorCode'];
+	$code = (int) $data['ResponseStatus']['ErrorCode'];
 
 	/* 401-wrong key | 500-no key */
 	if ( ! ( 401 === $code ) && ! ( 500 === $code ) ) {
 		log_apikey( $api_key );
+		update_option( 'correct_megaventory_apikey', true );
+	} else {
+		update_option( 'correct_megaventory_apikey', false );
+		update_option( 'correct_currency', false );
 	}
 
 	return $data;
