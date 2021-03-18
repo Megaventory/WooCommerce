@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.15
+ * Version: 2.2.16
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -601,7 +601,7 @@ function ajax_calls() {
  * @return void
  */
 function register_style() {
-	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.10', 'all' );
+	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.11', 'all' );
 	wp_register_style( 'mv_style_fonts', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css', false, '2.0.7', 'all' );
 }
 

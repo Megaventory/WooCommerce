@@ -99,7 +99,7 @@
 
 .inventories {
 	text-align: left;
-	width: 35%;
+	width: 40%;
 }
 
 /* ADMIN PANEL */
@@ -117,13 +117,11 @@
 }
 
 .mv-row .connection {
-	width: 25%;
-	float: left;
+	text-align: left;
 }
 
-.mv-row .credentials {
+.mv-row .credentials{
 	width: 45%;
-	float: left;
 }
 
 .mv-row .actions {
@@ -132,25 +130,80 @@
 }
 
 .mv-row h3 {
-	text-align: center;
-	margin-bottom: 5px;
+	text-align: left;
+	margin-bottom: 20px;
+	margin-top: 40px;
 }
 
 .mv-status ul {
-	width: 100%;
-	min-width: 200px;
 	display: table;
+	width: 70%;
+}
+
+.mv-row .warning {
+	text-align: left;
+	margin-top: 10px;
+	margin-bottom: 20px;
+	margin-left: 8px;
+	font-size: 15px;
+	color: #A00;
+	font-weight: bold;
 }
 
 .mv-status ul li {
 	display: inline-table;
 	width: 60%;
-	margin: 0 5%;
+	margin: 0 1%;
 }
 
 .mv-status ul li.mv-li-left {
-	text-align: right;
+	text-align: left;
+	box-shadow: 0.1rem 0.1rem 0.5rem 0.1rem #AAA;
+	display: inline-block;
+	width: 8%;
 }
+
+.mv-status ul li.mv-li-left .fa-check{
+	display: block;
+	text-align: center;
+	padding: 0.5em;
+	background: #207520;
+	color: #FFF;
+	font-size: 22px;
+}
+
+.mv-status ul li.mv-li-left .fa-times{
+	display: block;
+	text-align: center;
+	padding: 0.5em;
+	background: rgb(168, 14, 45);
+	color: #FFF;
+	font-size: 22px;
+}
+
+.mv-status ul li.mv-li-left .success-desc{
+	text-align: center;
+	display: block;
+	background: rgb(222, 255, 214);
+	padding: 0.3em;
+	color: #207520;
+}
+
+.mv-row ~hr{
+	border: 0;
+	background: #CCC;
+	padding: 0.2em;
+	border-radius: 0.2rem;
+}
+
+.mv-status ul li.mv-li-left .error-desc{
+	text-align: center;
+	display: block;
+	background: rgb(255, 214, 222);
+	padding: 0.3em;
+	color: rgb(168, 14, 45);
+}
+
 
 .mv-form form .mv-form-body {
 	display: table;
@@ -169,7 +222,8 @@
 .mv-form .mv-form-bottom {
 	margin-top: 10px;
 	display: block;
-	text-align: left;
+	text-align: center;
+	margin-right: 10rem;
 }
 
 div.mv-row.row-main {
@@ -200,13 +254,13 @@ div.mv-row.row-main {
 }
 
 .mv-row .userNotificationTable-wrap {
-	width: 100%;
+	width: 70%;
 	max-height: 500px;
 	overflow: auto;
 }
 
 .mv-row .tax-wrap {
-	width: 100%;
+	width: 70%;
 	max-height: 300px;
 	overflow: auto;
 }
@@ -264,7 +318,10 @@ div.mv-row.row-main {
 	padding: 20px;
 	margin-bottom: 20px;
 }
-#success-log th, #error-log th, #taxes th{
+#locations {
+	margin-top: 20px;
+}
+#locations th, #success-log th, #error-log th, #taxes th{
 	font-weight: 600;
 	top: 0px;
 	position: sticky;

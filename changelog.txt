@@ -1,4 +1,7 @@
 *** Megaventory Extension Template Changelog ***
+2021-03-18 - version 2.2.16
+* Minor admin UI redesign
+
 2021-03-15 - version 2.2.15
 * Optimization and minor fixes.
 

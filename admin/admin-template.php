@@ -98,59 +98,51 @@ function generate_admin_page() {
 				<h3>Status</h3>
 				<div class="mv-status">
 					<ul class="mv-status">
-						<li class="mv-li-left"><span>Connection: </span>
+						<li class="mv-li-left">
 						<?php if ( $correct_connection ) : ?>
-							<span class="checkmark">
-								<div class="checkmark_stem"></div>
-								<div class="checkmark_kick"></div>
+							<span class="fa fa-check">
 							</span>
+							<span class="success-desc">Connection</span>
 						<?php else : ?>
-							<span class="checkmark">
-								<div class="checkmark_stem_error"></div>
-								<div class="checkmark_kick_error"></div>
+							<span class="fa fa-times">
 							</span>
+							<span class="error-desc">Connection</span>
 						<?php endif; ?>
 						</li>
-						<li class="mv-li-left"><span>Key: </span>
+						<li class="mv-li-left">
 						<?php if ( $correct_key ) : ?>
-							<span class="checkmark">
-								<div class="checkmark_stem"></div>
-								<div class="checkmark_kick"></div>
+							<span class="fa fa-check">
 							</span>
+							<span class="success-desc">API Key</span>
 						<?php else : ?>
-							<span class="checkmark">
-								<div class="checkmark_stem_error"></div>
-								<div class="checkmark_kick_error"></div>
+							<span class="fa fa-times">
 							</span>
+							<span class="error-desc">API Key</span>
 						<?php endif; ?>
 						</li>
-						<li class="mv-li-left"><span>Currency: </span>
+						<li class="mv-li-left">
 						<?php if ( $correct_currency ) : ?>
-							<span class="checkmark">
-								<div class="checkmark_stem"></div>
-								<div class="checkmark_kick"></div>
+							<span class="fa fa-check">
 							</span>
+							<span class="success-desc">Base Currency</span>
 						<?php else : ?>
-							<span class="checkmark">
-								<div class="checkmark_stem_error"></div>
-								<div class="checkmark_kick_error"></div>
+							<span class="fa fa-times">
 							</span>
+							<span class="error-desc">Base Currency</span>
 						<?php endif; ?>
 						</li>
-						<?php if ( ! $is_megaventory_initialized ) : ?>
-							<li class="mv-li-left"><span>Initial Sync: </span>
-								<span class="checkmark">
-									<div class="checkmark_stem_error"></div>
-									<div class="checkmark_kick_error"></div>
-								</span>
-							</li>
-						<?php endif; ?>
 					</ul>
 				</div>
 			</div>
+		</div>
+		<hr/>
+		<div class="mv-row row-main">
 			<div class="credentials">
 				<h3>Setup</h3>
 				<div class="mv-row">
+					<?php if ( ! $is_megaventory_initialized ) : ?>
+						<div class="warning mv-warn">Megaventory is not initialized</div>
+					<?php endif; ?>	
 					<div class="mv-form">
 						<form id="options" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 							<input type="hidden" name="action" value="megaventory">
@@ -201,6 +193,7 @@ function generate_admin_page() {
 			</div>
 		</div>	
 		<?php if ( $correct_connection && $correct_currency && $correct_key ) : ?>
+			<hr/>
 			<div class="mv-row row-main">
 				<div class="actions">
 					<h3>Synchronization</h3>
@@ -358,8 +351,8 @@ function generate_admin_page() {
 				</div>
 			</div>
 		<?php endif; ?>
-		<br>
 		<?php if ( $is_megaventory_initialized && $correct_connection && $correct_currency && $correct_key ) : ?>
+			<hr/>
 			<div class="mv-row row-main">
 				<div class="wp-cron">
 					<div class="actions">
@@ -390,21 +383,20 @@ function generate_admin_page() {
 
 		$default_inventory_id = (int) get_option( 'default-megaventory-inventory-location' );
 		?>
+		<hr/>
 		<div class="mv-row row-main">
 			<div class='inventories'>
-			<h2> Choose the Megaventory Inventory Location where the WooCommerce Sales Orders will be pushed to. </h2>
-				<table class="wp-list-table widefat fixed striped posts">
-					<th>
-						<td>
-							Abbreviation
-						</td>
-						<td>
-							Full Name
-						</td>
-						<td>
-							Address
-						</td>
-					</th>
+			<h3>Choose the Megaventory Inventory Location where the WooCommerce Sales Orders will be pushed to.</h3>
+				<table class="wp-list-table widefat fixed striped posts" id="locations">
+					<thead>
+						<tr>
+							<th></th>
+							<th>Abbreviation</th>
+							<th>Full Name</th>
+							<th>Address</th>
+						</tr>
+					</thead>
+					<tbody>	
 					<?php foreach ( $inventories as $inventory ) : ?>
 						<?php
 						$mv_location_id_to_abbr = get_option( 'mv_location_id_to_abbr' );
@@ -446,12 +438,13 @@ function generate_admin_page() {
 							</td>
 						</tr>
 					<?php endforeach; ?>
+					</tbody>
 				</table>
 			</div>
 		</div>
-
+		<hr/>
 		<div class="mv-row row-main">
-			<h2 class="green">Success log</h2>
+			<h3 class="green">Success log</h3>
 			<div class="userNotificationTable-wrap">
 			<table id="success-log" class="wp-list-table widefat fixed striped posts">
 			<thead>
@@ -481,9 +474,9 @@ function generate_admin_page() {
 			</table>
 			</div>
 		</div>
-
+		<hr/>
 		<div class="mv-row row-main">
-			<h2 class="red">Error log</h2>
+			<h3 class="red">Error log</h3>
 			<div class="userNotificationTable-wrap">
 				<table id="error-log" class="wp-list-table widefat fixed striped posts">
 				<thead>
@@ -515,9 +508,9 @@ function generate_admin_page() {
 				</table>
 			</div>
 		</div>
-
+		<hr/>
 		<div class="mv-row row-main">
-			<h2>Taxes</h2>
+			<h3>Taxes</h3>
 			<div class="tax-wrap">
 				<table id="taxes" class="wp-list-table widefat fixed striped posts">
 				<thead>
