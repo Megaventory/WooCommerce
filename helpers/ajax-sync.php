@@ -378,7 +378,7 @@ function async_import() {
  */
 function change_alternate_cron_status() {
 	if ( isset( $_POST['newStatus'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
-		$status = (bool) sanitize_text_field( wp_unslash( $_POST['newStatus'] ) );
+		$status = (bool) ( sanitize_text_field( wp_unslash( $_POST['newStatus'] ) ) === 'true' );
 		update_option( 'megaventory_alternate_wp_cron', $status );
 		wp_send_json_success( array( 'success' => true ), 200 );
 	} else {

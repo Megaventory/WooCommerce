@@ -1589,13 +1589,31 @@ class Product {
 			'message'        => '',
 		);
 
+		$products_added_to_adjustment_plus  = 0;
+		$products_added_to_adjustment_minus = 0;
+
+		$document_details_adj_plus  = get_transient( 'adjustment_plus_items_array' );
+		$document_details_adj_minus = get_transient( 'adjustment_minus_items_array' );
+
+		if ( false === $document_details_adj_plus ) {
+			$document_details_adj_plus = array();
+		}
+
+		if ( false === $document_details_adj_minus ) {
+			$document_details_adj_minus = array();
+		}
+
 		$all_simple_products_count = self::wc_get_all_woocommerce_products_count();
 
-		$page = ( $starting_index / MV_Constants::STOCK_BATCH_COUNT ) + 1; // starts from 1.
+		$last_page = (int) ceil( $all_simple_products_count / MV_Constants::PUSH_STOCK_ADMIN_UPDATE_COUNT );
 
-		$selected_products_to_sync_stock = self::wc_get_products_in_batches( MV_Constants::STOCK_BATCH_COUNT, $page );
+		$page = ( $starting_index / MV_Constants::PUSH_STOCK_ADMIN_UPDATE_COUNT ) + 1; // starts from 1.
+
+		$selected_products_to_sync_stock = self::wc_get_products_in_batches( MV_Constants::PUSH_STOCK_ADMIN_UPDATE_COUNT, $page );
 
 		$selected_products_to_sync_stock_count = count( $selected_products_to_sync_stock );
+
+		$is_last_page = $page === $last_page;
 
 		if ( 0 === $selected_products_to_sync_stock_count ) {
 
@@ -1619,9 +1637,6 @@ class Product {
 
 			return $return_values;
 		}
-
-		$document_details_adj_plus  = array();
-		$document_details_adj_minus = array();
 
 		$filters = array();
 
@@ -1686,6 +1701,10 @@ class Product {
 				$wc_qty = $selected_product->available_wc_stock;
 			}
 
+			if ( $wc_qty < 0 ) {
+				$wc_qty = 0;
+			}
+
 			$adjust = $wc_qty - $mv_qty;
 
 			if ( 0 < $adjust ) {
@@ -1710,23 +1729,13 @@ class Product {
 			}
 		}
 
-		if ( 0 === count( $document_details_adj_plus ) && 0 === count( $document_details_adj_minus ) ) {
+		if ( 0 === count( $document_details_adj_plus ) && 0 === count( $document_details_adj_minus ) && $is_last_page ) {
 
-			$args = array(
-				'type'        => 'notice',
-				'entity_name' => 'Adjustment creation',
-				'entity_id'   => 0,
-				'problem'     => 'No adjustment was needed for this iteration',
-				'full_msg'    => '',
-				'error_code'  => 0,
-				'json_object' => '',
-			);
-
-			$e = new MVWC_Error( $args );
+			register_warning( 'No adjustment was needed.' );
 
 			$return_values = array(
 				'starting_index' => $starting_index,
-				'next_index'     => $starting_index + MV_Constants::STOCK_BATCH_COUNT,
+				'next_index'     => $starting_index + MV_Constants::PUSH_STOCK_ADMIN_UPDATE_COUNT,
 				'error_occurred' => false,
 				'finished'       => false,
 				'message'        => 'Current synchronization: ' . ( $starting_index + $selected_products_to_sync_stock_count ) . ' of ' . $all_simple_products_count,
@@ -1737,109 +1746,124 @@ class Product {
 
 		$action = 'Insert';
 
+		$products_added_to_adjustment_minus = count( $document_details_adj_minus );
+		$products_added_to_adjustment_plus  = count( $document_details_adj_plus );
+
 		if ( 0 < count( $document_details_adj_plus ) ) {
 
-			$mv_document_plus = array(
-				'DocumentTypeId'           => -99,
-				'DocumentSupplierClientID' => -1,
-				'DocumentComments'         => 'This is the initial stock document that was created based on available quantity for the following products',
-				'DocumentDetails'          => $document_details_adj_plus,
-				'DocumentStatus'           => 'Pending',
-			);
-
-			$document_update = array(
-				'APIKEY'                                => get_api_key(),
-				'mvDocument'                            => $mv_document_plus,
-				'mvRecordAction'                        => $action,
-				'mvInsertUpdateDeleteSourceApplication' => 'woocommerce',
-			);
-
-			$url      = get_url_for_call( MV_Constants::DOCUMENT_UPDATE );
-			$response = send_request_to_megaventory( $url, $document_update );
-
-			if ( '0' === ( $response['ResponseStatus']['ErrorCode'] ) ) {
-
-				$args = array(
-					'entity_id'          => array(
-						'wc' => 0,
-						'mv' => $response['mvDocument']['DocumentId'],
-					),
-					'entity_type'        => 'adjustment',
-					'entity_name'        => $response['mvDocument']['DocumentTypeAbbreviation'] . ' ' . $response['mvDocument']['DocumentNo'],
-					'transaction_status' => 'Insert',
-					'full_msg'           => 'The adjustment has been created to your Megaventory account',
-					'success_code'       => 1,
-				);
-
-				$e = new MVWC_Success( $args );
+			if ( MV_Constants::PUSH_STOCK_BATCH_COUNT > $products_added_to_adjustment_plus && ! $is_last_page ) {
+				set_transient( 'adjustment_plus_items_array', $document_details_adj_plus, 60 );
 			} else {
-
-				$args = array(
-					'type'        => 'error',
-					'entity_name' => 'Adjustment plus creation',
-					'entity_id'   => 0,
-					'problem'     => 'Error on adjustment creation',
-					'full_msg'    => $response['ResponseStatus']['Message'],
-					'error_code'  => $response['ResponseStatus']['ErrorCode'],
-					'json_object' => '',
+				$mv_document_plus = array(
+					'DocumentTypeId'           => MV_Constants::ADJ_PLUS_DEFAULT_TRANS_ID,
+					'DocumentSupplierClientID' => MV_Constants::INTERNAL_SUPPLIER_CLIENT_FOR_ADJUSTMENTS_AND_OTHER_OPERATIONS,
+					'DocumentComments'         => 'This is the initial stock document that was created based on available quantity for the following products',
+					'DocumentDetails'          => $document_details_adj_plus,
+					'DocumentStatus'           => 'Pending',
 				);
 
-				$e = new MVWC_Error( $args );
+				$document_update = array(
+					'APIKEY'         => get_api_key(),
+					'mvDocument'     => $mv_document_plus,
+					'mvRecordAction' => $action,
+					'mvInsertUpdateDeleteSourceApplication' => 'woocommerce',
+				);
+
+				$url      = get_url_for_call( MV_Constants::DOCUMENT_UPDATE );
+				$response = send_request_to_megaventory( $url, $document_update );
+
+				delete_transient( 'adjustment_plus_items_array' );
+
+				if ( '0' === ( $response['ResponseStatus']['ErrorCode'] ) ) {
+
+					$args = array(
+						'entity_id'          => array(
+							'wc' => 0,
+							'mv' => $response['mvDocument']['DocumentId'],
+						),
+						'entity_type'        => 'adjustment',
+						'entity_name'        => $response['mvDocument']['DocumentTypeAbbreviation'] . ' ' . $response['mvDocument']['DocumentNo'],
+						'transaction_status' => 'Insert',
+						'full_msg'           => 'The adjustment has been created to your Megaventory account',
+						'success_code'       => 1,
+					);
+
+					$e = new MVWC_Success( $args );
+				} else {
+
+					$args = array(
+						'type'        => 'error',
+						'entity_name' => 'Adjustment plus creation',
+						'entity_id'   => 0,
+						'problem'     => 'Error on adjustment creation',
+						'full_msg'    => $response['ResponseStatus']['Message'],
+						'error_code'  => $response['ResponseStatus']['ErrorCode'],
+						'json_object' => '',
+					);
+
+					$e = new MVWC_Error( $args );
+				}
 			}
 		}
 
 		if ( 0 < count( $document_details_adj_minus ) ) {
 
-			$mv_document_minus = array(
-				'DocumentTypeId'           => -98,
-				'DocumentSupplierClientID' => -1,
-				'DocumentComments'         => 'This is the initial stock document that was created based on available quantity for the following products',
-				'DocumentDetails'          => $document_details_adj_minus,
-				'DocumentStatus'           => 'Pending',
-			);
-
-			$document_update = array(
-				'APIKEY'                                => get_api_key(),
-				'mvDocument'                            => $mv_document_minus,
-				'mvRecordAction'                        => $action,
-				'mvInsertUpdateDeleteSourceApplication' => 'woocommerce',
-			);
-
-			$url      = get_url_for_call( MV_Constants::DOCUMENT_UPDATE );
-			$response = send_request_to_megaventory( $url, $document_update );
-
-			if ( '0' === ( $response['ResponseStatus']['ErrorCode'] ) ) {
-
-				$args = array(
-					'entity_id'          => array(
-						'wc' => 0,
-						'mv' => $response['mvDocument']['DocumentId'],
-					),
-					'entity_type'        => 'adjustment',
-					'entity_name'        => $response['mvDocument']['DocumentTypeAbbreviation'] . ' ' . $response['mvDocument']['DocumentNo'],
-					'transaction_status' => 'Insert',
-					'full_msg'           => 'The adjustment has been created to your Megaventory account',
-					'success_code'       => 1,
-				);
-
-				$e = new MVWC_Success( $args );
+			if ( MV_Constants::PUSH_STOCK_BATCH_COUNT > $products_added_to_adjustment_minus && ! $is_last_page ) {
+				set_transient( 'adjustment_minus_items_array', $document_details_adj_minus, 60 );
 			} else {
-
-				$args = array(
-					'type'        => 'error',
-					'entity_name' => 'Adjustment creation',
-					'entity_id'   => 0,
-					'problem'     => 'Error on adjustment minus creation',
-					'full_msg'    => $response['ResponseStatus']['Message'],
-					'error_code'  => $response['ResponseStatus']['ErrorCode'],
-					'json_object' => '',
+				$mv_document_minus = array(
+					'DocumentTypeId'           => MV_Constants::ADJ_MINUS_DEFAULT_TRANS_ID,
+					'DocumentSupplierClientID' => MV_Constants::INTERNAL_SUPPLIER_CLIENT_FOR_ADJUSTMENTS_AND_OTHER_OPERATIONS,
+					'DocumentComments'         => 'This is the initial stock document that was created based on available quantity for the following products',
+					'DocumentDetails'          => $document_details_adj_minus,
+					'DocumentStatus'           => 'Pending',
 				);
 
-				$e = new MVWC_Error( $args );
+				$document_update = array(
+					'APIKEY'         => get_api_key(),
+					'mvDocument'     => $mv_document_minus,
+					'mvRecordAction' => $action,
+					'mvInsertUpdateDeleteSourceApplication' => 'woocommerce',
+				);
+
+				$url      = get_url_for_call( MV_Constants::DOCUMENT_UPDATE );
+				$response = send_request_to_megaventory( $url, $document_update );
+
+				delete_transient( 'adjustment_minus_items_array' );
+
+				if ( '0' === ( $response['ResponseStatus']['ErrorCode'] ) ) {
+
+					$args = array(
+						'entity_id'          => array(
+							'wc' => 0,
+							'mv' => $response['mvDocument']['DocumentId'],
+						),
+						'entity_type'        => 'adjustment',
+						'entity_name'        => $response['mvDocument']['DocumentTypeAbbreviation'] . ' ' . $response['mvDocument']['DocumentNo'],
+						'transaction_status' => 'Insert',
+						'full_msg'           => 'The adjustment has been created to your Megaventory account',
+						'success_code'       => 1,
+					);
+
+					$e = new MVWC_Success( $args );
+				} else {
+
+					$args = array(
+						'type'        => 'error',
+						'entity_name' => 'Adjustment creation',
+						'entity_id'   => 0,
+						'problem'     => 'Error on adjustment minus creation',
+						'full_msg'    => $response['ResponseStatus']['Message'],
+						'error_code'  => $response['ResponseStatus']['ErrorCode'],
+						'json_object' => '',
+					);
+
+					$e = new MVWC_Error( $args );
+				}
 			}
 		}
 
-		if ( MV_Constants::STOCK_BATCH_COUNT > $selected_products_to_sync_stock_count ) {
+		if ( MV_Constants::PUSH_STOCK_ADMIN_UPDATE_COUNT > $selected_products_to_sync_stock_count ) {
 
 			$return_values = array(
 				'starting_index' => $starting_index,
@@ -1863,7 +1887,7 @@ class Product {
 
 			$return_values = array(
 				'starting_index' => $starting_index,
-				'next_index'     => $starting_index + MV_Constants::STOCK_BATCH_COUNT,
+				'next_index'     => $starting_index + MV_Constants::PUSH_STOCK_ADMIN_UPDATE_COUNT,
 				'error_occurred' => false,
 				'finished'       => false,
 				'message'        => 'Current synchronization: ' . ( $starting_index + $selected_products_to_sync_stock_count ) . ' of ' . $all_simple_products_count,

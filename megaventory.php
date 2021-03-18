@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.14
+ * Version: 2.2.15
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -132,7 +132,7 @@ function sess_start() {
 
 add_action( 'init', 'sess_start', 1 );
 
-if ( get_option( 'megaventory_alternate_wp_cron', false ) ) {
+if ( get_option( 'megaventory_alternate_wp_cron', false ) && get_option( 'correct_megaventory_apikey', false ) && get_option( 'correct_connection', false ) ) {
 	define( 'ALTERNATE_WP_CRON', true );
 }
 
@@ -509,7 +509,7 @@ function check_status() {
 	} else {
 
 		++$attempts;
-		if ( 101 === $attempts ) {
+		if ( MV_Constants::MAX_FAILED_CONNECTION_ATTEMPTS === $attempts ) {
 			update_option( 'do_megaventory_requests', false );
 			update_option( 'failed_connection_attempts', 0 );
 			register_api_suspension_error();
@@ -601,7 +601,7 @@ function ajax_calls() {
  * @return void
  */
 function register_style() {
-	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.8', 'all' );
+	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.10', 'all' );
 	wp_register_style( 'mv_style_fonts', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css', false, '2.0.7', 'all' );
 }
 

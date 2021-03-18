@@ -13,10 +13,6 @@
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  */
 
-/* errors should be immutable. There is no point in changing the messages.  */
-global $wpdb;
-$error_table_name = $wpdb->prefix . 'megaventory_errors_log';
-
 /**
  * Error class.
  */
@@ -103,8 +99,10 @@ class MVWC_Error {
 	 * @return int|false
 	 */
 	public function save() {
-		global $error_table_name, $wpdb;
-		$charset_collate = $wpdb->get_charset_collate();
+		/* errors should be immutable. There is no point in changing the messages.  */
+		global $wpdb;
+		$error_table_name = $wpdb->prefix . 'megaventory_errors_log';
+		$charset_collate  = $wpdb->get_charset_collate();
 
 		$sql_results = $wpdb->insert(
 			$error_table_name,

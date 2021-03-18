@@ -18,10 +18,6 @@
  */
 require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/address.php';
 
-$megaventory_default_host = 'https://api.megaventory.com/v2017a/';
-$megaventory_host         = get_api_host();
-$megaventory_url          = $megaventory_host . 'json/reply/';
-
 
 /* MV status => WC status */
 $translate_order_status = array(
@@ -67,14 +63,20 @@ function get_api_key() {
 }
 
 /**
+ * Get Megaventory URL
+ *
+ * @return string
+ */
+function get_megaventory_url() {
+	$url = get_api_host() . 'json/reply/';
+	return $url;
+}
+
+/**
  * Get host
  */
 function get_api_host() {
-	global $megaventory_default_host;
-	$host = get_option( 'megaventory_api_host' );
-	if ( ! $host ) {
-		$host = $megaventory_default_host;
-	}
+	$host = get_option( 'megaventory_api_host', MV_Constants::MV_DEFAULT_HOST );
 	return $host;
 }
 
@@ -93,8 +95,8 @@ function get_guest_mv_client() {
  */
 function create_json_url( $call ) {
 	$api_key = get_option( 'megaventory_api_key' );
-	global $megaventory_url;
-	return $megaventory_url . $call . '?APIKEY=' . rawurlencode( $api_key );
+	$url     = get_megaventory_url();
+	return $url . $call . '?APIKEY=' . rawurlencode( $api_key );
 }
 
 /**
@@ -103,7 +105,7 @@ function create_json_url( $call ) {
  * @param string $call as Megaventory API method.
  */
 function get_url_for_call( $call ) {
-	global $url;
+	$url = get_megaventory_url();
 	return $url . $call;
 }
 

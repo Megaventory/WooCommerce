@@ -28,6 +28,11 @@ class MV_Constants {
 	const MV_SEPARATOR = ' - ';
 
 	/**
+	 * Megaventory default host
+	 */
+	const MV_DEFAULT_HOST = 'https://api.megaventory.com/v2017a/';
+
+	/**
 	 * Megaventory Slash.
 	 */
 	const MV_SLASH = ' / ';
@@ -40,7 +45,12 @@ class MV_Constants {
 	/**
 	 * We use it to create adjustments in Megaventory in batches.
 	 */
-	const STOCK_BATCH_COUNT = 40;
+	const PUSH_STOCK_BATCH_COUNT = 40;
+
+	/**
+	 * We use it to update the administrator about the progress of the export.
+	 */
+	const PUSH_STOCK_ADMIN_UPDATE_COUNT = 20;
 
 	const SYNC_STOCK_FROM_MEGAVENTORY = 40;
 
@@ -65,4 +75,12 @@ class MV_Constants {
 	const SALES_ORDER_UPDATE = 'SalesOrderUpdate';
 
 	const SALES_ORDER_CANCEL = 'SalesOrderCancel';
+
+	const MAX_FAILED_CONNECTION_ATTEMPTS = 100;
+
+	const ADJ_PLUS_DEFAULT_TRANS_ID = -99;
+
+	const ADJ_MINUS_DEFAULT_TRANS_ID = -98;
+
+	const INTERNAL_SUPPLIER_CLIENT_FOR_ADJUSTMENTS_AND_OTHER_OPERATIONS = -1;
 }

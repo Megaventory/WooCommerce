@@ -13,8 +13,6 @@
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  */
 
-$megaventory_success_table_name = $wpdb->prefix . 'megaventory_success_log';
-
 /**
  * Success class.
  */
@@ -97,7 +95,9 @@ class MVWC_Success {
 	 */
 	public function save() {
 
-		global $megaventory_success_table_name, $wpdb;
+		global $wpdb;
+
+		$megaventory_success_table_name = $wpdb->prefix . 'megaventory_success_log';
 
 		$charset_collate = $wpdb->get_charset_collate();
 
