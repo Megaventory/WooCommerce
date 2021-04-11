@@ -60,5 +60,16 @@ function format_address( $ar ) {
 		$address .= $country . " \n ";
 	}
 
+	// Add customer phone and email to billing address if order customer is guest.
+	if ( array_key_exists( 'phone', $ar ) ) {
+		$phone    = $ar['phone'];
+		$address .= " \n Phone: " . $phone . " \n ";
+	}
+
+	if ( array_key_exists( 'email', $ar ) ) {
+		$email    = $ar['email'];
+		$address .= " \n Email: " . $email . " \n ";
+	}
+
 	return $address;
 }

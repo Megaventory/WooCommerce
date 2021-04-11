@@ -226,8 +226,14 @@ function place_sales_order( $order, $client ) {
 	$billing_address['county']   = $order->get_billing_state();
 	$billing_address['postcode'] = $order->get_billing_postcode();
 	$billing_address['country']  = $order->get_billing_country();
-	$billing_address             = format_address( $billing_address );
-	$billing_address             = wp_strip_all_tags( $billing_address );
+
+	if ( ! $order->get_user() ) { // get_user returns false if order customer was guest.
+		$billing_address['phone'] = $order->get_billing_phone();
+		$billing_address['email'] = $order->get_billing_email();
+	}
+
+	$billing_address = format_address( $billing_address );
+	$billing_address = wp_strip_all_tags( $billing_address );
 
 	$order_object = new \stdClass();
 	$order_obj    = new \stdClass();

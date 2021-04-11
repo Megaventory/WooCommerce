@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.16
+ * Version: 2.2.17
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -436,8 +436,8 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 
 	if ( get_option( 'correct_currency' ) && get_option( 'correct_connection' ) && get_option( 'correct_megaventory_apikey' ) ) {
 
-		add_action( 'woocommerce_new_order', 'order_placed', 10, 1 );
-		add_action( 'woocommerce_after_order_object_save', 'order_updated', 10, 1 );
+		add_action( 'woocommerce_order_status_processing', 'order_placed', 10, 1 );
+		add_action( 'woocommerce_order_status_on-hold', 'order_placed', 10, 1 );
 		add_action( 'woocommerce_order_status_cancelled', 'order_cancelled_handler', 10, 1 );
 
 		/* Product add/edit, delete */
@@ -601,7 +601,7 @@ function ajax_calls() {
  * @return void
  */
 function register_style() {
-	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.11', 'all' );
+	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.33', 'all' );
 	wp_register_style( 'mv_style_fonts', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css', false, '2.0.7', 'all' );
 }
 
@@ -1088,16 +1088,6 @@ function initialize_taxes() {
 }
 
 /**
- * This function will be called every time an order item is saved, this means multiple times.
- *
- * @param WC_Order $order as WC_Order.
- * @return void
- */
-function order_updated( $order ) {
-	order_placed( $order->get_id() );
-}
-
-/**
  * This function will be called every time an order item is created.
  *
  * @param int $order_id As int.
@@ -1105,9 +1095,8 @@ function order_updated( $order ) {
  */
 function order_placed( $order_id ) {
 	$order = wc_get_order( $order_id );
-	// Synchronize only if the order is not synchronized and is not in the following states: pending, cancelled, draft.
-	$states_that_should_not_be_synced = array( 'pending', 'cancelled', 'draft' );
-	if ( ! get_post_meta( $order->get_id(), 'order_sent_to_megaventory', true ) && ( ! in_array( $order->get_status(), $states_that_should_not_be_synced, true ) ) ) {
+
+	if ( ! get_post_meta( $order->get_id(), 'order_sent_to_megaventory', true ) ) {
 
 		$id     = $order->get_customer_id();
 		$client = Client::wc_find( $id );
