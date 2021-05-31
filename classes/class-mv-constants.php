@@ -83,4 +83,38 @@ class MV_Constants {
 	const ADJ_MINUS_DEFAULT_TRANS_ID = -98;
 
 	const INTERNAL_SUPPLIER_CLIENT_FOR_ADJUSTMENTS_AND_OTHER_OPERATIONS = -1;
+
+	const MV_DOCUMENT_STATUS_MAPPINGS = array(
+		0  => 'ValidStatus',
+		10 => 'Pending',
+		20 => 'ApprovalInProcess',
+		30 => 'Verified',
+		35 => 'Picked',
+		36 => 'Packed',
+		40 => 'PartiallyShipped',
+		41 => 'PartiallyShippedInvoiced',
+		42 => 'FullyShipped',
+		43 => 'PartiallyReceived',
+		44 => 'PartiallyReceivedInvoiced',
+		45 => 'FullyReceived',
+		46 => 'PartiallyInvoiced',
+		47 => 'FullyInvoiced',
+		48 => 'PartiallyPaid',
+		49 => 'FullyPaid',
+		50 => 'Closed',
+		70 => 'ClosedWO',
+		99 => 'Cancelled',
+	);
+
+	const MV_DOCUMENT_STATUS_TO_WC_ORDER_STATUS_MAPPINGS = array(
+		'Pending'                  => 'on-hold',
+		'Verified'                 => 'processing',
+		'PartiallyShipped'         => 'processing',
+		'PartiallyShippedInvoiced' => 'processing',
+		'FullyShipped'             => 'processing',
+		'Closed'                   => 'completed',
+		// Received is only for purchase orders.
+		'FullyInvoiced'            => 'completed',
+		'Cancelled'                => 'cancelled',
+	);
 }

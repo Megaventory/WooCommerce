@@ -33,7 +33,7 @@ function ajaxInitialize(block, countOfEntity, page, numberOfIndToProcess, call) 
 				'page': page,
 				'numberOfIndexesToProcess': numberOfIndToProcess,
 				'call': call,
-				'async-nonce': ajax_object.nonce
+				'async-nonce': mv_ajax_object.nonce
 			},
 			success: function (data) { // This outputs the result of the ajax request.
 				var obj            = JSON.parse( data.data );
@@ -97,7 +97,7 @@ function changeDefaultInventory(inventory_id) {
 			data: {
 				'action': 'changeDefaultMegaventoryLocation',
 				'inventory_id': inventory_id,
-				'async-nonce': ajax_object.nonce
+				'async-nonce': mv_ajax_object.nonce
 			},
 			success: function (data) { // This outputs the result of the ajax request.
 				jQuery( '#loading' ).hide();

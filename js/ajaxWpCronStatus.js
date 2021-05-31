@@ -29,7 +29,7 @@ function changeWpCronStatus() {
 			data: {
 				'action': 'alternateWpCronStatus',
 				'newStatus': checbox_value,
-				'async-nonce': ajax_object.nonce
+				'async-nonce': mv_ajax_object.nonce
 			},
 			success: function (data) { // This outputs the result of the ajax request.
 				jQuery( '#enable_alternate_wp_cron' ).prop( 'checked', checbox_value );

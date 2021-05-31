@@ -122,6 +122,13 @@ class Product {
 	public $sale_price;
 
 	/**
+	 * Product purchase price.
+	 *
+	 * @var double
+	 */
+	public $purchase_price;
+
+	/**
 	 * Product sales status.
 	 *
 	 * @var string
@@ -909,6 +916,7 @@ class Product {
 		$product->sku              = $mv_prod['ProductSKU'];
 		$product->ean              = ( isset( $mv_prod['ProductEAN'] ) ? $mv_prod['ProductEAN'] : '' );
 		$product->description      = $mv_prod['ProductDescription'];
+		$product->purchase_price   = $mv_prod['ProductPurchasePrice'];
 		$product->long_description = $mv_prod['ProductLongDescription'];
 		$product->image_url        = $mv_prod['ProductImageURL'];
 
@@ -949,11 +957,20 @@ class Product {
 
 		$prod->sku = $wc_prod->get_sku();
 
+		$purchase_price = get_post_meta( $id, 'purchase_price', true );
+
+		if ( ! isset( $purchase_price ) ) {
+			$purchase_price = 0;
+		} else {
+			$purchase_price = (float) str_replace( ',', '.', $purchase_price );
+		}
+
 		/* prices */
-		$prod->regular_price = $wc_prod->get_regular_price();
-		$prod->sale_price    = $wc_prod->get_sale_price();
-		$sale_from           = $wc_prod->get_date_on_sale_from();
-		$sale_to             = $wc_prod->get_date_on_sale_to();
+		$prod->regular_price  = $wc_prod->get_regular_price();
+		$prod->sale_price     = $wc_prod->get_sale_price();
+		$prod->purchase_price = $purchase_price;
+		$sale_from            = $wc_prod->get_date_on_sale_from();
+		$sale_to              = $wc_prod->get_date_on_sale_to();
 
 		$prod->unit_cost = empty( $post_meta['_wc_cog_cost'][0] ) ? 0 : (float) $post_meta['_wc_cog_cost'][0];
 
@@ -1012,15 +1029,24 @@ class Product {
 
 		$post_meta = get_post_meta( $wc_variation->get_id() );
 
-		$prod->wc_id         = $wc_variation->get_id();
-		$prod->mv_id         = (int) $post_meta['mv_id'][0];
-		$prod->name          = $wc_variation->get_name();
-		$prod->sku           = $wc_variation->get_sku();
-		$prod->description   = $wc_variation->get_title();
-		$prod->type          = $wc_variation->get_type();
-		$prod->regular_price = $wc_variation->get_regular_price();
-		$prod->sale_price    = $wc_variation->get_sale_price();
-		$prod->unit_cost     = ( empty( $post_meta['_wc_cog_cost_variable'][0] ) ? 0 : $post_meta['_wc_cog_cost_variable'][0] );
+		$purchase_price = get_post_meta( $wc_variation->get_id(), 'purchase_price', true );
+
+		if ( ! isset( $purchase_price ) ) {
+			$purchase_price = 0;
+		} else {
+			$purchase_price = (float) str_replace( ',', '.', $purchase_price );
+		}
+
+		$prod->wc_id          = $wc_variation->get_id();
+		$prod->mv_id          = (int) $post_meta['mv_id'][0];
+		$prod->name           = $wc_variation->get_name();
+		$prod->sku            = $wc_variation->get_sku();
+		$prod->description    = $wc_variation->get_title();
+		$prod->type           = $wc_variation->get_type();
+		$prod->regular_price  = $wc_variation->get_regular_price();
+		$prod->sale_price     = $wc_variation->get_sale_price();
+		$prod->purchase_price = $purchase_price;
+		$prod->unit_cost      = ( empty( $post_meta['_wc_cog_cost_variable'][0] ) ? 0 : $post_meta['_wc_cog_cost_variable'][0] );
 
 		$prod->available_wc_stock = $wc_variation->get_stock_quantity();
 		$prod->mv_qty             = get_post_meta( $wc_variation->get_id(), '_mv_qty', true );
@@ -1274,17 +1300,22 @@ class Product {
 		$megaventory_product = self::mv_find_by_sku( $this->sku );
 
 		if ( null !== $megaventory_product ) {
-
-			$this->mv_id   = $megaventory_product->mv_id;
-			$this->mv_type = $megaventory_product->mv_type;
-			$this->ean     = $megaventory_product->ean;
+			$this->mv_id = $megaventory_product->mv_id;
 		} else {
 			$this->mv_id = 0;
 		}
 
 		$create_new = ( null === $this->mv_id || 0 === $this->mv_id );
 
-		$action = ( ( $create_new ) ? 'Insert' : 'Update' );
+		if ( ! $create_new ) {
+			$this->mv_type        = null;
+			$this->ean            = null;
+			$this->regular_price  = null;
+			$this->sale_price     = null;
+			$this->purchase_price = null;
+		}
+
+		$action = 'InsertOrUpdateNonEmptyFields';
 
 		$special_characters = array( '?', '$', '@', '!', '*', '#' );// Special characters that need to be removed in order to be accepted by Megaventory.
 
@@ -1305,6 +1336,7 @@ class Product {
 		$product_object->productbreadth         = $this->breadth ? $this->breadth : '';
 		$product_object->productheight          = $this->height ? $this->height : '';
 		$product_object->productimageurl        = $this->image_url ? $this->image_url : '';
+		$product_object->productpurchaseprice   = $this->purchase_price;
 
 		$product_update_object->mvproduct                             = $product_object;
 		$product_update_object->mvrecordaction                        = $action;

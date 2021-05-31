@@ -30,7 +30,7 @@ function ajaxImport(startingIndex, numberOfIndToProcess, countOfEntity, page, su
 				'successes': successes,
 				'errors': errors,
 				'call': call,
-				'async-nonce': ajax_object.nonce
+				'async-nonce': mv_ajax_object.nonce
 			},
 			success: function (data) { // This outputs the result of the ajax request.
 				var obj              = JSON.parse( data.data );
@@ -78,7 +78,7 @@ function ajaxPullUpdates() {
 			type: "POST",
 			data: {
 				'action': 'pull_integration_updates',
-				'async-nonce': ajax_object.nonce
+				'async-nonce': mv_ajax_object.nonce
 			},
 			success: function (data) { // This outputs the result of the ajax request.
 				jQuery( '#loading_operation' ).hide();
@@ -104,7 +104,7 @@ function SyncStockToMegaventory(starting_index) {
 			data: {
 				'action': 'sync_stock_to_megaventory',
 				'startingIndex': starting_index,
-				'async-nonce': ajax_object.nonce
+				'async-nonce': mv_ajax_object.nonce
 			},
 			success: function (data) { // This outputs the result of the ajax request.
 				var obj = JSON.parse( data.data );
@@ -155,7 +155,7 @@ function SyncStockFromMegaventory(starting_index) {
 			data: {
 				'action': 'sync_stock_from_megaventory',
 				'startingIndex': starting_index,
-				'async-nonce': ajax_object.nonce
+				'async-nonce': mv_ajax_object.nonce
 			},
 			success: function (data) { // This outputs the result of the ajax request.
 				var obj = JSON.parse( data.data );
@@ -205,7 +205,7 @@ function SkipStockSynchronization() {
 			type: "POST",
 			data: {
 				'action': 'skip_stock_synchronization',
-				'async-nonce': ajax_object.nonce
+				'async-nonce': mv_ajax_object.nonce
 			},
 			success: function (data) { // This outputs the result of the ajax request.
 				setTimeout( function () {jQuery( '#loading_operation' ).hide();}, 2000 );
@@ -232,7 +232,7 @@ function SyncOrder(order_Id) {
 			data: {
 				'action': 'sync_order',
 				'orderId': order_Id,
-				'async-nonce': ajax_object.nonce
+				'async-nonce': mv_ajax_object.nonce
 			},
 			success: function (data) { // This outputs the result of the ajax request.
 

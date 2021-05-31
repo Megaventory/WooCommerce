@@ -1,4 +1,11 @@
 *** Megaventory Extension Template Changelog ***
+2021-05-31 - version 2.2.18
+* Display appropriate messages at appropriate times based on the status of the integration.
+* Better compatibility with other extensions by using unique names for global variables.
+* New feature: User can define the default purchase price of the product using the WooCommerce admin UI.
+* Include name of shipping product into the description of the line item.
+* Bugfix for partial shipment switching the order status as "Pending Payment".
+
 2021-03-30 - version 2.2.17
 * Order Synchronization fixes.
 

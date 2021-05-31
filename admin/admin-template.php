@@ -45,10 +45,16 @@ function generate_admin_page() {
 
 	$taxes_objects = Tax::wc_all();
 
-	$correct_connection         = (bool) get_option( 'correct_connection' );
-	$correct_currency           = (bool) get_option( 'correct_currency' );
-	$correct_key                = (bool) get_option( 'correct_megaventory_apikey' );
-	$is_megaventory_initialized = (bool) get_option( 'is_megaventory_initialized' );
+	$correct_connection         = (bool) get_option( 'correct_connection', true );
+	$correct_currency           = (bool) get_option( 'correct_currency', false );
+	$correct_key                = (bool) get_option( 'correct_megaventory_apikey', false );
+	$is_megaventory_initialized = (bool) get_option( 'is_megaventory_initialized', false );
+	$is_api_key_set             = (bool) get_transient( 'api_key_is_set', false );
+	$do_mv_requests             = (bool) get_option( 'do_megaventory_requests', true );
+	$mv_account_expired         = (bool) get_option( 'mv_account_expired', false );
+	$mv_account_admin           = (bool) get_option( 'mv_account_admin', false );
+	$woo_integration_enabled    = (bool) get_option( 'mv_woo_integration_enabled', false );
+	$has_new_mv_api_key         = (bool) get_option( 'new_mv_api_key', false );
 
 	$are_megaventory_products_synchronized = get_option( 'are_megaventory_products_synchronized', null );
 	if ( null !== get_option( 'are_megaventory_products_synchronized', null ) ) {
@@ -91,6 +97,39 @@ function generate_admin_page() {
 
 	$update_credentials_nonce = wp_create_nonce( 'update-credentials-nonce' );
 	?>
+		<?php if ( ! $is_megaventory_initialized && ! $correct_currency && ! $correct_key ) : ?>
+			<div class="notice notice-error"><p>Megaventory automatic synchronization failed</p></div>
+			<div class="notice notice-error"><p>Check that the base Megaventory Currency and API Key are correct and your store is initialized</p></div>
+		<?php elseif ( ! $correct_connection ) : ?>
+		<div class="notice notice-error"><p>There seems to be no connection to Megaventory.</p></div>
+		<div class="notice notice-error"><p>Check if the Megaventory service is online at: <a href="https://status.megaventory.com" target="_blank">https://status.megaventory.com</a></p></div>
+		<?php elseif ( ! $is_api_key_set ) : ?>
+		<div class="notice notice-error"><p>Welcome to Megaventory extension!</p></div>
+		<div class="notice notice-error"><p>Please apply your API key to get started. You can find it in your Megaventory account under 'My Profile' where your user icon is.</p></div>
+		<?php elseif ( ! $correct_key ) : ?>
+		<div class="notice notice-error"><p>Megaventory Error! Invalid API key!</p></div>
+			<?php if ( $mv_account_expired ) : ?>
+			<div class="notice notice-error"><p>Your Account has expired. If you wish to continue using megaventory, please login at www.megaventory.com and extend your account.</p></div>
+			<?php endif; ?>
+		<?php elseif ( ! $do_mv_requests ) : ?>
+		<div class="notice notice-warning"><p>Unable to verify Megaventory API key</p></div>
+		<div class="notice notice-warning"><p>Please check your API key and try again. All Megaventory synchronization tasks have been disabled due to excessive failed requests. Please ensure your Megaventory account is active and enter a valid API key or disable the extension if you are not planning on using the integration.</p></div>
+		<?php elseif ( ! $mv_account_admin ) : ?>
+		<div class="notice notice-error"><p>Megaventory error! WooCommerce integration needs administrator's credentials!</p></div>
+		<div class="notice notice-error"><p>Please contact your Megaventory account administrator and use an API key that corresponds to your Megaventory administrator.</p></div>
+		<?php elseif ( ! $woo_integration_enabled ) : ?>
+		<div class="notice notice-error"><p>Megaventory error! WooCommerce integration is not enabled in your Megaventory account.</p></div>
+		<div class="notice notice-error"><p>Please contact your Megaventory account administrator.</p></div>
+		<?php elseif ( ! $correct_currency ) : ?>
+		<div class="notice notice-error"><p>Megaventory error! Currencies in WooCommerce and Megaventory do not match! Megaventory extension will halt until this issue is resolved!</p></div>
+		<div class="notice notice-error"><p>If you are sure that the currency is correct or if you have just updated the base currency in Megaventory, please refresh until this warning disappears.</p></div>
+		<?php endif; ?>
+		<?php if ( ! $is_megaventory_initialized ) : ?>
+		<div class="notice notice-warning"><p>You need to run the Initial Sync before any data synchronization takes place!</p></div>
+		<?php elseif ( $has_new_mv_api_key ) : ?>
+		<div class="notice notice-error"><p>Megaventory Warning!</p></div>
+		<div class="notice notice-error"><p>You have just added an API Key for a new account, please re-install Megaventory extension.</p></div>
+		<?php endif; ?>
 		<div class="mv-admin">
 		<h1>Megaventory</h1>
 		<div class="mv-row row-main">

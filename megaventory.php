@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.17
+ * Version: 2.2.18
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -418,8 +418,16 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 	add_filter( 'manage_edit-product_columns', 'add_quantity_column_to_product_table', 15 );
 	add_action( 'manage_product_posts_custom_column', 'column', 10, 2 );
 
+	/* purchase price product column */
+	add_filter( 'manage_edit-product_columns', 'add_purchase_price_column_to_product_table', 15 );
+	add_action( 'manage_product_posts_custom_column', 'purchase_price_column', 10, 2 );
+
 	add_filter( 'manage_edit-shop_order_columns', 'megaventory_orders_list_column', 20 );
 	add_action( 'manage_shop_order_posts_custom_column', 'display_megaventory_order_info', 10, 2 );
+
+	/* Product purchase price field */
+	add_action( 'woocommerce_product_options_pricing', 'purchase_price_option' );
+	add_action( 'woocommerce_process_product_meta', 'save_purchase_price' );
 
 	/* styles */
 	add_action( 'init', 'register_style' );
@@ -477,6 +485,44 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 
 
 /**
+ * Add purchase price product option.
+ *
+ * @return void
+ */
+function purchase_price_option() {
+	echo wp_kses(
+		woocommerce_wp_text_input(
+			array(
+				'id'          => 'purchase_price',
+				'value'       => get_post_meta( get_the_ID(), 'purchase_price', true ),
+				'label'       => __( 'Purchase Price', 'textdomain' ) . ' (' . get_woocommerce_currency_symbol( get_woocommerce_currency() ) . ')',
+				'data_type'   => 'price',
+				'desc_tip'    => true,
+				'description' => 'This is the purchase price of the product(the price that the supplier is charging you to supply you with this product excluding taxes).',
+			)
+		),
+		array(
+			'input'    => array(),
+			'textarea' => array(),
+		)
+	);
+}
+
+/**
+ * Save purchase price.
+ *
+ * @param mixed $post_id as mixed.
+ *
+ * @return void
+ */
+function save_purchase_price( mixed $post_id ) {
+	if ( isset( $_POST['woocommerce_meta_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' ) && ! empty( $_POST['purchase_price'] ) ) {
+		update_post_meta( $post_id, 'purchase_price', esc_attr( sanitize_text_field( wp_unslash( $_POST['purchase_price'] ) ) ) );
+	}
+}
+
+
+/**
  * Check plugin connection.
  *
  * @return bool
@@ -489,14 +535,10 @@ function check_status() {
 
 	if ( ! get_option( 'correct_connection' ) ) {
 
-		register_error( 'Megaventory error! No connection to Megaventory!', 'Check if WordPress and Megaventory servers are online' );
-
 		return false;
 	}
 
 	if ( ! get_transient( 'api_key_is_set' ) ) {
-
-		register_warning( 'Welcome to Megaventory plugin!', "Please apply your API key to get started. You can find it in your Megaventory account under 'My Profile' where your user icon is." );
 
 		return false;
 	}
@@ -512,7 +554,6 @@ function check_status() {
 		if ( MV_Constants::MAX_FAILED_CONNECTION_ATTEMPTS === $attempts ) {
 			update_option( 'do_megaventory_requests', false );
 			update_option( 'failed_connection_attempts', 0 );
-			register_api_suspension_error();
 		}
 		update_option( 'failed_connection_attempts', $attempts );
 		update_option( 'correct_megaventory_apikey', false );
@@ -521,25 +562,33 @@ function check_status() {
 
 	if ( ! get_option( 'correct_megaventory_apikey' ) ) {
 
-		register_error( 'Megaventory error! Invalid API key!', $response['ResponseStatus']['Message'] );
+		if ( false !== strpos( $response['ResponseStatus']['Message'], 'Your Account has expired.' ) ) {
+			update_option( 'mv_account_expired', true );
+		} else {
+			update_option( 'mv_account_expired', false );
+		}
 
 		return false;
 	}
 
 	if ( null !== $response['ResponseStatus']['Message'] && strpos( $response['ResponseStatus']['Message'], 'Administrator' ) === false ) {
 
-		register_error( "Megaventory error! WooCommerce integration needs administrator's credentials!", 'Please contact your Megaventory account administrator.' );
+		update_option( 'mv_account_admin', false );
 
 		return false;
+	} else {
+		update_option( 'mv_account_admin', true );
 	}
 
 	$integration_enabled = check_if_integration_is_enabled();
 
 	if ( ! $integration_enabled ) {
 
-		register_error( 'Megaventory error! WooCommerce integration is not enabled in your Megaventory account. ', "Please visit your Megaventory account and enable WooCommerce from the Account Integrations' area." );
+		update_option( 'mv_woo_integration_enabled', false );
 
 		return false;
+	} else {
+		update_option( 'mv_woo_integration_enabled', true );
 	}
 
 	$correct_currency = get_default_currency() === get_option( 'woocommerce_currency' );
@@ -547,16 +596,12 @@ function check_status() {
 
 	if ( ! get_option( 'correct_currency' ) ) {
 
-		register_error( 'Megaventory error! Currencies in WooCommerce and Megaventory do not match! Megaventory plugin will halt until this issue is resolved!', 'If you are sure that the currency is correct, please refresh until this warning disappears.' );
-
 		return false;
 	}
 
 	$initialized = (bool) get_option( 'is_megaventory_initialized' );
 
 	if ( ! $initialized ) {
-
-		register_warning( 'You need to run the Initial Sync before any data synchronization takes place!' );
 
 		return false;
 	}
@@ -569,7 +614,9 @@ function check_status() {
 
 	if ( trim( $current_database_id_of_api_key ) !== trim( $last_valid_database_id_of_api_key ) ) {
 
-		register_error( 'Megaventory Warning!', 'You have just added an API Key for a new account, please re-install Megaventory plugin.' );
+		update_option( 'new_mv_api_key', true );
+	} else {
+		update_option( 'new_mv_api_key', false );
 	}
 
 	return true;
@@ -584,16 +631,16 @@ function ajax_calls() {
 
 	$nonce = wp_create_nonce( 'async-nonce' );
 
-	wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.7', true );
-	wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.7', true );
-	wp_enqueue_script( 'ajaxWpCronStatus', plugins_url( '/js/ajaxWpCronStatus.js', __FILE__ ), array(), '2.0.7', true );
+	wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.8', true );
+	wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.8', true );
+	wp_enqueue_script( 'ajaxWpCronStatus', plugins_url( '/js/ajaxWpCronStatus.js', __FILE__ ), array(), '2.0.8', true );
 	$nonce_array = array(
 		'nonce' => $nonce,
 	);
 
-	wp_localize_script( 'ajaxCallImport', 'ajax_object', $nonce_array );
-	wp_localize_script( 'ajaxCallInitialize', 'ajax_object', $nonce_array );
-	wp_localize_script( 'ajaxWpCronStatus', 'ajax_object', $nonce_array );
+	wp_localize_script( 'ajaxCallImport', 'mv_ajax_object', $nonce_array );
+	wp_localize_script( 'ajaxCallInitialize', 'mv_ajax_object', $nonce_array );
+	wp_localize_script( 'ajaxWpCronStatus', 'mv_ajax_object', $nonce_array );
 }
 /**
  * Link CSS.
@@ -632,6 +679,30 @@ function add_quantity_column_to_product_table( $columns ) {
 
 		if ( 'is_in_stock' === $key ) {
 			$temp['megaventory_stock'] = __( 'Megaventory Quantity' );
+		}
+	}
+	$columns = $temp;
+
+	return $columns;
+}
+
+/**
+ * Add purchase price column in product table.
+ *
+ * @param array $columns as table columns.
+ * @return array
+ */
+function add_purchase_price_column_to_product_table( $columns ) {
+
+	/* Megaventory stock column must be after normal stock column */
+	$temp = array();
+
+	foreach ( $columns as $key => $value ) {
+
+		$temp[ $key ] = $value;
+
+		if ( 'price' === $key ) {
+			$temp['purchase_price'] = __( 'Purchase Price' );
 		}
 	}
 	$columns = $temp;
@@ -730,6 +801,26 @@ function column( $column, $prod_id ) {
 		<?php endforeach; ?>
 		</table>
 		<?php
+	}
+}
+
+/**
+ * Purchase Price column in product's table.
+ *
+ * @param array $column as column in product table.
+ * @param int   $prod_id as product id.
+ * @return void
+ */
+function purchase_price_column( $column, $prod_id ) {
+
+	if ( 'purchase_price' === $column ) {
+		$purchase_price = get_post_meta( $prod_id, 'purchase_price', true );
+
+		if ( empty( $purchase_price ) ) {
+			echo wp_kses( '–', array() );
+		} else {
+			echo wp_kses( get_woocommerce_currency_symbol( get_woocommerce_currency() ) . $purchase_price, array() );
+		}
 	}
 }
 
@@ -1429,14 +1520,10 @@ function pull_changes() {
 
 	if ( ! get_transient( 'api_key_is_set' ) ) {
 
-		register_warning( 'Welcome to Megaventory plugin!', "Please apply your API key to get started. You can find it in your Megaventory account under 'My Profile' where your user icon is." );
-
 		return;
 	}
 
 	if ( ! ( get_option( 'is_megaventory_initialized' ) && get_option( 'correct_currency' ) && get_option( 'correct_connection' ) && get_option( 'correct_megaventory_apikey' ) ) ) {
-
-		register_error( 'Megaventory automatic synchronization failed', 'Check that Currency and API Key are correct and your store is initialized' );
 
 		return;
 	}
@@ -1504,7 +1591,9 @@ function pull_changes() {
 
 		} elseif ( 'document' === $change['Entity'] ) { // Order changed.
 
-			global $document_status, $translate_order_status;
+			$mv_document_status_mappings = MV_Constants::MV_DOCUMENT_STATUS_MAPPINGS;
+
+			$wc_order_status_mappings = MV_Constants::MV_DOCUMENT_STATUS_TO_WC_ORDER_STATUS_MAPPINGS;
 
 			$json_data = json_decode( $change['JsonData'], true );
 
@@ -1513,12 +1602,16 @@ function pull_changes() {
 				continue; // only sales order.
 			}
 
-			$status = $document_status[ $json_data['DocumentStatus'] ];
+			if ( ! array_key_exists( (int) $json_data['DocumentStatus'], $mv_document_status_mappings ) || ! array_key_exists( $mv_document_status_mappings[ (int) $json_data['DocumentStatus'] ], $wc_order_status_mappings ) ) {
+				continue; // If a mapping does not exist, order status should not be modified.
+			}
+
+			$status = $mv_document_status_mappings[ (int) $json_data['DocumentStatus'] ];
 			$order  = wc_get_order( $json_data['DocumentReferenceNo'] );
 
 			if ( false !== $order ) {
 
-				$order->set_status( $translate_order_status[ $status ] );
+				$order->set_status( $wc_order_status_mappings[ $status ] );
 				$order->save();
 			}
 

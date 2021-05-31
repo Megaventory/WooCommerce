@@ -18,43 +18,6 @@
  */
 require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/address.php';
 
-
-/* MV status => WC status */
-$translate_order_status = array(
-	'Pending'          => 'on-hold',
-	'Verified'         => 'processing',
-	'PartiallyShipped' => 'processing',
-	'FullyShipped'     => 'processing',
-	'Closed'           => 'completed',
-	// Received is only for purchase orders.
-	'FullyInvoiced'    => 'completed',
-	'Cancelled'        => 'cancelled',
-
-);
-
-/* 	MV status code to string. only a few of them are actually used */
-$document_status = array(
-	0  => 'ValidStatus',
-	10 => 'Pending',
-	20 => 'ApprovalInProcess',
-	30 => 'Verified',
-	35 => 'Picked',
-	36 => 'Packed',
-	40 => 'PartiallyShipped',
-	41 => 'PartiallyShippedInvoiced',
-	42 => 'FullyShipped',
-	43 => 'PartiallyReceived',
-	44 => 'PartiallyReceivedInvoiced',
-	45 => 'FullyReceived',
-	46 => 'PartiallyInvoiced',
-	47 => 'FullyInvoiced',
-	48 => 'PartiallyPaid',
-	49 => 'FullyPaid',
-	50 => 'Closed',
-	70 => 'ClosedWO',
-	99 => 'Cancelled',
-);
-
 /**
  * Get the Megaventory API key
  */
@@ -343,6 +306,13 @@ function check_connectivity() {
 function check_key() {
 
 	$api_key = get_option( 'megaventory_api_key' );
+
+	if ( empty( $api_key ) ) {
+		set_transient( 'api_key_is_set', false );
+		update_option( 'correct_megaventory_apikey', false );
+		update_option( 'correct_currency', false );
+		return false;
+	}
 
 	$connectivity = check_connectivity();
 

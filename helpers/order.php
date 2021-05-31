@@ -197,6 +197,7 @@ function place_sales_order( $order, $client ) {
 		$shippingrowelement = new \stdClass();
 
 		$shippingrowelement->salesorderrowproductsku                    = 'shipping';
+		$shippingrowelement->salesorderrowproductdescription            = $shipping_method->get_name();
 		$shippingrowelement->salesorderrowquantity                      = 1;
 		$shippingrowelement->salesorderrowshippedquantity               = 0;
 		$shippingrowelement->salesorderrowinvoicedquantity              = 0;
