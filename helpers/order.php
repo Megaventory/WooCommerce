@@ -34,7 +34,6 @@ function get_sales_order( $order ) {
 	}
 
 	$get_body = array(
-		'APIKEY'  => get_api_key(),
 		'Filters' => array(
 			array(
 				'FieldName'      => 'SalesOrderId',
@@ -64,7 +63,7 @@ function get_sales_order( $order ) {
  */
 function place_sales_order( $order, $client ) {
 
-	$url                      = create_json_url( MV_Constants::SALES_ORDER_UPDATE );
+	$url                      = get_url_for_call( MV_Constants::SALES_ORDER_UPDATE );
 	$percentage_order_coupons = array();
 	$product_coupons          = array();
 	$product_ids_in_cart      = array();
@@ -302,7 +301,6 @@ function cancel_sales_order( $order ) {
 	}
 
 	$cancel_body = array(
-		'APIKEY'                 => get_api_key(),
 		'mvSalesOrderNoToCancel' => $mv_sales_order['SalesOrderNo'],
 		'mvSalesOrderTypeId'     => $mv_sales_order['SalesOrderTypeId'],
 	);

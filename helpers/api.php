@@ -57,9 +57,8 @@ function get_guest_mv_client() {
  * @param string $call as string.
  */
 function create_json_url( $call ) {
-	$api_key = get_option( 'megaventory_api_key' );
-	$url     = get_megaventory_url();
-	return $url . $call . '?APIKEY=' . rawurlencode( $api_key );
+	$url = get_megaventory_url();
+	return $url . $call;
 }
 
 /**
@@ -75,10 +74,10 @@ function get_url_for_call( $call ) {
 /**
  * Create json filter.
  *
- * @param array $call as array.
- * @param array $field_name as array.
- * @param array $search_operator as array.
- * @param array $search_value as array.
+ * @param string $call as string.
+ * @param string $field_name as string.
+ * @param string $search_operator as string.
+ * @param string $search_value as string.
  */
 function create_json_url_filter( $call, $field_name, $search_operator, $search_value ) {
 	return create_json_url( $call ) . '&Filters={FieldName:' . rawurlencode( $field_name ) . ',SearchOperator:' . rawurlencode( $search_operator ) . ',SearchValue:' . rawurlencode( $search_value ) . '}';
@@ -114,10 +113,9 @@ function create_json_url_filters( $call, $args ) {
  *
  * @param string $url as string.
  * @param mixed  $json_request as stdclass.
- * @param mixed  $attempt as int.
  * @return mixed
  */
-function send_json( $url, $json_request, $attempt = 0 ) {
+function send_json( $url, $json_request ) {
 
 	/**
 	 * Old code did a curl, remove in the future if wp_remote_get is working fine.
@@ -136,31 +134,43 @@ function send_json( $url, $json_request, $attempt = 0 ) {
 	TODO: Send directly the array and not an object.
 	 */
 
-	$body_to_send = create_array_from_object( $json_request );
+	$body_to_send           = create_array_from_object( $json_request );
+	$body_to_send['APIKEY'] = get_option( 'megaventory_api_key' );
+
+	$host_reachable = false;
 
 	$data_to_send = array(
 		'headers' => array(
 			'Content-Type' => 'application/json',
 		),
 		'method'  => 'POST',
-		'timeout' => 15,
+		'timeout' => MV_Constants::REQUEST_TIMEOUT_LIMIT_IN_SECONDS,
 		'body'    => wp_json_encode( $body_to_send ),
 	);
 
-	$response = wp_remote_post( $url, $data_to_send );
+	$data     = array();
+	$response = array();
 
-	$data = json_decode( wp_remote_retrieve_body( $response ), true );
+	// Try multiple times until MAX_REQUEST_ATTEMPTS is reached before failing and registering an error when the API is timing out.
+	// After the maximum attempts have been exhausted with no success, return a WordPress request error.
+	for ( $attempt = 1; $attempt <= MV_Constants::MAX_REQUEST_ATTEMPTS; $attempt++ ) {
+		$response = wp_remote_post( $url, $data_to_send );
 
-	if ( is_wp_error( $response ) && ! isset( $data['ResponseStatus']['Message'] ) ) {
-		if ( 3 !== $attempt ) {
-			$attempt++;
-			return send_json( $url, $json_request, $attempt );
+		if ( ! is_wp_error( $response ) ) {
+			$data           = json_decode( wp_remote_retrieve_body( $response ), true );
+			$host_reachable = true;
+			break;
+		} else {
+			// Exponential Backoff algorithm (Time = 2^c - 1, where c is the current number of attempts).
+			$time_sleep = ( pow( 2, $attempt ) - 1 ) * MV_Constants::SECONDS_TO_MICROSECONDS_CONVERSION_RATE;
+			usleep( $time_sleep );
 		}
-		$data['InternalErrorCode']         = 'Unable to communicate with the API endpoint.';
-		$data['ResponseStatus']['Message'] = $response->get_error_message();
 	}
 
-	$data['json_object'] = wp_json_encode( $body_to_send );
+	if ( ! $host_reachable ) {
+		$data['InternalErrorCode']         = 'WordPress Request timeout';
+		$data['ResponseStatus']['Message'] = $response->get_error_message();
+	}
 
 	return $data;
 
@@ -171,38 +181,47 @@ function send_json( $url, $json_request, $attempt = 0 ) {
  *
  * @param string $url as string.
  * @param mixed  $request as array.
- * @param mixed  $attempt as int.
  * @return array
  */
-function send_request_to_megaventory( $url, $request, $attempt = 0 ) {
+function send_request_to_megaventory( $url, $request ) {
 
-	$body_to_send = $request;
+	$body_to_send           = $request;
+	$body_to_send['APIKEY'] = get_option( 'megaventory_api_key' );
+
+	$host_reachable = false;
 
 	$data_to_send = array(
 		'headers' => array(
 			'Content-Type' => 'application/json',
 		),
 		'method'  => 'POST',
-		'timeout' => 15,
+		'timeout' => MV_Constants::REQUEST_TIMEOUT_LIMIT_IN_SECONDS,
 		'body'    => wp_json_encode( $body_to_send ),
 	);
 
-	$response = wp_remote_post( $url, $data_to_send );
+	$data     = array();
+	$response = array();
 
-	$data = json_decode( wp_remote_retrieve_body( $response ), true );
+	// Try multiple times until MAX_REQUEST_ATTEMPTS is reached before failing and registering an error when the API is timing out.
+	// Log the error only one time, after maximum attempts have been exhausted.
+	for ( $attempt = 1; $attempt <= MV_Constants::MAX_REQUEST_ATTEMPTS; $attempt++ ) {
+		$response = wp_remote_post( $url, $data_to_send );
 
-	if ( is_wp_error( $response ) && ! isset( $data['ResponseStatus']['Message'] ) ) {
-
-		if ( 3 !== $attempt ) {
-			$attempt++;
-			return send_request_to_megaventory( $url, $request, $attempt );
+		if ( ! is_wp_error( $response ) ) {
+			$data           = json_decode( wp_remote_retrieve_body( $response ), true );
+			$host_reachable = true;
+			break;
+		} else {
+			// Exponential Backoff algorithm (Time = 2^c - 1, where c is the current number of attempts).
+			$time_sleep = ( pow( 2, $attempt ) - 1 ) * MV_Constants::SECONDS_TO_MICROSECONDS_CONVERSION_RATE;
+			usleep( $time_sleep );
 		}
+	}
 
+	if ( ! $host_reachable ) {
 		$data['InternalErrorCode']         = 'WordPress Request timeout';
 		$data['ResponseStatus']['Message'] = $response->get_error_message();
 	}
-
-	$data['json_object'] = wp_json_encode( $body_to_send );
 
 	return $data;
 
@@ -250,7 +269,7 @@ function wrap_json( $json_object ) {
  * Curl call.
  *
  * @param string $url as string.
- * @return string
+ * @return array
  */
 function perform_call_to_megaventory( $url ) {
 	/**
@@ -263,9 +282,41 @@ function perform_call_to_megaventory( $url ) {
 	 *return $json_data;
 	 */
 
-	$response = wp_remote_get( $url );
+	$body_to_send = array( 'APIKEY' => get_option( 'megaventory_api_key' ) );
 
-	$data = wp_remote_retrieve_body( $response );
+	$data_to_send = array(
+		'headers' => array(
+			'Content-Type' => 'application/json',
+		),
+		'method'  => 'POST',
+		'timeout' => MV_Constants::REQUEST_TIMEOUT_LIMIT_IN_SECONDS,
+		'body'    => wp_json_encode( $body_to_send ),
+	);
+
+	$host_reachable = false;
+
+	$data     = array();
+	$response = array();
+
+	for ( $attempt = 1; $attempt <= MV_Constants::MAX_REQUEST_ATTEMPTS; $attempt++ ) {
+		$response = wp_remote_post( $url, $data_to_send );
+
+		if ( ! is_wp_error( $response ) ) {
+			$data           = json_decode( wp_remote_retrieve_body( $response ), true );
+			$host_reachable = true;
+			break;
+		} else {
+			// Exponential Backoff algorithm (Time = 2^c - 1, where c is the current number of attempts).
+			$time_sleep = ( pow( 2, $attempt ) - 1 ) * MV_Constants::SECONDS_TO_MICROSECONDS_CONVERSION_RATE;
+			usleep( $time_sleep );
+		}
+	}
+
+	if ( ! $host_reachable ) {
+		$data['InternalErrorCode']         = 'WordPress Request timeout';
+		$data['ResponseStatus']['Message'] = $response->get_error_message();
+	}
+
 	return $data;
 }
 
@@ -273,9 +324,17 @@ function perform_call_to_megaventory( $url ) {
  * Get Default Currency.
  */
 function get_default_currency() {
-	$url                  = create_json_url_filter( MV_Constants::CURRENCY_GET, 'CurrencyIsDefault', 'Equals', 'true' );
-	$json_data            = perform_call_to_megaventory( $url );
-	$megaventory_currency = json_decode( $json_data, true )['mvCurrencies'][0]['CurrencyCode'];
+	$url  = get_url_for_call( MV_Constants::CURRENCY_GET );
+	$data = array(
+		'Filters' => array(
+			'FieldName'      => 'CurrencyIsDefault',
+			'SearchOperator' => 'Equals',
+			'SearchValue'    => 'true',
+		),
+	);
+
+	$response             = send_request_to_megaventory( $url, $data );
+	$megaventory_currency = $response['mvCurrencies'][0]['CurrencyCode'];
 	return $megaventory_currency;
 }
 
@@ -328,9 +387,8 @@ function check_key() {
 			$data['ResponseStatus']['ErrorCode'] = 500;
 			$data['ResponseStatus']['Message']   = 'Empty Api Key, create an API key under My Profile.';
 		} else {
-			$url       = create_json_url( 'APIKeyGet' );
-			$json_data = perform_call_to_megaventory( $url );
-			$data      = json_decode( $json_data, true );
+			$url  = create_json_url( 'APIKeyGet' );
+			$data = perform_call_to_megaventory( $url );
 		}
 	}
 
@@ -379,9 +437,13 @@ function check_if_integration_is_enabled() {
  */
 function remove_integration_update( $id ) {
 
-	$url       = create_json_url( MV_Constants::INTEGRATION_UPDATE_DELETE ) . '&IntegrationUpdateIDToDelete=' . rawurlencode( $id );
-	$json_data = perform_call_to_megaventory( $url );
-	$data      = json_decode( $json_data, true );
+	$data = array(
+		'IntegrationUpdateIDToDelete' => $id,
+	);
+
+	$url = get_url_for_call( MV_Constants::INTEGRATION_UPDATE_DELETE );
+
+	$response = send_request_to_megaventory( $url, $data );
 
 }
 
@@ -390,11 +452,18 @@ function remove_integration_update( $id ) {
  */
 function get_integration_updates() {
 
-	$url       = create_json_url_filter( MV_Constants::INTEGRATION_UPDATE_GET, 'Application', 'Equals', 'Woocommerce' );
-	$json_data = perform_call_to_megaventory( $url );
-	$data      = json_decode( $json_data, true );
+	$url  = get_url_for_call( MV_Constants::INTEGRATION_UPDATE_GET );
+	$data = array(
+		'Filters' => array(
+			'FieldName'      => 'Application',
+			'SearchOperator' => 'Equals',
+			'SearchValue'    => 'Woocommerce',
+		),
+	);
 
-	return $data;
+	$response = send_request_to_megaventory( $url, $data );
+
+	return $response;
 }
 
 /**

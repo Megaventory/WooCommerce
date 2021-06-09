@@ -97,6 +97,9 @@ function ajaxPullUpdates() {
  */
 function SyncStockToMegaventory(starting_index) {
 	jQuery( '#loading_operation' ).show();
+
+	var prefered_status = jQuery( '#mv_adjustment_document_status' ).val();
+
 	jQuery.ajax(
 		{
 			url: "admin-ajax.php",
@@ -104,6 +107,7 @@ function SyncStockToMegaventory(starting_index) {
 			data: {
 				'action': 'sync_stock_to_megaventory',
 				'startingIndex': starting_index,
+				'prefered-status': prefered_status,
 				'async-nonce': mv_ajax_object.nonce
 			},
 			success: function (data) { // This outputs the result of the ajax request.

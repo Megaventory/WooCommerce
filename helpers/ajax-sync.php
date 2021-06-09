@@ -68,11 +68,9 @@ function async_import() {
 
 			}
 
-			$wc_products                   = Product::wc_get_products_in_batches( $number_of_indexes_to_process, $page );
-			$number_of_products_to_process = count( $wc_products );
+			$next_products_to_process = $number_of_indexes_to_process * $page;
 
-			if ( 0 === $number_of_products_to_process ) {
-
+			if ( $next_products_to_process > $number_of_products ) {
 				update_option( 'are_megaventory_products_synchronized', 1 );
 
 				$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
@@ -98,6 +96,9 @@ function async_import() {
 				wp_send_json_success( $data_to_return );
 				wp_die();
 			}
+
+			$wc_products                   = Product::wc_get_products_in_batches( $number_of_indexes_to_process, $page );
+			$number_of_products_to_process = count( $wc_products );
 
 			foreach ( $wc_products as $wc_product ) {
 
@@ -183,7 +184,7 @@ function async_import() {
 
 			for ( $i = $starting_index; $i < $number_of_indexes_to_process + $starting_index; $i++ ) {
 
-				if ( count( $coupons ) > $i ) {
+				if ( $number_of_coupons > $i ) {
 
 					if ( 'percent' !== $coupons[ $i ]->type ) {
 						continue;
@@ -197,7 +198,7 @@ function async_import() {
 			$successes_count += $successes;
 			$errors_count    += $errors;
 
-			if ( $number_of_indexes_to_process + $starting_index > count( $coupons ) ) {
+			if ( $number_of_indexes_to_process + $starting_index > $number_of_coupons ) {
 
 				update_option( 'are_megaventory_coupons_synchronized', 1 );
 
@@ -388,6 +389,20 @@ function change_alternate_cron_status() {
 }
 
 /**
+ * Change Adjustment Document Status Option
+ */
+function change_adjustment_status_option() {
+	if ( isset( $_POST['prefered-status'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
+		$option_value = sanitize_text_field( wp_unslash( $_POST['prefered-status'] ) );
+		update_option( 'megaventory_adjustment_document_status_option', $option_value );
+		wp_send_json_success( array( 'success' => true ), 200 );
+	} else {
+		wp_send_json_error( array( 'success' => false ), 200 );
+	}
+	wp_die();
+}
+
+/**
  * Notices.
  *
  * @param string $type as message type.
@@ -432,7 +447,7 @@ function create_json_for_ajax_imports( $starting_index,
 
 	$json_data = new \stdClass();
 
-	$processed = $successes_count + $errors_count;
+	$processed = $starting_index;
 
 	++$page;
 
@@ -544,6 +559,11 @@ function sync_stock_to_megaventory() {
 	$starting_index = 0;
 	$return_values  = array();
 	try {
+
+		if ( isset( $_POST['prefered-status'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
+			$option_value = sanitize_text_field( wp_unslash( $_POST['prefered-status'] ) );
+			update_option( 'megaventory_adjustment_document_status_option', $option_value );
+		}
 
 		if ( isset( $_POST['async-nonce'], $_POST['startingIndex'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
 

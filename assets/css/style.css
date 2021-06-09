@@ -227,7 +227,7 @@
 }
 
 div.mv-row.row-main {
-	width: 90%;
+	width: 100%;
 }
 
 .wrap-init {
@@ -289,9 +289,13 @@ div.mv-row.row-main {
 .pullUpdatesHint{
 	position: absolute;
 	width: 300px;
-	margin-top: -40px;
+	margin-top: -65px;
 	margin-left: 20px;
 	display: inline-block;
+	background: rgba(80,80,80, 0.6);
+	border-radius: 0.8rem;
+	color: #FFF;
+	padding: 1em;
 }
 .pushAction {
 	width: 350px;
@@ -408,6 +412,16 @@ div.mv-row.row-main {
 	font-style: normal;
 	font-weight: 400;
 	src: url(https://jsbin-user-assets.s3.amazonaws.com/rafaelcastrocouto/password.ttf);
+}
+
+.form-table th {
+	width: 15%;
+}
+
+.mvDocStatusUpdate {
+	padding: 0.4em 1em;
+	vertical-align: middle;
+	margin-left: 1em;
 }
 
 /* Atomic CSS region */

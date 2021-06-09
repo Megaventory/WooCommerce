@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.18
+ * Version: 2.2.20
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -85,6 +85,9 @@ add_action( 'wp_ajax_nopriv_asyncImport', 'async_import' );
 
 add_action( 'wp_ajax_alternateWpCronStatus', 'change_alternate_cron_status' );
 add_action( 'wp_ajax_nopriv_alternateWpCronStatus', 'change_alternate_cron_status' );
+
+add_action( 'wp_ajax_changeAdjustmentDocumentStatusOption', 'change_adjustment_status_option' );
+add_action( 'wp_ajax_nopriv_changeAdjustmentDocumentStatusOption', 'change_adjustment_status_option' );
 
 add_action( 'wp_ajax_changeDefaultMegaventoryLocation', 'change_default_megaventory_location' );
 add_action( 'wp_ajax_nopriv_changeDefaultMegaventoryLocation', 'change_default_megaventory_location' );
@@ -213,8 +216,8 @@ function register_warning( $str1 = null, $str2 = null ) {
  * @param array       $options as array.
  */
 function upgrade_plugin( $upgrader_object, $options ) {
-	if ( array_key_exists( 'plugins', $options ) && in_array( plugin_basename( __FILE__ ), $options['plugins'], true ) ) {
-		update_option( 'correct_megaventory_apikey', get_option( 'correct_key', false ) );
+	if ( array_key_exists( 'plugins', $options ) && in_array( plugin_basename( __FILE__ ), $options['plugins'], true ) && ( get_option( 'correct_key', false ) ) ) {
+		update_option( 'correct_megaventory_apikey', get_option( 'correct_key' ) );
 		delete_option( 'correct_key' );
 	}
 }
@@ -483,23 +486,29 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 	add_action( 'admin_notices', 'sample_admin_notice_error' );
 }
 
-
 /**
  * Add purchase price product option.
  *
  * @return void
  */
 function purchase_price_option() {
+	$product = get_the_ID();
+	if ( false !== $product ) {
+		$product = Product::wc_find_product( $product );
+	}
+
+	$options = array(
+		'id'          => 'purchase_price',
+		'value'       => get_post_meta( get_the_ID(), 'purchase_price', true ),
+		'label'       => __( 'Purchase Price', 'textdomain' ) . ' (' . get_woocommerce_currency_symbol( get_woocommerce_currency() ) . ')',
+		'data_type'   => 'price',
+		'desc_tip'    => true,
+		'description' => 'This is the purchase price of the product(the price that the supplier is charging you to supply you with this product excluding taxes).',
+	);
+
 	echo wp_kses(
 		woocommerce_wp_text_input(
-			array(
-				'id'          => 'purchase_price',
-				'value'       => get_post_meta( get_the_ID(), 'purchase_price', true ),
-				'label'       => __( 'Purchase Price', 'textdomain' ) . ' (' . get_woocommerce_currency_symbol( get_woocommerce_currency() ) . ')',
-				'data_type'   => 'price',
-				'desc_tip'    => true,
-				'description' => 'This is the purchase price of the product(the price that the supplier is charging you to supply you with this product excluding taxes).',
-			)
+			$options
 		),
 		array(
 			'input'    => array(),
@@ -511,11 +520,11 @@ function purchase_price_option() {
 /**
  * Save purchase price.
  *
- * @param mixed $post_id as mixed.
+ * @param int $post_id as mixed.
  *
  * @return void
  */
-function save_purchase_price( mixed $post_id ) {
+function save_purchase_price( $post_id ) {
 	if ( isset( $_POST['woocommerce_meta_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' ) && ! empty( $_POST['purchase_price'] ) ) {
 		update_post_meta( $post_id, 'purchase_price', esc_attr( sanitize_text_field( wp_unslash( $_POST['purchase_price'] ) ) ) );
 	}
@@ -631,9 +640,10 @@ function ajax_calls() {
 
 	$nonce = wp_create_nonce( 'async-nonce' );
 
-	wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.8', true );
-	wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.8', true );
-	wp_enqueue_script( 'ajaxWpCronStatus', plugins_url( '/js/ajaxWpCronStatus.js', __FILE__ ), array(), '2.0.8', true );
+	wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.9', true );
+	wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.9', true );
+	wp_enqueue_script( 'ajaxWpCronStatus', plugins_url( '/js/ajaxWpCronStatus.js', __FILE__ ), array(), '2.0.9', true );
+	wp_enqueue_script( 'ajaxDocStatusChange', plugins_url( '/js/ajaxDocStatusChange.js', __FILE__ ), array(), '2.0.9', true );
 	$nonce_array = array(
 		'nonce' => $nonce,
 	);
@@ -648,7 +658,7 @@ function ajax_calls() {
  * @return void
  */
 function register_style() {
-	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.33', 'all' );
+	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.37', 'all' );
 	wp_register_style( 'mv_style_fonts', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css', false, '2.0.7', 'all' );
 }
 
@@ -1518,11 +1528,6 @@ add_action( 'pull_changes_event', 'pull_changes' );
  */
 function pull_changes() {
 
-	if ( ! get_transient( 'api_key_is_set' ) ) {
-
-		return;
-	}
-
 	if ( ! ( get_option( 'is_megaventory_initialized' ) && get_option( 'correct_currency' ) && get_option( 'correct_connection' ) && get_option( 'correct_megaventory_apikey' ) ) ) {
 
 		return;
@@ -1597,7 +1602,9 @@ function pull_changes() {
 
 			$json_data = json_decode( $change['JsonData'], true );
 
-			if ( 3 !== $json_data['DocumentTypeId'] ) {
+			$order_template = MV_Constants::MV_DEFAULT_SALES_ORDER_TEMPLATE;
+
+			if ( $order_template !== $json_data['DocumentTypeId'] ) {
 
 				continue; // only sales order.
 			}
@@ -1612,6 +1619,7 @@ function pull_changes() {
 			if ( false !== $order ) {
 
 				$order->set_status( $wc_order_status_mappings[ $status ] );
+
 				$order->save();
 			}
 

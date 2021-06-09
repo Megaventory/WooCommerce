@@ -278,9 +278,8 @@ class Tax {
 	 */
 	public static function mv_all() {
 
-		$url       = create_json_url( self::$tax_get_call );
-		$json_data = perform_call_to_megaventory( $url );
-		$jsontax   = json_decode( $json_data, true );
+		$url     = create_json_url( self::$tax_get_call );
+		$jsontax = perform_call_to_megaventory( $url );
 
 		$taxes = array();
 		foreach ( $jsontax['mvTaxes'] as $tax ) {
@@ -300,16 +299,23 @@ class Tax {
 	 */
 	public static function mv_find( $id ) {
 
-		$url       = create_json_url_filter( self::$tax_get_call, 'TaxID', 'Equals', rawurlencode( $id ) );
-		$json_data = perform_call_to_megaventory( $url );
-		$jsontax   = json_decode( $json_data, true );
+		$data = array(
+			'Filters' => array(
+				'FieldName'      => 'TaxID',
+				'SearchOperator' => 'Equals',
+				'SearchValue'    => $id,
+			),
+		);
 
-		if ( count( $jsontax['mvTaxes'] ) <= 0 ) {
+		$url      = get_url_for_call( self::$tax_get_call );
+		$response = send_request_to_megaventory( $url, $data );
+
+		if ( count( $response['mvTaxes'] ) <= 0 ) {
 
 			return null;
 		}
 
-		return self::mv_convert( $jsontax['mvTaxes'][0] );
+		return self::mv_convert( $response['mvTaxes'][0] );
 	}
 
 	/**
@@ -320,16 +326,23 @@ class Tax {
 	 */
 	public static function mv_find_by_name( $name ) {
 
-		$url       = create_json_url_filter( self::$tax_get_call, 'TaxName', 'Equals', rawurlencode( $name ) );
-		$json_data = perform_call_to_megaventory( $url );
-		$jsontax   = json_decode( $json_data, true );
+		$data = array(
+			'Filters' => array(
+				'FieldName'      => 'TaxName',
+				'SearchOperator' => 'Equals',
+				'SearchValue'    => $name,
+			),
+		);
 
-		if ( count( $jsontax['mvTaxes'] ) <= 0 ) {
+		$url      = get_url_for_call( self::$tax_get_call );
+		$response = send_request_to_megaventory( $url, $data );
+
+		if ( count( $response['mvTaxes'] ) <= 0 ) {
 
 			return null;
 		}
 
-		return self::mv_convert( $jsontax['mvTaxes'][0] );
+		return self::mv_convert( $response['mvTaxes'][0] );
 	}
 
 	/**
@@ -341,16 +354,31 @@ class Tax {
 	 */
 	public static function mv_find_by_name_and_rate( $name, $rate ) {
 
-		$url       = create_json_url_filters( self::$tax_get_call, array( array( 'TaxName', 'Equals', rawurlencode( $name ) ), array( 'TaxValue', 'Equals', rawurlencode( $rate ) ) ) );
-		$json_data = perform_call_to_megaventory( $url );
-		$jsontax   = json_decode( $json_data, true );
+		$data = array(
+			'Filters' => array(
+				array(
+					'FieldName'      => 'TaxName',
+					'SearchOperator' => 'Equals',
+					'SearchValue'    => $name,
+				),
+				array(
+					'AndOr'          => 'And',
+					'FieldName'      => 'TaxValue',
+					'SearchOperator' => 'Equals',
+					'SearchValue'    => $rate,
+				),
+			),
+		);
 
-		if ( count( $jsontax['mvTaxes'] ) <= 0 ) {
+		$url      = get_url_for_call( self::$tax_get_call );
+		$response = send_request_to_megaventory( $url, $data );
+
+		if ( count( $response['mvTaxes'] ) <= 0 ) {
 
 			return null;
 		}
 
-		return self::mv_convert( $jsontax['mvTaxes'][0] );
+		return self::mv_convert( $response['mvTaxes'][0] );
 	}
 
 	/**
@@ -406,7 +434,7 @@ class Tax {
 		$tax_obj->mvrecordaction                        = $action;
 		$tax_obj->mvinsertupdatedeletesourceapplication = 'woocommerce';
 
-		$url     = create_json_url( self::$tax_update_call );
+		$url     = get_url_for_call( self::$tax_update_call );
 		$tax_obj = wrap_json( $tax_obj );
 		$data    = send_json( $url, $tax_obj );
 

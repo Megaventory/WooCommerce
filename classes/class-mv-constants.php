@@ -117,4 +117,12 @@ class MV_Constants {
 		'FullyInvoiced'            => 'completed',
 		'Cancelled'                => 'cancelled',
 	);
+
+	const MAX_REQUEST_ATTEMPTS = 3;
+
+	const REQUEST_TIMEOUT_LIMIT_IN_SECONDS = 20;
+
+	const MV_DEFAULT_SALES_ORDER_TEMPLATE = 3;
+
+	const SECONDS_TO_MICROSECONDS_CONVERSION_RATE = 1E6;
 }

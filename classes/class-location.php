@@ -185,11 +185,9 @@ class Location {
 	 */
 	public static function get_megaventory_locations() {
 
-		$url = create_json_url( self::LOCATION_GET_CALL );
+		$url = get_url_for_call( self::LOCATION_GET_CALL );
 
 		$data = perform_call_to_megaventory( $url );
-
-		$data = json_decode( $data, true );
 
 		$inventory_locations = $data['mvInventoryLocations'];
 
@@ -243,7 +241,7 @@ class Location {
 		}
 		$request_object->mvinventorylocation = $location_object;
 
-		$location_update_url = create_json_url( self::LOCATION_UPDATE_CALL );
+		$location_update_url = get_url_for_call( self::LOCATION_UPDATE_CALL );
 
 		$request_object = wrap_json( $request_object );
 

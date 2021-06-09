@@ -326,9 +326,9 @@ class Client {
 	 */
 	public static function mv_all() {
 
-		$url       = create_json_url( self::$supplierclient_get_call );
+		$url       = get_url_for_call( self::$supplierclient_get_call );
 		$json_data = perform_call_to_megaventory( $url );
-		$clients   = json_decode( $json_data, true )['mvSupplierClients'];
+		$clients   = $json_data['mvSupplierClients'];
 		$temp      = array();
 
 		foreach ( $clients as $client ) {
@@ -360,13 +360,21 @@ class Client {
 	 */
 	public static function mv_find( $id ) {
 
-		$url       = create_json_url_filter( self::$supplierclient_get_call, 'SupplierClientID', 'Equals', $id );
-		$json_data = perform_call_to_megaventory( $url );
-		$client    = json_decode( $json_data, true );
-		if ( count( $client['mvSupplierClients'] ) <= 0 ) {
+		$data = array(
+			'Filters' => array(
+				'FieldName'      => 'SupplierClientID',
+				'SearchOperator' => 'Equals',
+				'SearchValue'    => $id,
+			),
+		);
+
+		$url      = get_url_for_call( self::$supplierclient_get_call );
+		$response = send_request_to_megaventory( $url, $data );
+
+		if ( count( $response['mvSupplierClients'] ) <= 0 ) {
 			return null;
 		}
-		return self::mv_convert( $client['mvSupplierClients'][0] );
+		return self::mv_convert( $response['mvSupplierClients'][0] );
 	}
 
 	/**
@@ -377,13 +385,21 @@ class Client {
 	 */
 	public static function mv_find_by_name( $name ) {
 
-		$url       = create_json_url_filter( self::$supplierclient_get_call, 'SupplierClientName', 'Equals', rawurlencode( $name ) );
-		$json_data = perform_call_to_megaventory( $url );
-		$client    = json_decode( $json_data, true );
-		if ( count( $client['mvSupplierClients'] ) <= 0 ) {
+		$data = array(
+			'Filters' => array(
+				'FieldName'      => 'SupplierClientName',
+				'SearchOperator' => 'Equals',
+				'SearchValue'    => $name,
+			),
+		);
+
+		$url      = get_url_for_call( self::$supplierclient_get_call );
+		$response = send_request_to_megaventory( $url, $data );
+
+		if ( count( $response['mvSupplierClients'] ) <= 0 ) {
 			return null;
 		}
-		return self::mv_convert( $client['mvSupplierClients'][0] );
+		return self::mv_convert( $response['mvSupplierClients'][0] );
 	}
 
 	/**
@@ -394,14 +410,21 @@ class Client {
 	 */
 	public static function mv_find_by_email( $email ) {
 
-		$url       = create_json_url_filter( self::$supplierclient_get_call, 'SupplierClientEmail', 'Equals', rawurlencode( $email ) );
-		$json_data = perform_call_to_megaventory( $url );
-		$client    = json_decode( $json_data, true );
-		if ( count( $client['mvSupplierClients'] ) <= 0 ) {
+		$data = array(
+			'Filters' => array(
+				'FieldName'      => 'SupplierClientEmail',
+				'SearchOperator' => 'Equals',
+				'SearchValue'    => $email,
+			),
+		);
+
+		$url      = get_url_for_call( self::$supplierclient_get_call );
+		$response = send_request_to_megaventory( $url, $data );
+
+		if ( count( $response['mvSupplierClients'] ) <= 0 ) {
 			return null;
 		}
-
-		return self::mv_convert( $client['mvSupplierClients'][0] );
+		return self::mv_convert( $response['mvSupplierClients'][0] );
 	}
 
 	/**
@@ -601,7 +624,6 @@ class Client {
 	public function delete_client_in_megaventory() {
 
 		$data_to_send = array(
-			'APIKEY'                                => get_api_key(),
 			'SupplierClientIDToDelete'              => $this->mv_id,
 			'SupplierClientDeleteAction'            => 'DefaultAction',
 			'mvInsertUpdateDeleteSourceApplication' => 'woocommerce',
@@ -681,12 +703,15 @@ class Client {
 	 */
 	public static function mv_undelete( $id ) {
 
-		$url  = create_json_url( self::$supplierclient_undelete_call );
-		$url .= '&SupplierClientIDToUndelete=' . $id;
+		$data = array(
+			'SupplierClientIDToUndelete' => $id,
+		);
 
-		$call = perform_call_to_megaventory( $url );
+		$url = get_url_for_call( self::$supplierclient_undelete_call );
 
-		return json_decode( $call, true );
+		$call = send_request_to_megaventory( $url, $data );
+
+		return $call;
 	}
 
 	/**

@@ -233,6 +233,31 @@ function generate_admin_page() {
 		</div>	
 		<?php if ( $correct_connection && $correct_currency && $correct_key ) : ?>
 			<hr/>
+			<?php if ( $is_megaventory_synchronized && $is_megaventory_stock_adjusted ) : ?>
+			<div class="mv-row row-main">
+				<div class="actions">
+					<h3>Issue Adjustment documents with the following status</h3>
+					<div class="MarTop10">
+						<table class="form-table">
+							<tbody>
+								<tr>
+									<th scope="row"><label for="enable_alternate_wp_cron">Adjustment document status</label></th>
+									<?php $status_option = get_option( 'megaventory_adjustment_document_status_option', 'Pending' ); ?>
+									<td>
+										<select id="mv_adjustment_document_status" name="mv_adjustment_document_status" class="select-control">
+											<option value="Pending" <?php echo ( 'Pending' === $status_option ) ? 'selected' : ''; ?>>Pending</option>
+											<option value="Verified" <?php echo ( 'Verified' === $status_option ) ? 'selected' : ''; ?>>Approved</option>
+										</select>
+										<input onclick="changeDocumentStatusOption()" class="mvDocStatusUpdate updateButton CurPointer" type="submit" value="Save"/>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+			<hr />
+			<?php endif; ?>
 			<div class="mv-row row-main">
 				<div class="actions">
 					<h3>Synchronization</h3>
@@ -332,20 +357,25 @@ function generate_admin_page() {
 									<div class="initNoticeDiv stockNotice">
 										<span class="displayBlock">There are two ways to synchronize product quantity:</span>
 										<span class="displayBlock Mar10">- To push your WooCommerce product quantity to your Megaventory account choose <strong>Push Product Quantity to Megaventory</strong>.
-										This action will create <strong>Pending Adjustment Documents</strong> in your Megaventory account. Approving these documents will update the Megaventory Product Quantity.</span>
+										This action will create <strong>Adjustment Documents</strong> in your Megaventory account. Approving these documents will update the Megaventory Product Quantity.<br/><strong>We strongly suggest to go to your products and fill in the purchase price, before proceeding with this action, so that you get an accurate overview of the inventory value in Megaventory.</strong><br/>
+											<label for="mv_adjustment_document_status">Issue adjustments with the following status</label>
+											<select id="mv_adjustment_document_status" name="mv_adjustment_document_status" class="select-control">
+												<option value="Pending">Pending</option>
+												<option value="Verified">Approved</option>
+											</select>
+										</span>
+										<div id="create-adj" class="updateButton CurPointer pushAction" onclick="SyncStockToMegaventory(0)" >
+											<span class="mv-action" title="Create Pending Adjustments on your Megaventory account based on your WooCommerce quantity">Push Product Quantity to Megaventory</span>
+										</div>
 										<span class="displayBlock Mar10">- If you have set already your Product Quantity on your Megaventory account choose <strong>Pull Product Quantity from Megaventory</strong>.
 										This action will overwrite your product quantity in your WooCommerce with the sum of all the <strong>on-hand quantity</strong> added from every Inventory Location in your Megaventory account.
 										</span>
-									</div>
-									<div id="create-adj" class="updateButton CurPointer pushAction" onclick="SyncStockToMegaventory(0)" >
-										<span class="mv-action" title="Create Pending Adjustments on your Megaventory account based on your WooCommerce quantity">Push Product Quantity to Megaventory</span>
-									</div>
-									<div id="pull-stock" class="updateButton CurPointer pushAction MarTop10" onclick="SyncStockFromMegaventory(0)" >
-										<span class="mv-action" title="Synchronize products quantity from your Megaventory account">Pull Product Quantity from Megaventory</span>
-									</div>
-
-									<div id="skip-stock" class="pushAction MarTop10" onclick="SkipStockSynchronization()" >
-										<span class="mv-action" title="Synchronize quantity later"><a href="#">Synchronize Quantity later</a></span>
+										<div id="pull-stock" class="updateButton CurPointer pushAction MarTop10" onclick="SyncStockFromMegaventory(0)" >
+											<span class="mv-action" title="Synchronize products quantity from your Megaventory account">Pull Product Quantity from Megaventory</span>
+										</div>
+										<div id="skip-stock" class="pushAction MarTop10" onclick="SkipStockSynchronization()" >
+											<span class="mv-action" title="Synchronize quantity later"><a href="#">Synchronize Quantity later</a></span>
+										</div>
 									</div>
 
 								<?php endif; ?>
@@ -397,16 +427,14 @@ function generate_admin_page() {
 					<div class="actions">
 						<h3>Alternate WordPress Cron</h3>
 						<div class="MarTop10">
-							<form action="#" method="post">
-								<table class="form-table">
-									<tbody>
-										<tr>
-											<th scope="row"><label for="enable_alternate_wp_cron">Enable Alternate WordPress Cron</label></th>
-											<td><input id="enable_alternate_wp_cron" type="checkbox" name="alternate_wp_cron" onclick="changeWpCronStatus()" <?php echo ( (bool) get_option( 'megaventory_alternate_wp_cron', false ) ) ? 'checked' : ''; ?>/><br/><span class='description'>Enable this option only if the regular cron is unable to run properly</span></td>
-										</tr>
-									</tbody>
-								</table>
-							</form>
+							<table class="form-table">
+								<tbody>
+									<tr>
+										<th scope="row"><label for="enable_alternate_wp_cron">Enable Alternate WordPress Cron</label></th>
+										<td><input id="enable_alternate_wp_cron" type="checkbox" name="alternate_wp_cron" onclick="changeWpCronStatus()" <?php echo ( (bool) get_option( 'megaventory_alternate_wp_cron', false ) ) ? 'checked' : ''; ?>/><span class='description'>Enable this option only if the regular cron is unable to run properly</span></td>
+									</tr>
+								</tbody>
+							</table>
 						</div>
 					</div>
 				</div>

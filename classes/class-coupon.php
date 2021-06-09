@@ -167,7 +167,7 @@ class Coupon {
 	/**
 	 * Get all WooCommerce coupons.
 	 *
-	 * @return array[Coupon]
+	 * @return array
 	 */
 	public static function wc_all() {
 

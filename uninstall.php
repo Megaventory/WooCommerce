@@ -46,6 +46,11 @@ delete_mv_data_from_orders();
 delete_option( 'correct_currency' );
 delete_option( 'correct_connection' );
 delete_option( 'correct_megaventory_apikey' );
+delete_option( 'do_megaventory_requests' );
+delete_option( 'mv_account_expired' );
+delete_option( 'mv_account_admin' );
+delete_option( 'mv_woo_integration_enabled' );
+delete_option( 'new_mv_api_key' );
 delete_option( 'last_valid_api_key' );
 
 delete_option( 'mv_session_messages' );
@@ -68,23 +73,26 @@ delete_option( 'megaventory_products_synchronized_time' );
 delete_option( 'megaventory_clients_synchronized_time' );
 delete_option( 'megaventory_coupons_synchronized_time' );
 delete_option( 'megaventory_stock_synchronized_time' );
+delete_option( 'megaventory_adjustment_document_status_option' );
 
 global $wpdb;
 
-$return = $wpdb->query( "ALTER TABLE {$wpdb->prefix}woocommerce_tax_rates DROP COLUMN mv_id;" ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+$tax_rates_table     = "{$wpdb->prefix}woocommerce_tax_rates";
+$tax_rates_mv_column = 'mv_id';
+
+$return = $wpdb->query( $wpdb->prepare( 'ALTER TABLE %s DROP COLUMN %s;', array( $tax_rates_table, $tax_rates_mv_column ) ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+
+$error_table_name   = "{$wpdb->prefix}megaventory_errors_log";
+$success_table_name = "{$wpdb->prefix}megaventory_success_log";
+
+$apikeys_table_name = "{$wpdb->prefix}megaventory_api_keys";
+$notices_table_name = "{$wpdb->prefix}megaventory_notices_log";
 
 
-$error_table_name   = $wpdb->prefix . 'megaventory_errors_log';
-$success_table_name = $wpdb->prefix . 'megaventory_success_log';
+$wpdb->query( $wpdb->prepare( 'DROP TABLE %s', $error_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
 
-$apikeys_table_name = $wpdb->prefix . 'megaventory_api_keys';
-$notices_table_name = $wpdb->prefix . 'megaventory_notices_log';
+$wpdb->query( $wpdb->prepare( 'DROP TABLE %s', $success_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
 
+$wpdb->query( $wpdb->prepare( 'DROP TABLE %s', $apikeys_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
 
-$wpdb->query( "DROP TABLE {$wpdb->prefix}megaventory_errors_log" ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
-
-$wpdb->query( "DROP TABLE {$wpdb->prefix}megaventory_success_log" ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
-
-$wpdb->query( "DROP TABLE {$wpdb->prefix}megaventory_api_keys" ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
-
-$wpdb->query( "DROP TABLE {$wpdb->prefix}megaventory_notices_log" ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+$wpdb->query( $wpdb->prepare( 'DROP TABLE %s', $notices_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.

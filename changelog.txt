@@ -1,4 +1,10 @@
 *** Megaventory Extension Template Changelog ***
+2021-06-08 - version 2.2.20
+* Improvements to security and connectivity.
+
+2021-06-01 - version 2.2.19
+* Improvements and more control over the bulk stock export procedure.
+
 2021-05-31 - version 2.2.18
 * Display appropriate messages at appropriate times based on the status of the integration.
 * Better compatibility with other extensions by using unique names for global variables.
