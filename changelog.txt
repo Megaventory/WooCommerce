@@ -1,4 +1,7 @@
 *** Megaventory Extension Template Changelog ***
+2021-06-08 - version 2.2.21
+* Allow user to pick options about bulk stock export to Megaventory
+
 2021-06-08 - version 2.2.20
 * Improvements to security and connectivity.
 
