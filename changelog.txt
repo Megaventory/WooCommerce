@@ -1,4 +1,14 @@
 *** Megaventory Extension Template Changelog ***
+2021-07-28 - version 2.2.24
+* Improvements to variant retrieval
+* Performance Optimizations
+
+2021-06-18 - version 2.2.23
+* Improvements to API handling
+
+2021-06-10 - version 2.2.22
+* Fully tested and compatible with WooCommerce 5.4.1 and WordPress 5.7.2
+
 2021-06-08 - version 2.2.21
 * Allow user to pick options about bulk stock export to Megaventory
 

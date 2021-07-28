@@ -467,9 +467,8 @@ class Product {
 	public static function wc_get_all_woocommerce_products_count() {
 
 		$args = array(
-			'type'   => array( 'simple', 'variation' ),
-			'return' => 'ids',
-			'limit'  => -1,
+			'type'  => array( 'simple', 'variation' ),
+			'limit' => -1,
 		);
 
 		$all_wc_products = wc_get_products( $args );
@@ -491,9 +490,6 @@ class Product {
 		$results = array();
 
 		foreach ( $wc_products as $wc_product ) {
-			if ( 'all' !== $all_or_id ) {
-				$wc_product = wc_get_product( $wc_product );
-			}
 			if ( ! array_key_exists( $wc_product->get_sku(), $results ) ) {
 				if ( 'all' === $all_or_id ) {
 					$results[ $wc_product->get_sku() ] = $wc_product;
@@ -1148,7 +1144,7 @@ class Product {
 		// Megaventory version should be | var1, var2, var3.
 		$version = $wc_variation->get_name();
 		$version = str_replace( ' ', '', $version ); // remove whitespaces.
-		$version = explode( '-', $version )[1]; // disregard name.
+		$version = substr( $version, strrpos( $version, '-' ) + 1 ); // Finds last occurence of '-' and takes everything after it.
 		$version = str_replace( ',', '/', $version );
 
 		$prod->version = $version;

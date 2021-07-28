@@ -335,6 +335,8 @@ function get_default_currency() {
 
 	$response             = send_request_to_megaventory( $url, $data );
 	$megaventory_currency = $response['mvCurrencies'][0]['CurrencyCode'];
+
+	update_option( 'primary_megaventory_currecy', $megaventory_currency );
 	return $megaventory_currency;
 }
 
@@ -390,17 +392,6 @@ function check_key() {
 			$url  = create_json_url( 'APIKeyGet' );
 			$data = perform_call_to_megaventory( $url );
 		}
-	}
-
-	$code = (int) $data['ResponseStatus']['ErrorCode'];
-
-	/* 401-wrong key | 500-no key */
-	if ( ! ( 401 === $code ) && ! ( 500 === $code ) ) {
-		log_apikey( $api_key );
-		update_option( 'correct_megaventory_apikey', true );
-	} else {
-		update_option( 'correct_megaventory_apikey', false );
-		update_option( 'correct_currency', false );
 	}
 
 	return $data;

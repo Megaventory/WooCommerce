@@ -125,10 +125,11 @@ function generate_admin_page() {
 		<div class="notice notice-error"><p>If you are sure that the currency is correct or if you have just updated the base currency in Megaventory, please refresh until this warning disappears.</p></div>
 		<?php endif; ?>
 		<?php if ( ! $is_megaventory_initialized ) : ?>
-		<div class="notice notice-warning"><p>You need to run the Initial Sync before any data synchronization takes place!</p></div>
-		<?php elseif ( $has_new_mv_api_key ) : ?>
-		<div class="notice notice-error"><p>Megaventory Warning!</p></div>
-		<div class="notice notice-error"><p>You have just added an API Key for a new account, please re-install Megaventory extension.</p></div>
+			<?php if ( $has_new_mv_api_key ) : ?>
+				<div class="notice notice-warning"><p>You added an API key for a new account. You need to run the Initial Sync again</p></div>
+			<?php else : ?>
+				<div class="notice notice-warning"><p>You need to run the Initial Sync before any data synchronization takes place!</p></div>
+			<?php endif; ?>
 		<?php endif; ?>
 		<div class="mv-admin">
 		<h1>Megaventory</h1>
@@ -157,17 +158,6 @@ function generate_admin_page() {
 							<span class="fa fa-times">
 							</span>
 							<span class="error-desc">API Key</span>
-						<?php endif; ?>
-						</li>
-						<li class="mv-li-left">
-						<?php if ( $correct_currency ) : ?>
-							<span class="fa fa-check">
-							</span>
-							<span class="success-desc">Base Currency</span>
-						<?php else : ?>
-							<span class="fa fa-times">
-							</span>
-							<span class="error-desc">Base Currency</span>
 						<?php endif; ?>
 						</li>
 					</ul>

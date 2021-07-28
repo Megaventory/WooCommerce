@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.21
+ * Version: 2.2.24
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -11,10 +11,10 @@
  * @since 1.0.0
  *
  * WC requires at least: 3.0
- * WC tested up to: 4.8.0
+ * WC tested up to: 5.4.1
  * Requires at least: 4.4
- * Tested up to: 5.6.0
- * Stable tag: 5.6.0
+ * Tested up to: 5.7.2
+ * Stable tag: 5.7.2
  *
  * Author: Megaventory
  * Author URI: https://megaventory.com/
@@ -436,7 +436,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 	add_action( 'init', 'register_style' );
 	add_action( 'admin_enqueue_scripts', 'enqueue_style' ); // Needed only in admin so far.
 
-	if ( 5 === random_int( 0, 30 ) && get_option( 'do_megaventory_requests', true ) ) {
+	if ( MV_Constants::CHECK_STATUS_VALUE === random_int( MV_Constants::RANDOM_NUMBER_MIN, MV_Constants::RANDOM_NUMBER_MAX ) && get_option( 'do_megaventory_requests', true ) ) {
 		// Might check multiple times according to the logic and the resources needed from the API.
 		check_status();
 	}
@@ -445,7 +445,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 		register_api_suspension_error();
 	}
 
-	if ( get_option( 'correct_currency' ) && get_option( 'correct_connection' ) && get_option( 'correct_megaventory_apikey' ) ) {
+	if ( ! get_option( 'empty_megaventory_apikey' ) && get_option( 'do_megaventory_requests' ) && get_option( 'correct_currency' ) ) {
 
 		add_action( 'woocommerce_order_status_processing', 'order_placed', 10, 1 );
 		add_action( 'woocommerce_order_status_on-hold', 'order_placed', 10, 1 );
@@ -563,10 +563,11 @@ function check_status() {
 		if ( MV_Constants::MAX_FAILED_CONNECTION_ATTEMPTS === $attempts ) {
 			update_option( 'do_megaventory_requests', false );
 			update_option( 'failed_connection_attempts', 0 );
+
+			return false;
 		}
 		update_option( 'failed_connection_attempts', $attempts );
 		update_option( 'correct_megaventory_apikey', false );
-		update_option( 'correct_currency', false );
 	}
 
 	if ( ! get_option( 'correct_megaventory_apikey' ) ) {
@@ -576,6 +577,12 @@ function check_status() {
 		} else {
 			update_option( 'mv_account_expired', false );
 		}
+
+		$megaventory_currency = get_option( 'primary_megaventory_currency', false );
+
+		$currency_status = ( $megaventory_currency && ( get_woocommerce_currency() === $megaventory_currency ) );
+
+		update_option( 'correct_currency', $currency_status );
 
 		return false;
 	}
@@ -623,7 +630,24 @@ function check_status() {
 
 	if ( trim( $current_database_id_of_api_key ) !== trim( $last_valid_database_id_of_api_key ) ) {
 
+		// New account has been used. Revert back to the uninitialized state.
+		// In short: set initialization flag to false, and reset megaventory data.
 		update_option( 'new_mv_api_key', true );
+		update_option( 'is_megaventory_initialized', false );
+
+		$products = Product::wc_get_all_products();
+
+		foreach ( $products as $product ) {
+			$product->wc_delete_mv_data();
+		}
+
+		$clients = Client::wc_get_all_clients();
+
+		foreach ( $clients as $client ) {
+			$client->wc_reset_mv_data();
+		}
+
+		delete_mv_data_from_orders();
 	} else {
 		update_option( 'new_mv_api_key', false );
 	}
@@ -913,6 +937,10 @@ function do_post() {
 	}
 
 	check_status();
+
+	if ( $status && get_option( 'new_mv_api_key' ) ) {
+		log_apikey( get_api_key() );
+	}
 
 	wp_safe_redirect( admin_url( 'admin.php' ) . '?page=' . $mv_admin_slug );
 }
