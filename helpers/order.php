@@ -238,6 +238,14 @@ function place_sales_order( $order, $client ) {
 	$order_object = new \stdClass();
 	$order_obj    = new \stdClass();
 
+	$order_tags = '';
+
+	if ( ! empty( $coupon_names_order_tags ) ) {
+		$order_tags = $coupon_names_order_tags . PHP_EOL . PHP_EOL;
+	}
+
+	$order_tags .= $order->get_payment_method_title(); // ex: instead of 'cod' it will return 'Cash on delivery'.
+
 	$order_object->salesorderreferenceno          = $order->get_order_number();
 	$order_object->salesorderreferenceapplication = 'woocommerce';
 	$order_object->salesorderclientid             = $client->mv_id;
@@ -245,7 +253,7 @@ function place_sales_order( $order, $client ) {
 	$order_object->salesorderbillingaddress       = str_replace( "\n", ' ', $billing_address );
 	$order_object->salesordershippingaddress      = str_replace( "\n", ' ', $shipping_address );
 	$order_object->salesordercomments             = $order->get_customer_note();
-	$order_object->salesordertags                 = $coupon_names_order_tags;
+	$order_object->salesordertags                 = $order_tags;
 	$order_object->salesorderdetails              = $sales_array;
 	$order_object->salesorderinventorylocationid  = (int) get_option( 'default-megaventory-inventory-location' );
 	$order_object->salesorderstatus               = 'Verified';

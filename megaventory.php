@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.24
+ * Version: 2.2.25
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -554,28 +554,28 @@ function check_status() {
 
 	if ( 0 === (int) $response['ResponseStatus']['ErrorCode'] ) {
 
-		update_option( 'correct_megaventory_apikey', true );
+		update_option( 'correct_megaventory_apikey', 1 );
 		update_option( 'failed_connection_attempts', 0 );
-		update_option( 'do_megaventory_requests', true );
+		update_option( 'do_megaventory_requests', 1 );
 	} else {
 
 		++$attempts;
 		if ( MV_Constants::MAX_FAILED_CONNECTION_ATTEMPTS === $attempts ) {
-			update_option( 'do_megaventory_requests', false );
+			update_option( 'do_megaventory_requests', 0 );
 			update_option( 'failed_connection_attempts', 0 );
 
 			return false;
 		}
 		update_option( 'failed_connection_attempts', $attempts );
-		update_option( 'correct_megaventory_apikey', false );
+		update_option( 'correct_megaventory_apikey', 0 );
 	}
 
 	if ( ! get_option( 'correct_megaventory_apikey' ) ) {
 
 		if ( false !== strpos( $response['ResponseStatus']['Message'], 'Your Account has expired.' ) ) {
-			update_option( 'mv_account_expired', true );
+			update_option( 'mv_account_expired', 1 );
 		} else {
-			update_option( 'mv_account_expired', false );
+			update_option( 'mv_account_expired', 0 );
 		}
 
 		$megaventory_currency = get_option( 'primary_megaventory_currency', false );
@@ -589,22 +589,22 @@ function check_status() {
 
 	if ( null !== $response['ResponseStatus']['Message'] && strpos( $response['ResponseStatus']['Message'], 'Administrator' ) === false ) {
 
-		update_option( 'mv_account_admin', false );
+		update_option( 'mv_account_admin', 0 );
 
 		return false;
 	} else {
-		update_option( 'mv_account_admin', true );
+		update_option( 'mv_account_admin', 1 );
 	}
 
 	$integration_enabled = check_if_integration_is_enabled();
 
 	if ( ! $integration_enabled ) {
 
-		update_option( 'mv_woo_integration_enabled', false );
+		update_option( 'mv_woo_integration_enabled', 0 );
 
 		return false;
 	} else {
-		update_option( 'mv_woo_integration_enabled', true );
+		update_option( 'mv_woo_integration_enabled', 1 );
 	}
 
 	$correct_currency = get_default_currency() === get_option( 'woocommerce_currency' );
@@ -632,8 +632,8 @@ function check_status() {
 
 		// New account has been used. Revert back to the uninitialized state.
 		// In short: set initialization flag to false, and reset megaventory data.
-		update_option( 'new_mv_api_key', true );
-		update_option( 'is_megaventory_initialized', false );
+		update_option( 'new_mv_api_key', 1 );
+		update_option( 'is_megaventory_initialized', 0 );
 
 		$products = Product::wc_get_all_products();
 
@@ -649,7 +649,7 @@ function check_status() {
 
 		delete_mv_data_from_orders();
 	} else {
-		update_option( 'new_mv_api_key', false );
+		update_option( 'new_mv_api_key', 0 );
 	}
 
 	return true;
@@ -929,7 +929,7 @@ function do_post() {
 
 		update_option( 'megaventory_api_key', trim( sanitize_text_field( wp_unslash( $_POST['api_key'] ) ) ) );
 
-		set_transient( 'api_key_is_set', true );
+		set_transient( 'api_key_is_set', 1 );
 	}
 
 	if ( isset( $_POST['api_host'], $_POST['update-credentials-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['update-credentials-nonce'] ), 'update-credentials-nonce' ) ) {
@@ -1481,8 +1481,8 @@ register_activation_hook( __FILE__, 'admin_notice_plugin_activation' );
 function admin_notice_plugin_activation() {
 
 	/* Create transient data */
-	set_transient( 'plugin_activation_notice', true, 5 );
-	set_transient( 'api_key_is_set', false );
+	set_transient( 'plugin_activation_notice', 1, 5 );
+	set_transient( 'api_key_is_set', 0 );
 
 	update_option( 'megaventory_api_key', '' );
 

@@ -369,21 +369,21 @@ function check_key() {
 	$api_key = get_option( 'megaventory_api_key' );
 
 	if ( empty( $api_key ) ) {
-		set_transient( 'api_key_is_set', false );
-		update_option( 'correct_megaventory_apikey', false );
-		update_option( 'correct_currency', false );
+		set_transient( 'api_key_is_set', 0 );
+		update_option( 'correct_megaventory_apikey', 0 );
+		update_option( 'correct_currency', 0 );
 		return false;
 	}
 
 	$connectivity = check_connectivity();
 
 	if ( ! $connectivity ) {
-		update_option( 'correct_connection', false );
+		update_option( 'correct_connection', 0 );
 		$data                                = array();
 		$data['ResponseStatus']['ErrorCode'] = 500;
 		$data['ResponseStatus']['Message']   = 'Unable to reach host.';
 	} else {
-		update_option( 'correct_connection', true );
+		update_option( 'correct_connection', 1 );
 		if ( empty( $api_key ) ) {
 			$data                                = array();
 			$data['ResponseStatus']['ErrorCode'] = 500;
