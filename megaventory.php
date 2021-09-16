@@ -820,6 +820,16 @@ function column( $column, $prod_id ) {
 			<tr>
 			<?php
 			$mv_location_id_to_abbr = get_option( 'mv_location_id_to_abbr' );
+		
+			if(array_key_exists($key, $mv_location_id_to_abbr) === false) {
+				
+				$inventory_name = '[ID=' . $key . ']' ;
+				
+			} else {
+				
+				$inventory_name = $mv_location_id_to_abbr[ $key ];
+				
+			}
 
 			$inventory_name = $mv_location_id_to_abbr[ $key ];
 			?>
