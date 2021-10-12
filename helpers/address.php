@@ -19,18 +19,18 @@
  * @param array $ar is an address object.
  */
 function format_address( $ar ) {
-	$name     = $ar['name'];
-	$company  = $ar['company'];
-	$line_1   = $ar['line_1'];
-	$line_2   = $ar['line_2'];
-	$city     = $ar['city'];
-	$county   = $ar['county'];
-	$postcode = $ar['postcode'];
-	$country  = $ar['country'];
+	$name     = empty( $ar['name'] ) ? '' : $ar['name'];
+	$company  = empty( $ar['company'] ) ? '' : $ar['company'];
+	$line_1   = empty( $ar['line_1'] ) ? '' : $ar['line_1'];
+	$line_2   = empty( $ar['line_2'] ) ? '' : $ar['line_2'];
+	$city     = empty( $ar['city'] ) ? '' : $ar['city'];
+	$county   = empty( $ar['county'] ) ? '' : $ar['county'];
+	$postcode = empty( $ar['postcode'] ) ? '' : $ar['postcode'];
+	$country  = empty( $ar['country'] ) ? '' : $ar['country'];
 
 	$country_states = WC()->countries->get_states( $country );
 
-	if ( in_array( $county, array_keys( $country_states ), true ) ) {
+	if ( is_array( $country_states ) && in_array( $county, array_keys( $country_states ), true ) ) {
 		$county = $country_states[ $county ];
 	}
 

@@ -53,7 +53,10 @@
 
 .column-megaventory_stock {
 	width: 15%;
-	background-color: #eee;
+}
+
+.column-purchase_price {
+	width: 4%;
 }
 
 .credentialsTable{

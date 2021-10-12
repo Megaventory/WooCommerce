@@ -502,34 +502,34 @@ class Client {
 
 		$client        = new Client();
 		$client->wc_id = $wc_client->ID;
-		$client->mv_id = empty( $user_meta['mv_id'][0] ) ? 0 : (int) $user_meta['mv_id'][0];
+		$client->mv_id = empty( $user_meta['mv_id'][0] ) ? 0 : $user_meta['mv_id'][0];
 		$client->email = $wc_client->user_email;
 
 		$client->username = $wc_client->user_login;
 
-		$client->contact_name = trim( strval( $user_meta['first_name'][0] ) . ' ' . strval( $user_meta['last_name'][0] ) );
-		$ship_name            = trim( strval( $user_meta['shipping_first_name'][0] ) . ' ' . strval( $user_meta['shipping_last_name'][0] ) );
-		$client->company      = strval( $user_meta['billing_company'][0] );
+		$client->contact_name = trim( strval( empty( $user_meta['first_name'][0] ) ? '' : $user_meta['first_name'][0] ) . ' ' . strval( empty( $user_meta['last_name'][0] ) ? '' : $user_meta['last_name'][0] ) );
+		$ship_name            = trim( strval( empty( $user_meta['shipping_first_name'][0] ) ? '' : $user_meta['shipping_first_name'][0] ) . ' ' . strval( empty( $user_meta['shipping_last_name'][0] ) ? '' : $user_meta['shipping_last_name'][0] ) );
+		$client->company      = strval( empty( $user_meta['billing_company'][0] ) ? '' : $user_meta['billing_company'][0] );
 
 		$shipping_address['name']     = $ship_name;
 		$shipping_address['company']  = $client->company;
-		$shipping_address['line_1']   = strval( $user_meta['shipping_address_1'][0] );
-		$shipping_address['line_2']   = strval( $user_meta['shipping_address_2'][0] );
-		$shipping_address['city']     = strval( $user_meta['shipping_city'][0] );
-		$shipping_address['postcode'] = strval( $user_meta['shipping_postcode'][0] );
-		$shipping_address['country']  = strval( $user_meta['shipping_country'][0] );
+		$shipping_address['line_1']   = strval( empty( $user_meta['shipping_address_1'][0] ) ? '' : $user_meta['shipping_address_1'][0] );
+		$shipping_address['line_2']   = strval( empty( $user_meta['shipping_address_2'][0] ) ? '' : $user_meta['shipping_address_2'][0] );
+		$shipping_address['city']     = strval( empty( $user_meta['shipping_city'][0] ) ? '' : $user_meta['shipping_city'][0] );
+		$shipping_address['postcode'] = strval( empty( $user_meta['shipping_postcode'][0] ) ? '' : $user_meta['shipping_postcode'][0] );
+		$shipping_address['country']  = strval( empty( $user_meta['shipping_country'][0] ) ? '' : $user_meta['shipping_country'][0] );
 		$client->shipping_address     = format_address( $shipping_address );
 
 		$billing_address['name']     = $client->contact_name;
 		$billing_address['company']  = $client->company;
-		$billing_address['line_1']   = strval( $user_meta['billing_address_1'][0] );
-		$billing_address['line_2']   = strval( $user_meta['billing_address_2'][0] );
-		$billing_address['city']     = strval( $user_meta['billing_city'][0] );
-		$billing_address['postcode'] = strval( $user_meta['billing_postcode'][0] );
-		$billing_address['country']  = strval( $user_meta['billing_country'][0] );
+		$billing_address['line_1']   = strval( empty( $user_meta['billing_address_1'][0] ) ? '' : $user_meta['billing_address_1'][0] );
+		$billing_address['line_2']   = strval( empty( $user_meta['billing_address_2'][0] ) ? '' : $user_meta['billing_address_2'][0] );
+		$billing_address['city']     = strval( empty( $user_meta['billing_city'][0] ) ? '' : $user_meta['billing_city'][0] );
+		$billing_address['postcode'] = strval( empty( $user_meta['billing_postcode'][0] ) ? '' : $user_meta['billing_postcode'][0] );
+		$billing_address['country']  = strval( empty( $user_meta['billing_country'][0] ) ? '' : $user_meta['billing_country'][0] );
 		$client->billing_address     = format_address( $billing_address );
 
-		$client->phone = strval( $user_meta['billing_phone'][0] );
+		$client->phone = strval( empty( $user_meta['billing_phone'][0] ) ? '' : $user_meta['billing_phone'][0] );
 		$client->type  = 'Client'; // you can change it to 'Both' aka supplier and client.
 
 		return $client;

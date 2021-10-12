@@ -66,6 +66,8 @@ class MV_Constants {
 
 	const PRODUCT_GET = 'ProductGet';
 
+	const PRODUCT_UPDATE = 'ProductUpdate';
+
 	const PRODUCT_DELETE = 'ProductDelete';
 
 	const SUPPLIER_CLIENT_DELETE = 'SupplierClientDelete';
@@ -75,6 +77,22 @@ class MV_Constants {
 	const SALES_ORDER_UPDATE = 'SalesOrderUpdate';
 
 	const SALES_ORDER_CANCEL = 'SalesOrderCancel';
+
+	const MV_RECORD_ACTION = array(
+		'Insert'                       => 'Insert',
+		'Update'                       => 'Update',
+		'InsertOrUpdate'               => 'InsertOrUpdate',
+		'InsertOrUpdateNonEmptyFields' => 'InsertOrUpdateNonEmptyFields',
+	);
+
+	const MV_PRODUCT_TYPE = array(
+		'BuyFromSupplier'                           => 'BuyFromSupplier',
+		'Service'                                   => 'Service',
+		'ManufactureFromWorkOrder'                  => 'ManufactureFromWorkOrder',
+		'BuyFromSupplierOrManufactureFromWorkOrder' => 'BuyFromSupplierOrManufactureFromWorkOrder',
+		'TimeRestrictedService'                     => 'TimeRestrictedService',
+		'Undefined'                                 => 'Undefined',
+	);
 
 	const MAX_FAILED_CONNECTION_ATTEMPTS = 100;
 

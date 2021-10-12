@@ -61,6 +61,8 @@ function async_import() {
 
 		if ( 'products' === $call ) {
 
+			$categories = Product::mv_get_categories();
+
 			$number_of_products = $count_of_entity;
 			if ( 0 > $number_of_products ) {
 
@@ -68,9 +70,10 @@ function async_import() {
 
 			}
 
-			$next_products_to_process = $number_of_indexes_to_process * $page;
+			$wc_products                   = Product::wc_get_products_in_batches( $number_of_indexes_to_process, $page );
+			$number_of_products_to_process = count( $wc_products );
 
-			if ( $next_products_to_process > $number_of_products ) {
+			if ( 0 === $number_of_products_to_process ) {
 				update_option( 'are_megaventory_products_synchronized', 1 );
 
 				$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
@@ -97,12 +100,9 @@ function async_import() {
 				wp_die();
 			}
 
-			$wc_products                   = Product::wc_get_products_in_batches( $number_of_indexes_to_process, $page );
-			$number_of_products_to_process = count( $wc_products );
-
 			foreach ( $wc_products as $wc_product ) {
 
-				$flag = $wc_product->mv_save();
+				$flag = $wc_product->mv_save( $categories );
 
 				if ( null !== $flag ) {
 

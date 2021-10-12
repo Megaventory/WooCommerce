@@ -80,19 +80,48 @@ global $wpdb;
 $tax_rates_table     = "{$wpdb->prefix}woocommerce_tax_rates";
 $tax_rates_mv_column = 'mv_id';
 
-$return = $wpdb->query( $wpdb->prepare( 'ALTER TABLE %s DROP COLUMN %s;', array( $tax_rates_table, $tax_rates_mv_column ) ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+$existing_columns = $wpdb->get_col( 'DESC ' . $wpdb->prefix . 'woocommerce_tax_rates', 0 ); // db call ok. no-cache ok.
+$column_found     = false;
+
+foreach ( $existing_columns as $column_name ) {
+
+	if ( 'mv_id' === $column_name ) {
+		$column_found = true;
+		break;
+	}
+}
+
+if ( $column_found ) {
+
+	$return = $wpdb->query( $wpdb->prepare( 'ALTER TABLE %1s DROP COLUMN %1s;', array( $tax_rates_table, $tax_rates_mv_column ) ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+}
+
 
 $error_table_name   = "{$wpdb->prefix}megaventory_errors_log";
 $success_table_name = "{$wpdb->prefix}megaventory_success_log";
-
 $apikeys_table_name = "{$wpdb->prefix}megaventory_api_keys";
 $notices_table_name = "{$wpdb->prefix}megaventory_notices_log";
 
+$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $error_table_name ), ARRAY_A ); // db call ok. no-cache ok.
+if ( 0 !== count( $existing_table ) ) {
 
-$wpdb->query( $wpdb->prepare( 'DROP TABLE %s', $error_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $error_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+}
 
-$wpdb->query( $wpdb->prepare( 'DROP TABLE %s', $success_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $success_table_name ), ARRAY_A ); // db call ok. no-cache ok.
+if ( 0 !== count( $existing_table ) ) {
 
-$wpdb->query( $wpdb->prepare( 'DROP TABLE %s', $apikeys_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $success_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+}
 
-$wpdb->query( $wpdb->prepare( 'DROP TABLE %s', $notices_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $apikeys_table_name ), ARRAY_A ); // db call ok. no-cache ok.
+if ( 0 !== count( $existing_table ) ) {
+
+	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $apikeys_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+}
+
+$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $notices_table_name ), ARRAY_A ); // db call ok. no-cache ok.
+if ( 0 !== count( $existing_table ) ) {
+
+	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $notices_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+}

@@ -18,8 +18,6 @@
  */
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-success.php';
 
-$success_table_name = $wpdb->prefix . 'megaventory_success_log';
-
 /**
  * Class that contains array of MVWC_Success.
  */

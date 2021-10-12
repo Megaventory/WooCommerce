@@ -67,13 +67,13 @@ class MVWC_Success {
 	 */
 	public function __construct( $args ) {
 
-		$this->entity_wc_id       = $args['entity_id']['wc'];
-		$this->entity_mv_id       = $args['entity_id']['mv'];
-		$this->entity_type        = $args['entity_type'];
-		$this->entity_name        = $args['entity_name'];
-		$this->transaction_status = $args['transaction_status'];
-		$this->full_msg           = $args['full_msg'];
-		$this->success_code       = $args['success_code'];
+		$this->entity_wc_id       = empty( $args['entity_id']['wc'] ) ? '' : $args['entity_id']['wc'];
+		$this->entity_mv_id       = empty( $args['entity_id']['mv'] ) ? '' : $args['entity_id']['mv'];
+		$this->entity_type        = empty( $args['entity_type'] ) ? '' : $args['entity_type'];
+		$this->entity_name        = empty( $args['entity_name'] ) ? '' : $args['entity_name'];
+		$this->transaction_status = empty( $args['transaction_status'] ) ? '' : $args['transaction_status'];
+		$this->full_msg           = empty( $args['full_msg'] ) ? '' : $args['full_msg'];
+		$this->success_code       = empty( $args['success_code'] ) ? '' : $args['success_code'];
 
 		$this->save();
 	}

@@ -191,7 +191,7 @@ function SyncStockFromMegaventory(starting_index) {
 			},
 
 			error: function (errorThrown) {
-				alert( 'Error on pushing stock, try again! If the error persists, contact Megaventory support.' );
+				alert( 'Error on pulling stock, try again! If the error persists, contact Megaventory support.' );
 				jQuery( '#loading_operation' ).hide();
 			}
 		}

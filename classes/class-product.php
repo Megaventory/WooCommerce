@@ -386,8 +386,6 @@ class Product {
 		);
 		$wc_products = wc_get_products( $args );
 
-		$wc_products = self::get_products_with_unique_sku( $wc_products );
-
 		foreach ( $wc_products as $wc_product ) {
 
 			if ( 'simple' === $wc_product->get_type() ) {
@@ -401,6 +399,8 @@ class Product {
 				$all_products = array_merge( $all_products, $products );
 			}
 		}
+
+		$all_products = self::get_products_with_unique_sku( $all_products );
 
 		return $all_products;
 	}
@@ -421,8 +421,6 @@ class Product {
 		);
 		$wc_products = wc_get_products( $args );
 
-		$wc_products = self::get_products_with_unique_sku( $wc_products );
-
 		foreach ( $wc_products as $wc_product ) {
 
 			if ( 'simple' === $wc_product->get_type() ) {
@@ -436,6 +434,8 @@ class Product {
 				$all_products = array_merge( $all_products, $products );
 			}
 		}
+
+		$all_products = self::get_products_with_unique_sku( $all_products );
 
 		return $all_products;
 	}
@@ -454,7 +454,7 @@ class Product {
 
 		$all_wc_products = wc_get_products( $args );
 
-		$all_wc_products = self::get_products_with_unique_sku( $all_wc_products );
+		$all_wc_products = self::get_woocommerce_products_with_unique_sku( $all_wc_products );
 
 		return $all_wc_products;
 	}
@@ -473,20 +473,20 @@ class Product {
 
 		$all_wc_products = wc_get_products( $args );
 
-		$all_wc_products = self::get_products_with_unique_sku( $all_wc_products, 'id' );
+		$all_wc_products = self::get_woocommerce_products_with_unique_sku( $all_wc_products, 'id' );
 
 		return count( $all_wc_products );
 	}
 
 	/**
-	 * Get products with unique SKUs from the result of wc_get_products
+	 * Get woocommerce products with unique SKUs from the result of wc_get_products
 	 *
 	 * @param array  $wc_products as array.
 	 * @param string $all_or_id as string.
 	 *
 	 * @return array
 	 */
-	public static function get_products_with_unique_sku( array $wc_products, $all_or_id = 'all' ) {
+	public static function get_woocommerce_products_with_unique_sku( array $wc_products, $all_or_id = 'all' ) {
 		$results = array();
 
 		foreach ( $wc_products as $wc_product ) {
@@ -495,6 +495,30 @@ class Product {
 					$results[ $wc_product->get_sku() ] = $wc_product;
 				} else {
 					$results[ $wc_product->get_sku() ] = $wc_product->get_id();
+				}
+			}
+		}
+
+		return array_values( $results );
+	}
+
+	/**
+	 * Get products with unique SKUs from the result of wc_get_products
+	 *
+	 * @param Product[] $products as array.
+	 * @param string    $all_or_id as string.
+	 *
+	 * @return array
+	 */
+	public static function get_products_with_unique_sku( array $products, $all_or_id = 'all' ) {
+		$results = array();
+
+		foreach ( $products as $product ) {
+			if ( ! array_key_exists( $product->sku, $results ) ) {
+				if ( 'all' === $all_or_id ) {
+					$results[ $product->sku ] = $product;
+				} else {
+					$results[ $product->sku ] = $product->wc_id;
 				}
 			}
 		}
@@ -717,22 +741,7 @@ class Product {
 
 				$selected_product->update_stock_properties_from_location_stock_get( $megaventory_product_stock_list[ $index ] );
 
-				update_post_meta( $selected_product->wc_id, '_mv_qty', $selected_product->mv_qty );
-				update_post_meta( $selected_product->wc_id, '_manage_stock', 'yes' );
-				update_post_meta( $selected_product->wc_id, '_stock', (string) $selected_product->available_wc_stock );
-
-				$woocommerce_product = wc_get_product( $selected_product->wc_id );
-
-				$stock_status = 'outofstock';
-
-				if ( 'no' === $woocommerce_product->backorders ) {
-					$stock_status = ( $selected_product->available_wc_stock > 0 ? 'instock' : 'outofstock' );
-				} else {
-					$stock_status = ( $selected_product->available_wc_stock >= 0 ? 'instock' : 'onbackorder' );
-				}
-
-				$woocommerce_product->set_stock_status( $stock_status );
-				$woocommerce_product->save();
+				$selected_product->update_stock();
 			}
 		}
 
@@ -1011,7 +1020,7 @@ class Product {
 
 		$id          = $wc_prod->get_id();
 		$prod->wc_id = $id;
-		$prod->mv_id = (int) $post_meta['mv_id'][0];
+		$prod->mv_id = (int) ( ( empty( $post_meta['mv_id'][0] ) ) ? 0 : $post_meta['mv_id'][0] );
 
 		$prod->name             = $wc_prod->get_name();
 		$prod->long_description = $wc_prod->get_description();
@@ -1102,7 +1111,7 @@ class Product {
 		}
 
 		$prod->wc_id          = $wc_variation->get_id();
-		$prod->mv_id          = (int) $post_meta['mv_id'][0];
+		$prod->mv_id          = (int) ( ( empty( $post_meta['mv_id'][0] ) ) ? 0 : $post_meta['mv_id'][0] );
 		$prod->name           = $wc_variation->get_name();
 		$prod->sku            = $wc_variation->get_sku();
 		$prod->description    = $wc_variation->get_title();
@@ -1305,10 +1314,10 @@ class Product {
 			}
 		}
 
-		$urljson      = create_json_url( self::$product_update_call );
-		$json_request = $this->generate_update_json( $category_id );
+		$update_url = create_json_url( MV_Constants::PRODUCT_UPDATE );
+		$mv_request = $this->generate_update_json( $category_id );
 
-		$data = send_json( $urljson, $json_request );
+		$data = send_request_to_megaventory( $update_url, $mv_request );
 
 		/*if product didn't save in Megaventory it will return an error code != 0*/
 
@@ -1360,67 +1369,44 @@ class Product {
 	 * Create a json.
 	 *
 	 * @param null|bool $category_id filter with categories.
-	 * @return stdClass
+	 * @return array
 	 */
 	private function generate_update_json( $category_id = null ) {
 
-		$megaventory_product = new Product();
-		$megaventory_product = self::mv_find_by_sku( $this->sku );
-
-		if ( null !== $megaventory_product ) {
-			$this->mv_id = $megaventory_product->mv_id;
-		} else {
-			$this->mv_id = 0;
-		}
-
-		$create_new = ( null === $this->mv_id || 0 === $this->mv_id );
-
-		if ( ! $create_new ) {
-			if ( $this->purchase_price !== $megaventory_product->purchase_price ) {
-				update_post_meta( $this->wc_id, 'purchase_price', str_replace( '.', ',', (string) $megaventory_product->purchase_price ) );
-			}
-			$this->mv_type        = $megaventory_product->mv_type;
-			$this->ean            = null;
-			$this->regular_price  = null;
-			$this->sale_price     = null;
-			$this->purchase_price = null;
-		}
-
-		$action = 'InsertOrUpdateNonEmptyFields';
-
 		$special_characters = array( '?', '$', '@', '!', '*', '#' );// Special characters that need to be removed in order to be accepted by Megaventory.
 
-		$product_update_object = new \stdClass();
-		$product_object        = new \stdClass();
+		$mv_product = array();
 
-		$product_object->productid              = $create_new ? '' : $this->mv_id;
-		$product_object->producttype            = $this->mv_type ? $this->mv_type : 'BuyFromSupplier';
-		$product_object->productsku             = $this->sku;
-		$product_object->productdescription     = mb_substr( wp_strip_all_tags( str_replace( $special_characters, ' ', $this->description ) ), 0, 400 );
-		$product_object->productean             = ( isset( $this->ean ) ? $this->ean : '' );
-		$product_object->productversion         = $this->version ? $this->version : '';
-		$product_object->productlongdescription = $this->long_description ? mb_substr( wp_strip_all_tags( str_replace( $special_characters, ' ', $this->long_description ) ), 0, 400 ) : '';
-		$product_object->productcategoryid      = $category_id;
-		$product_object->productsellingprice    = $this->regular_price ? $this->regular_price : '';
-		$product_object->productweight          = $this->weight ? $this->weight : '';
-		$product_object->productlength          = $this->length ? $this->length : '';
-		$product_object->productbreadth         = $this->breadth ? $this->breadth : '';
-		$product_object->productheight          = $this->height ? $this->height : '';
-		$product_object->productimageurl        = $this->image_url ? $this->image_url : '';
-		$product_object->productpurchaseprice   = $this->purchase_price;
+		$mv_product['ProductID']              = empty( $this->mv_id ) ? '' : $this->mv_id;
+		$mv_product['ProductType']            = empty( $this->mv_type ) ? MV_Constants::MV_PRODUCT_TYPE['Undefined'] : $this->mv_type;
+		$mv_product['ProductSKU']             = $this->sku;
+		$mv_product['ProductDescription']     = mb_substr( wp_strip_all_tags( str_replace( $special_characters, ' ', $this->description ) ), 0, 400 );
+		$mv_product['ProductVersion']         = empty( $this->version ) ? '' : $this->version;
+		$mv_product['ProductLongDescription'] = empty( $this->long_description ) ? '' : mb_substr( wp_strip_all_tags( str_replace( $special_characters, ' ', $this->long_description ) ), 0, 400 );
+		$mv_product['ProductCategoryID']      = $category_id;
+		$mv_product['ProductSellingPrice']    = empty( $this->regular_price ) ? '' : $this->regular_price;
+		$mv_product['ProductWeight']          = empty( $this->weight ) ? '' : $this->weight;
+		$mv_product['ProductLength']          = empty( $this->length ) ? '' : $this->length;
+		$mv_product['ProductBreadth']         = empty( $this->breadth ) ? '' : $this->breadth;
+		$mv_product['ProductHeight']          = empty( $this->height ) ? '' : $this->height;
+		$mv_product['ProductImageURL']        = empty( $this->image_url ) ? '' : $this->image_url;
 
-		$product_update_object->mvproduct                             = $product_object;
-		$product_update_object->mvrecordaction                        = $action;
-		$product_update_object->mvinsertupdatedeletesourceapplication = 'woocommerce';
+		if ( ! empty( $this->ean ) ) {
 
-		$json_object = wrap_json( $product_update_object );
+			$mv_product['ProductEAN'] = $this->ean;
+		}
+		if ( empty( $this->mv_id ) ) { // Purchase price is synchronized only if the product is not synchronized with Megaventory.
 
-		/**
-		 * $json_object = wp_json_encode( $product_update_object );
-		 */
+			$mv_product['ProductPurchasePrice'] = $this->purchase_price;
+		}
 
-		return $json_object;
+		$object_to_send = array();
 
+		$object_to_send['mvProduct']                             = $mv_product;
+		$object_to_send['mvRecordAction']                        = MV_Constants::MV_RECORD_ACTION['InsertOrUpdateNonEmptyFields'];
+		$object_to_send['mvInsertUpdateDeleteSourceApplication'] = 'woocommerce';
+
+		return $object_to_send;
 	}
 
 	/**
@@ -1608,7 +1594,7 @@ class Product {
 		);
 		$response = send_request_to_megaventory( $url, $data );
 
-		if ( 'CategoryWasDeleted' === $response['InternalErrorCode'] ) { // needs to be undeleted.
+		if ( isset( $response['InternalErrorCode'] ) && 'CategoryWasDeleted' === $response['InternalErrorCode'] ) { // needs to be undeleted.
 
 			$id           = $response['entityID'];
 			$undelete_url = create_json_url( self::$category_undelete_call );
@@ -1661,24 +1647,20 @@ class Product {
 		}
 
 		$product->update_stock_properties_from_stock_update( $mv_product_stock_details );
+		$product->update_stock();
 
-		update_post_meta( $product->wc_id, '_mv_qty', $product->mv_qty );
-		update_post_meta( $product->wc_id, '_manage_stock', 'yes' );
-		update_post_meta( $product->wc_id, '_stock', (string) $product->available_wc_stock );
-
-		$wc_product = wc_get_product( $product->wc_id );
-
-		$stock_status = 'outofstock';
-
-		if ( 'no' === $wc_product->backorders ) {
-			$stock_status = ( $product->available_wc_stock > 0 ? 'instock' : 'outofstock' );
-		} else {
-			$stock_status = ( $product->available_wc_stock >= 0 ? 'instock' : 'onbackorder' );
-		}
-
-		$wc_product->set_stock_status( $stock_status );
-		$wc_product->save();
-
+		/** This was an issue about variable total qty #2611
+		 * if ( $wc_product->is_type( 'variation' ) ) {
+		 *
+		 * $product_variable = wc_get_product( $wc_product->get_parent_id() );
+		 *
+		 * if ( null !== $product_variable && false !== $product_variable ) {
+		 *
+		 * $product_variable->save();
+		 *
+		 * }
+		 * }
+		 */
 		update_post_meta( $product->wc_id, '_last_mv_stock_update', $integration_update_id );
 
 	}
@@ -2004,5 +1986,27 @@ class Product {
 		delete_post_meta( $this->wc_id, '_mv_qty' );
 		delete_post_meta( $this->wc_id, '_last_mv_stock_update' );
 	}
-}
 
+	/**
+	 * Update stock data.
+	 */
+	private function update_stock() {
+
+		update_post_meta( $this->wc_id, '_mv_qty', $this->mv_qty );
+
+		$wc_product = wc_get_product( $this->wc_id );
+
+		$stock_status = 'outofstock';
+
+		if ( 'no' === $wc_product->get_backorders() ) {
+			$stock_status = ( $this->available_wc_stock > 0 ? 'instock' : 'outofstock' );
+		} else {
+			$stock_status = ( $this->available_wc_stock >= 0 ? 'instock' : 'onbackorder' );
+		}
+
+		$wc_product->set_manage_stock( true );
+		$wc_product->set_stock_quantity( $this->available_wc_stock );
+		$wc_product->set_stock_status( $stock_status );
+		$wc_product->save();
+	}
+}

@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.25
+ * Version: 2.2.26
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -11,10 +11,11 @@
  * @since 1.0.0
  *
  * WC requires at least: 3.0
- * WC tested up to: 5.4.1
+ * WC tested up to: 5.7.0
  * Requires at least: 4.4
- * Tested up to: 5.7.2
- * Stable tag: 5.7.2
+ * Tested up to: 5.8.1
+ * Stable tag: 5.8.1
+ * Requires PHP: 7.0
  *
  * Author: Megaventory
  * Author URI: https://megaventory.com/
@@ -157,7 +158,7 @@ function register_error( $str1 = null, $str2 = null ) {
 	if ( ! isset( $session_messages ) ) {
 		$session_messages = array();
 	}
-	$errs = $session_messages['errors'];
+	$errs = empty( $session_messages['errors'] ) ? array() : $session_messages['errors'];
 
 	if ( ! is_array( $errs ) ) {
 		$errs = array();
@@ -190,7 +191,7 @@ function register_warning( $str1 = null, $str2 = null ) {
 	if ( ! isset( $session_messages ) ) {
 		$session_messages = array();
 	}
-	$warns = $session_messages['warnings'];
+	$warns = empty( $session_messages['warnings'] ) ? array() : $session_messages['warnings'];
 
 	if ( ! is_array( $warns ) ) {
 		$warns = array();
@@ -210,19 +211,6 @@ function register_warning( $str1 = null, $str2 = null ) {
 }
 
 /**
- * Plugin upgrade hook.
- *
- * @param WP_Upgrader $upgrader_object as WP_Upgrader.
- * @param array       $options as array.
- */
-function upgrade_plugin( $upgrader_object, $options ) {
-	if ( array_key_exists( 'plugins', $options ) && in_array( plugin_basename( __FILE__ ), $options['plugins'], true ) && ( get_option( 'correct_key', false ) ) ) {
-		update_option( 'correct_megaventory_apikey', get_option( 'correct_key' ) );
-		delete_option( 'correct_key' );
-	}
-}
-
-/**
  * Registration successes.
  *
  * @param string $str1 as string message.
@@ -236,7 +224,7 @@ function register_success( $str1 = null, $str2 = null ) {
 	if ( ! isset( $session_messages ) ) {
 		$session_messages = array();
 	}
-	$succs = $session_messages['successes'];
+	$succs = empty( $session_messages['successes'] ) ? array() : $session_messages['successes'];
 
 	if ( ! is_array( $succs ) ) {
 		$succs = array();
@@ -410,6 +398,19 @@ function sample_admin_database_notices() {
 }
 
 /**
+ * Plugin upgrade hook.
+ *
+ * @param WP_Upgrader $upgrader_object as WP_Upgrader.
+ * @param array       $options as array.
+ */
+function upgrade_plugin( $upgrader_object, $options ) {
+	if ( array_key_exists( 'plugins', $options ) && in_array( plugin_basename( __FILE__ ), $options['plugins'], true ) && ( get_option( 'correct_key', false ) ) ) {
+		update_option( 'correct_megaventory_apikey', get_option( 'correct_key' ) );
+		delete_option( 'correct_key' );
+	}
+}
+
+/**
  * This code is executed only if woocommerce is an installed and activated plugin.
  */
 if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) || is_plugin_active_for_network( 'woocommerce/woocommerce.php' ) ) {
@@ -431,6 +432,8 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 	/* Product purchase price field */
 	add_action( 'woocommerce_product_options_pricing', 'purchase_price_option' );
 	add_action( 'woocommerce_process_product_meta', 'save_purchase_price' );
+	add_action( 'woocommerce_variation_options_pricing', 'purchase_price_variation_option', 10, 3 );
+	add_action( 'woocommerce_save_product_variation', 'save_variation_purchase_price', 10, 2 );
 
 	/* styles */
 	add_action( 'init', 'register_style' );
@@ -492,19 +495,63 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
  * @return void
  */
 function purchase_price_option() {
-	$product = get_the_ID();
-	if ( false !== $product ) {
-		$product = Product::wc_find_product( $product );
-	}
+
+	$product_id = get_the_ID();
+
+	$product = Product::wc_find_product( $product_id );
 
 	$options = array(
 		'id'          => 'purchase_price',
-		'value'       => get_post_meta( get_the_ID(), 'purchase_price', true ),
-		'label'       => __( 'Purchase Price', 'textdomain' ) . ' (' . get_woocommerce_currency_symbol( get_woocommerce_currency() ) . ')',
+		'value'       => get_post_meta( $product_id, 'purchase_price', true ),
+		'label'       => __( 'Purchase price', 'textdomain' ) . ' (' . get_woocommerce_currency_symbol( get_woocommerce_currency() ) . ')',
 		'data_type'   => 'price',
 		'desc_tip'    => true,
 		'description' => 'This is the purchase price of the product(the price that the supplier is charging you to supply you with this product excluding taxes).',
 	);
+
+	if ( ! empty( $product->mv_id ) ) {
+		$options['custom_attributes'] = array( 'readonly' => 'readonly' ); // Enabling read only.
+		$options['description']       = 'The value cannot change, since the product has been synchronized to Megaventory. You can change the purchase price on your Megaventory account.';
+	}
+	echo wp_kses(
+		woocommerce_wp_text_input(
+			$options
+		),
+		array(
+			'input'    => array(),
+			'textarea' => array(),
+		)
+	);
+}
+
+/**
+ * Add purchase price product option.
+ *
+ * @param int     $loop as int.
+ * @param array   $variation_data as array.
+ * @param WP_Post $variation as WP_Post.
+ *
+ * @return void
+ */
+function purchase_price_variation_option( $loop, $variation_data, $variation ) {
+
+	$product_id = $variation->ID;
+
+	$product = Product::wc_find_product( $product_id );
+
+	$options = array(
+		'id'          => 'purchase_price[' . $loop . ']',
+		'value'       => get_post_meta( $product_id, 'purchase_price', true ),
+		'label'       => __( 'Purchase price', 'textdomain' ) . ' (' . get_woocommerce_currency_symbol( get_woocommerce_currency() ) . ')',
+		'data_type'   => 'price',
+		'desc_tip'    => true,
+		'description' => 'This is the purchase price of the product(the price that the supplier is charging you to supply you with this product excluding taxes).',
+	);
+
+	if ( ! empty( $product->mv_id ) ) {
+		$options['custom_attributes'] = array( 'readonly' => 'readonly' ); // Enabling read only.
+		$options['description']       = 'The value cannot change, since the product has been synchronized to Megaventory. You can change the purchase price on your Megaventory account.';
+	}
 
 	echo wp_kses(
 		woocommerce_wp_text_input(
@@ -520,7 +567,7 @@ function purchase_price_option() {
 /**
  * Save purchase price.
  *
- * @param int $post_id as mixed.
+ * @param int $post_id as int.
  *
  * @return void
  */
@@ -530,6 +577,26 @@ function save_purchase_price( $post_id ) {
 	}
 }
 
+/**
+ * Save purchase price.
+ *
+ * @param int $variation_id as int.
+ * @param int $i as int, array index.
+ *
+ * @return void
+ */
+function save_variation_purchase_price( $variation_id, $i ) {
+
+	// PHPCS needs nonce verification to get data from $_POST.
+	// The nonce field is missing.
+	// So the below code is added to bypass this.
+	isset( $_POST['woocommerce_meta_nonce'] );
+	wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' );
+
+	if ( ! empty( $_POST['purchase_price'] ) && ! empty( $_POST['purchase_price'][ $i ] ) ) {
+		update_post_meta( $variation_id, 'purchase_price', esc_attr( sanitize_text_field( wp_unslash( $_POST['purchase_price'][ $i ] ) ) ) );
+	}
+}
 
 /**
  * Check plugin connection.
@@ -553,6 +620,9 @@ function check_status() {
 	}
 
 	if ( 0 === (int) $response['ResponseStatus']['ErrorCode'] ) {
+
+		$api_key = get_option( 'megaventory_api_key' );
+		log_apikey( $api_key );
 
 		update_option( 'correct_megaventory_apikey', 1 );
 		update_option( 'failed_connection_attempts', 0 );
@@ -664,10 +734,10 @@ function ajax_calls() {
 
 	$nonce = wp_create_nonce( 'async-nonce' );
 
-	wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.9', true );
-	wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.9', true );
-	wp_enqueue_script( 'ajaxWpCronStatus', plugins_url( '/js/ajaxWpCronStatus.js', __FILE__ ), array(), '2.0.9', true );
-	wp_enqueue_script( 'ajaxDocStatusChange', plugins_url( '/js/ajaxDocStatusChange.js', __FILE__ ), array(), '2.0.9', true );
+	wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.10', true );
+	wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.10', true );
+	wp_enqueue_script( 'ajaxWpCronStatus', plugins_url( '/js/ajaxWpCronStatus.js', __FILE__ ), array(), '2.0.10', true );
+	wp_enqueue_script( 'ajaxDocStatusChange', plugins_url( '/js/ajaxDocStatusChange.js', __FILE__ ), array(), '2.0.10', true );
 	$nonce_array = array(
 		'nonce' => $nonce,
 	);
@@ -682,7 +752,7 @@ function ajax_calls() {
  * @return void
  */
 function register_style() {
-	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.37', 'all' );
+	wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.38', 'all' );
 	wp_register_style( 'mv_style_fonts', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css', false, '2.0.7', 'all' );
 }
 
@@ -728,7 +798,7 @@ function add_quantity_column_to_product_table( $columns ) {
  */
 function add_purchase_price_column_to_product_table( $columns ) {
 
-	/* Megaventory stock column must be after normal stock column */
+	/* Megaventory purchase price column must be after price column */
 	$temp = array();
 
 	foreach ( $columns as $key => $value ) {
@@ -820,6 +890,10 @@ function column( $column, $prod_id ) {
 			<tr>
 			<?php
 			$mv_location_id_to_abbr = get_option( 'mv_location_id_to_abbr' );
+
+			if ( empty( $mv_location_id_to_abbr[ $key ] ) ) {
+				continue;
+			}
 
 			$inventory_name = $mv_location_id_to_abbr[ $key ];
 			?>
@@ -936,7 +1010,7 @@ function do_post() {
 		set_api_host( trim( sanitize_text_field( wp_unslash( $_POST['api_host'] ) ) ) );
 	}
 
-	check_status();
+	$status = check_status();
 
 	if ( $status && get_option( 'new_mv_api_key' ) ) {
 		log_apikey( get_api_key() );
@@ -1569,37 +1643,40 @@ function pull_changes() {
 	}
 
 	foreach ( $changes['mvIntegrationUpdates'] as $change ) {
+
 		if ( 'product' === $change['Entity'] ) {
 
-			/**
-			 **It's very dangerous to apply product updates. Because for example, for short description we take the product title.
-			 **The description on e-commerces has some html tags, also they can be more than 400 or 4000 chars.
-			 **We can't change his business models!
-			 **Only the stock and the order's status.
-			 **global $save_product_lock;
-			 **$save_product_lock = true;// prevent changes from megaventory to be pushed back to megaventory again (prevent infinite loop of updates)
-			 **
-			 **if ( 'update' === $change['Action'] ) {
-			 **
-			 **$product = Product::mv_find( $change['EntityIDs'] );
-			 **
-			 **save new info.
-			 **only update synchronized prods so they are not added.
-			 **$product->wc_save( null, false );
-			 **
-			 **} elseif ( 'delete' === $change['Action'] ) {
-			 **
-			 **$data    = json_decode( $change['JsonData'], true );
-			 **$product = Product::wc_find_by_sku( $data['ProductSKU'] );
-			 **
-			 **
-			 **if ( null !== $product ) {
-			 **
-			 **$product->wc_destroy();
-			 **}
-			 **}
-			 **$save_product_lock = false;
-			*/
+			if ( 'update' === $change['Action'] ) {
+
+				$mv_product_id = $change['EntityIDs'];
+				$wc_product_id = get_post_meta_by_key_value( 'mv_id', $mv_product_id );
+
+				if ( 0 >= $mv_product_id || 0 >= $wc_product_id ) {
+
+					remove_integration_update( $change['IntegrationUpdateID'] );
+					continue;
+				}
+
+				$mv_product = json_decode( $change['JsonData'], true );
+
+				if ( ! is_array( $mv_product ) || ! isset( $mv_product['ProductPurchasePrice'] ) ) {
+
+					remove_integration_update( $change['IntegrationUpdateID'] );
+					continue;
+				}
+
+				$product = Product::wc_find_product( $wc_product_id );
+
+				if ( null === $product ) {
+
+					remove_integration_update( $change['IntegrationUpdateID'] );
+					continue;
+				}
+
+				update_post_meta( $wc_product_id, 'purchase_price', str_replace( '.', ',', (string) $mv_product['ProductPurchasePrice'] ) );
+
+			}
+
 			remove_integration_update( $change['IntegrationUpdateID'] );
 
 		} elseif ( 'stock' === $change['Entity'] ) { // stock changed.

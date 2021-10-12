@@ -124,8 +124,8 @@ class Location {
 
 		$args = array(
 			'entity_id'   => array(
-				'wc' => $this->wc_id,
-				'mv' => $this->mv_id,
+				'wc' => 0,
+				'mv' => $this->mv_location_id,
 			),
 			'entity_name' => $this->mv_location_full_name,
 			'problem'     => $problem,
@@ -150,8 +150,8 @@ class Location {
 
 		$args = array(
 			'entity_id'          => array(
-				'wc' => $this->wc_id,
-				'mv' => $this->mv_id,
+				'wc' => 0,
+				'mv' => $this->mv_location_id,
 			),
 			'entity_type'        => 'location',
 			'entity_name'        => $this->mv_location_full_name,

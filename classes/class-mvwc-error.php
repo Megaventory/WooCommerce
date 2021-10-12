@@ -72,14 +72,14 @@ class MVWC_Error {
 	 * @param array $args as error information.
 	 */
 	public function __construct( $args ) {
-		$this->entity_wc_id = $args['entity_id']['wc'];
-		$this->entity_mv_id = $args['entity_id']['mv'];
-		$this->entity_name  = $args['entity_name'];
-		$this->problem      = $args['problem'];
-		$this->full_msg     = $args['full_msg'];
-		$this->error_code   = $args['error_code'];
-		$this->type         = $args['type'];
-		$this->json_object  = $args['json_object'];
+		$this->entity_wc_id = empty( $args['entity_id']['wc'] ) ? '' : $args['entity_id']['wc'];
+		$this->entity_mv_id = empty( $args['entity_id']['mv'] ) ? '' : $args['entity_id']['mv'];
+		$this->entity_name  = empty( $args['entity_name'] ) ? '' : $args['entity_name'];
+		$this->problem      = empty( $args['problem'] ) ? '' : $args['problem'];
+		$this->full_msg     = empty( $args['full_msg'] ) ? '' : $args['full_msg'];
+		$this->error_code   = empty( $args['error_code'] ) ? '' : $args['error_code'];
+		$this->type         = empty( $args['type'] ) ? '' : $args['type'];
+		$this->json_object  = empty( $args['json_object'] ) ? '' : $args['json_object'];
 
 		$this->save();
 	}

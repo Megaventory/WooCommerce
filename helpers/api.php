@@ -172,6 +172,8 @@ function send_json( $url, $json_request ) {
 		$data['ResponseStatus']['Message'] = $response->get_error_message();
 	}
 
+	$data['json_object'] = wp_json_encode( $body_to_send );
+
 	return $data;
 
 }
@@ -222,6 +224,8 @@ function send_request_to_megaventory( $url, $request ) {
 		$data['InternalErrorCode']         = 'WordPress Request timeout';
 		$data['ResponseStatus']['Message'] = $response->get_error_message();
 	}
+
+	$data['json_object'] = wp_json_encode( $body_to_send );
 
 	return $data;
 
