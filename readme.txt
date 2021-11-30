@@ -1,3 +1,7 @@
+Feel free to use the plugin straight from this repository. 
+Alternatively you can purchase it from the WooCommerce marketplace (https://woocommerce.com/products/megaventory-inventory-management/) 
+to receive automatic updates, to benefit from additional support from WooCommerce and also to be able to review the app in the marketplace.
+
 === Megaventory ===
 Plugin name: Megaventory
 Version: 2.2.26
