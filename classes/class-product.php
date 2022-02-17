@@ -2004,9 +2004,33 @@ class Product {
 			$stock_status = ( $this->available_wc_stock >= 0 ? 'instock' : 'onbackorder' );
 		}
 
-		$wc_product->set_manage_stock( true );
-		$wc_product->set_stock_quantity( $this->available_wc_stock );
-		$wc_product->set_stock_status( $stock_status );
-		$wc_product->save();
+		update_post_meta( $this->wc_id, '_manage_stock', 'yes' );
+		update_post_meta( $this->wc_id, '_stock', (string) $this->available_wc_stock );
+		update_post_meta( $this->wc_id, '_stock_status', $stock_status );
+
+		if ( $wc_product->is_type( 'variation' ) ) {
+
+			$product_variable = wc_get_product( $wc_product->get_parent_id() );
+
+			if ( null === $product_variable || false === $product_variable ) {
+				return;
+			}
+
+			$variable_stock_status = 'outofstock';
+
+			foreach ( $product_variable->get_children() as $variation_id ) {
+
+				$variation_product = wc_get_product( $variation_id );
+
+				if ( 'outofstock' !== $variation_product->get_stock_status() ) {
+
+					$variable_stock_status = $variation_product->get_stock_status();
+
+					break;
+				}
+			}
+
+			update_post_meta( $product_variable->get_id(), '_stock_status', $variable_stock_status );
+		}
 	}
 }

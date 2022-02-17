@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.26
+ * Version: 2.2.27
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -11,10 +11,10 @@
  * @since 1.0.0
  *
  * WC requires at least: 3.0
- * WC tested up to: 5.7.0
+ * WC tested up to: 6.1.1
  * Requires at least: 4.4
- * Tested up to: 5.8.1
- * Stable tag: 5.8.1
+ * Tested up to: 5.9.0
+ * Stable tag: 5.9.0
  * Requires PHP: 7.0
  *
  * Author: Megaventory
@@ -76,7 +76,6 @@ require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-location.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/order.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'admin/admin-template.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/ajax-sync.php';
-require_once MEGAVENTORY__PLUGIN_DIR . '../../../wp-admin/includes/plugin.php'; // required to use is_plugin_active_for_network function.
 
 /*scripts hooks*/
 add_action( 'admin_enqueue_scripts', 'ajax_calls' );
@@ -573,7 +572,7 @@ function purchase_price_variation_option( $loop, $variation_data, $variation ) {
  */
 function save_purchase_price( $post_id ) {
 	if ( isset( $_POST['woocommerce_meta_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' ) && ! empty( $_POST['purchase_price'] ) ) {
-		update_post_meta( $post_id, 'purchase_price', esc_attr( sanitize_text_field( wp_unslash( $_POST['purchase_price'] ) ) ) );
+		update_post_meta( $post_id, 'purchase_price', sanitize_text_field( wp_unslash( $_POST['purchase_price'] ) ) );
 	}
 }
 
@@ -590,11 +589,13 @@ function save_variation_purchase_price( $variation_id, $i ) {
 	// PHPCS needs nonce verification to get data from $_POST.
 	// The nonce field is missing.
 	// So the below code is added to bypass this.
-	isset( $_POST['woocommerce_meta_nonce'] );
-	wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' );
+	if ( isset( $_POST['woocommerce_meta_nonce'] ) ) {
+
+		wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' );
+	}
 
 	if ( ! empty( $_POST['purchase_price'] ) && ! empty( $_POST['purchase_price'][ $i ] ) ) {
-		update_post_meta( $variation_id, 'purchase_price', esc_attr( sanitize_text_field( wp_unslash( $_POST['purchase_price'][ $i ] ) ) ) );
+		update_post_meta( $variation_id, 'purchase_price', sanitize_text_field( wp_unslash( $_POST['purchase_price'][ $i ] ) ) );
 	}
 }
 
@@ -835,6 +836,8 @@ function column( $column, $prod_id ) {
 
 			$variants_ids = $wc_product->get_children();
 
+			$variant_skus = array();
+
 			foreach ( $variants_ids as $variant_id ) {
 
 				$wc_variation_product = new WC_Product_Variation( $variant_id );
@@ -845,6 +848,12 @@ function column( $column, $prod_id ) {
 
 					continue;
 				}
+
+				if ( in_array( $product->sku, $variant_skus, true ) ) {
+					continue;
+				}
+
+				$variant_skus[] = $product->sku;
 
 				foreach ( $product->mv_qty as $key => $value ) {
 
@@ -1094,7 +1103,7 @@ function sync_on_product_save( $prod_id ) {
 
 	$wc_product = wc_get_product( $prod_id );
 
-	if ( 'trash' === $wc_product->get_status() || 'auto-draft' === $wc_product->get_status() ) {
+	if ( 'publish' !== $wc_product->get_status() && 'future' !== $wc_product->get_status() ) {
 		return;
 	}
 
@@ -1648,10 +1657,10 @@ function pull_changes() {
 
 			if ( 'update' === $change['Action'] ) {
 
-				$mv_product_id = $change['EntityIDs'];
-				$wc_product_id = get_post_meta_by_key_value( 'mv_id', $mv_product_id );
+				$mv_product_id  = $change['EntityIDs'];
+				$wc_product_ids = get_post_meta_by_key_value( 'mv_id', $mv_product_id );
 
-				if ( 0 >= $mv_product_id || 0 >= $wc_product_id ) {
+				if ( empty( $wc_product_ids ) ) {
 
 					remove_integration_update( $change['IntegrationUpdateID'] );
 					continue;
@@ -1665,16 +1674,17 @@ function pull_changes() {
 					continue;
 				}
 
-				$product = Product::wc_find_product( $wc_product_id );
+				foreach ( $wc_product_ids as $wc_product_id ) {
 
-				if ( null === $product ) {
+					$product = Product::wc_find_product( $wc_product_id );
 
-					remove_integration_update( $change['IntegrationUpdateID'] );
-					continue;
+					if ( null === $product ) {
+
+						continue;
+					}
+
+					update_post_meta( $wc_product_id, 'purchase_price', str_replace( '.', ',', (string) $mv_product['ProductPurchasePrice'] ) );
 				}
-
-				update_post_meta( $wc_product_id, 'purchase_price', str_replace( '.', ',', (string) $mv_product['ProductPurchasePrice'] ) );
-
 			}
 
 			remove_integration_update( $change['IntegrationUpdateID'] );
@@ -1685,16 +1695,28 @@ function pull_changes() {
 
 			foreach ( $prods as $prod ) {
 
-				$id           = $prod['productID'];
-				$post_meta_id = get_post_meta_by_key_value( 'mv_id', $id );
+				$id = $prod['productID'];
 
-				$wc_product = wc_get_product( $post_meta_id );
+				// An array of product Ids should be expected here to cover also the
+				// extreme case of different woocommerce products having the same product SKU.
+				// By doing this, whenever there is a stock update from Megaventory,
+				// all the products sharing the same SKU will update their woocommerce stock.
+				$post_meta_ids = get_post_meta_by_key_value( 'mv_id', $id );
 
-				if ( false === $wc_product || null === $wc_product ) {
+				if ( empty( $post_meta_ids ) ) {
 					continue;
 				}
 
-				Product::sync_stock_update( $wc_product, $prod, $change['IntegrationUpdateID'] );
+				foreach ( $post_meta_ids as $post_meta_id ) {
+
+					$wc_product = wc_get_product( $post_meta_id );
+
+					if ( false === $wc_product || null === $wc_product ) {
+						continue;
+					}
+
+					Product::sync_stock_update( $wc_product, $prod, $change['IntegrationUpdateID'] );
+				}
 			}
 
 			$data = remove_integration_update( $change['IntegrationUpdateID'] );
@@ -1734,11 +1756,11 @@ function pull_changes() {
 }
 
 /**
- * Get post id by value and key.
+ * Get post ids by value and key.
  *
  * @param string $key as post key.
  * @param int    $value as post value.
- * @return int|bool
+ * @return array
  */
 function get_post_meta_by_key_value( $key, $value ) {
 
@@ -1747,14 +1769,14 @@ function get_post_meta_by_key_value( $key, $value ) {
 
 	if ( is_array( $meta ) && ! empty( $meta ) && isset( $meta[0] ) ) {
 
-		return (int) $meta[0]['post_id'];
-	}
-	if ( is_object( $meta ) ) {
+		$wc_product_ids = array_map(
+			function( $meta_data ) {
+				return (int) $meta_data['post_id'];
+			},
+			$meta
+		);
 
-		return $meta->post_id;
-	} else {
-
-		return false;
+		return $wc_product_ids;
 	}
+	return array();
 }
-
