@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.2.27
+ * Version: 2.2.28
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -1693,7 +1693,13 @@ function pull_changes() {
 
 			$prods = json_decode( $change['JsonData'], true );
 
+			$mv_location_id_to_abbr = get_option( 'mv_location_id_to_abbr' );
+
 			foreach ( $prods as $prod ) {
+
+				if ( ! array_key_exists( $prod['inventory_id'], $mv_location_id_to_abbr ) ) {
+					continue;
+				}
 
 				$id = $prod['productID'];
 

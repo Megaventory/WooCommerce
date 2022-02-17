@@ -1,4 +1,7 @@
 *** Megaventory Extension Template Changelog ***
+2022-02-17 - version 2.2.28
+* Bug fixes.
+
 2022-02-17 - version 2.2.27
 * Synchronize product stock updates for all the products sharing the same SKU(duplicate SKUs in WooCommerce).
 * On product save, synchronize the product to Megaventory if product status is “publish” or “future”.
