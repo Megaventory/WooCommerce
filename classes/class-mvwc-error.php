@@ -13,6 +13,8 @@
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  */
 
+namespace Megaventory\Models;
+
 /**
  * Error class.
  */
@@ -131,5 +133,46 @@ class MVWC_Error {
 		); // db call ok.
 
 		return true;
+	}
+
+	/**
+	 * Get A Collection of Error Messages.
+	 *
+	 * @param int $count as error messages to display.
+	 * @return array
+	 */
+	public static function get_messages( $count = MV_Constants::DEFAULT_ERROR_MESSAGE_COUNT_TO_DISPLAY ) {
+		global $wpdb;
+
+		$entries = $wpdb->get_results(
+			$wpdb->prepare(
+				"
+				SELECT * 
+				FROM {$wpdb->prefix}megaventory_errors_log 
+				ORDER BY created_at 
+				DESC LIMIT %d;
+				",
+				$count
+			)
+		); // db call ok. no-cache ok.
+
+		return $entries;
+	}
+
+	/**
+	 * Deletes errors in database
+	 *
+	 * @param array $ids_to_delete as log ids to delete.
+	 */
+	public static function delete( $ids_to_delete ) {
+
+		global $wpdb;
+
+		$ids = implode( ',', array_map( 'absint', $ids_to_delete ) );
+
+		$sql_results = $wpdb->query(
+			$wpdb->prepare( "DELETE FROM {$wpdb->prefix}megaventory_errors_log WHERE id IN(%1s)", array( $ids ) ) // @codingStandardsIgnoreLine.
+		); // db call ok; no-cache ok.
+
 	}
 }

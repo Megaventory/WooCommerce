@@ -13,9 +13,7 @@
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  */
 
-/**
- * Imports.
- */
+namespace Megaventory\Models;
 
 /**
  * Some constants.
@@ -54,6 +52,10 @@ class MV_Constants {
 
 	const SYNC_STOCK_FROM_MEGAVENTORY = 40;
 
+	const DEFAULT_ERROR_MESSAGE_COUNT_TO_DISPLAY = 50;
+
+	const DEFAULT_SUCCESS_MESSAGE_COUNT_TO_DISPLAY = 50;
+
 	const DOCUMENT_UPDATE = 'DocumentUpdate';
 
 	const INVENTORY_LOCATION_STOCK_GET = 'InventoryLocationStockGet';
@@ -69,6 +71,14 @@ class MV_Constants {
 	const PRODUCT_UPDATE = 'ProductUpdate';
 
 	const PRODUCT_DELETE = 'ProductDelete';
+
+	const BUNDLE_GET = 'ProductBundleGet';
+
+	const BUNDLE_UPDATE = 'ProductBundleUpdate';
+
+	const BUNDLE_DELETE = 'ProductBundleDelete';
+
+	const BUNDLE_UNDELETE = 'ProductBundleUndelete';
 
 	const SUPPLIER_CLIENT_DELETE = 'SupplierClientDelete';
 
@@ -149,4 +159,47 @@ class MV_Constants {
 	const RANDOM_NUMBER_MIN = 0;
 
 	const RANDOM_NUMBER_MAX = 30;
+
+	const DEF_BUNDLES_PLUGIN_DIR = 'woocommerce-product-bundles/woocommerce-product-bundles.php';
+
+	const MV_RELATED_ORDER_ID_META = 'order_sent_to_megaventory';
+
+	const MV_RELATED_ORDER_NAMES_META = 'megaventory_order_name';
+
+	const MV_ORDER_STATUSES_META = 'megaventory_related_order_statuses';
+
+	const SHIPPING_ZONES_ENABLE_OPT = 'megaventory_enable_shipping_zones';
+
+	const SHIPPING_ZONES_PRIORITY_OPT = 'megaventory_shipping_zone_priority';
+
+	const MV_ORDER_DELAY_CHOICE_OPT = 'megaventory_delay_order_sync';
+
+	const MV_ORDER_DELAY_SECONDS_CHOICE_OPT = 'megaventory_order_delay_seconds';
+
+	const MV_ORDERS_TO_SYNC_OPT = 'megaventory_orders_to_sync_queue';
+
+	const MV_EXCLUDED_LOCATION_IDS_OPT = 'megaventory_excluded_location_ids';
+
+	const MV_LOCATION_ID_TO_ABBREVIATION = 'mv_location_id_to_abbr';
+
+	const MV_ORDER_SYNC_EVENT = 'sync_orders_to_megaventory_event';
+
+	const DEFAULT_EXTRA_FEE_SERVICE_SKU = 'extra_fee_service';
+
+	/**
+	 * The default time to wait before synchronizing a new WC Order to Megaventory.
+	 */
+	const MV_ORDER_SYNC_DEFAULT_SECONDS_TO_WAIT = 7200;
+
+	/**
+	 * The Id of the Rest-Of-World Default Zone of WooCommerce.
+	 */
+	const SHIPPING_DEFAULT_ZONE_ID = 0;
+
+	const ADDRESS_TYPE_BILLING    = 'Billing';
+	const ADDRESS_TYPE_SHIPPING_1 = 'Shipping1';
+	const ADDRESS_TYPE_SHIPPING_2 = 'Shipping2';
+	const ADDRESS_TYPE_GENERAL    = 'General';
+
+	const DEFAULT_STRING_MAX_LENGTH = 400;
 }

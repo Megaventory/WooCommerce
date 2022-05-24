@@ -13,6 +13,8 @@
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  */
 
+namespace Megaventory\Models;
+
 /**
  * Success class.
  */
@@ -126,6 +128,47 @@ class MVWC_Success {
 		); // db call ok; no-cache ok.
 
 		return true;
+	}
+
+	/**
+	 * Get A Collection of Success Messages.
+	 *
+	 * @param int $count as success messages to display.
+	 * @return array
+	 */
+	public static function get_messages( $count = MV_Constants::DEFAULT_SUCCESS_MESSAGE_COUNT_TO_DISPLAY ) {
+		global $wpdb;
+
+		$entries = $wpdb->get_results(
+			$wpdb->prepare(
+				"
+				SELECT * 
+				FROM {$wpdb->prefix}megaventory_success_log 
+				ORDER BY created_at 
+				DESC LIMIT %d;
+				",
+				$count
+			)
+		); // db call ok. no-cache ok.
+
+		return $entries;
+	}
+
+	/**
+	 * Deletes successes in database
+	 *
+	 * @param array $ids_to_delete as log ids to delete.
+	 */
+	public static function delete( $ids_to_delete ) {
+
+		global $wpdb;
+
+		$ids = implode( ',', array_map( 'absint', $ids_to_delete ) );
+
+		$sql_results = $wpdb->query(
+			$wpdb->prepare( "DELETE FROM {$wpdb->prefix}megaventory_success_log WHERE id IN(%1s)", array( $ids ) ) // @codingStandardsIgnoreLine.
+		); // db call ok; no-cache ok.
+
 	}
 }
 

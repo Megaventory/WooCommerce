@@ -13,10 +13,12 @@
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  */
 
+namespace Megaventory\Models;
+
 /**
  * Imports.
  */
-require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/api.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'class-api.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-error.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-errors.php';
 
@@ -192,6 +194,46 @@ class Tax {
 	}
 
 	/**
+	 * Initialization of taxes.
+	 *
+	 * @return void
+	 */
+	public static function initialize_taxes() {
+
+		$wc_taxes = self::wc_all();
+		$mv_taxes = self::mv_all();
+
+		foreach ( $wc_taxes as $wc_tax ) {
+
+			$mv_tax = null;
+
+			foreach ( $mv_taxes as $tax ) { // Check if exists.
+
+				if ( $wc_tax->name === $tax->name && $wc_tax->rate === $tax->rate ) {
+
+					$mv_tax = $tax;
+					break;
+				}
+			}
+
+			if ( null !== $mv_tax ) { // Tax already exists in Megaventory.
+
+				/* Update in wooCommerce from Megaventory */
+
+				$mv_tax->wc_id = $wc_tax->wc_id;
+				$mv_tax->wc_save();
+
+			} else {
+
+				/* Save to Megaventory from WooCommerce */
+
+				$wc_tax->mv_id = null;
+				$wc_tax->mv_save();
+			}
+		}
+	}
+
+	/**
 	 * Get all WooCommerce taxes.
 	 *
 	 * @return Tax[]
@@ -278,8 +320,8 @@ class Tax {
 	 */
 	public static function mv_all() {
 
-		$url     = create_json_url( self::$tax_get_call );
-		$jsontax = perform_call_to_megaventory( $url );
+		$url     = \Megaventory\API::get_url_for_call( self::$tax_get_call );
+		$jsontax = \Megaventory\API::perform_call_to_megaventory( $url );
 
 		$taxes = array();
 		foreach ( $jsontax['mvTaxes'] as $tax ) {
@@ -307,8 +349,8 @@ class Tax {
 			),
 		);
 
-		$url      = get_url_for_call( self::$tax_get_call );
-		$response = send_request_to_megaventory( $url, $data );
+		$url      = \Megaventory\API::get_url_for_call( self::$tax_get_call );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
 		if ( count( $response['mvTaxes'] ) <= 0 ) {
 
@@ -334,8 +376,8 @@ class Tax {
 			),
 		);
 
-		$url      = get_url_for_call( self::$tax_get_call );
-		$response = send_request_to_megaventory( $url, $data );
+		$url      = \Megaventory\API::get_url_for_call( self::$tax_get_call );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
 		if ( count( $response['mvTaxes'] ) <= 0 ) {
 
@@ -370,8 +412,8 @@ class Tax {
 			),
 		);
 
-		$url      = get_url_for_call( self::$tax_get_call );
-		$response = send_request_to_megaventory( $url, $data );
+		$url      = \Megaventory\API::get_url_for_call( self::$tax_get_call );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
 		if ( count( $response['mvTaxes'] ) <= 0 ) {
 
@@ -434,9 +476,9 @@ class Tax {
 		$tax_obj->mvrecordaction                        = $action;
 		$tax_obj->mvinsertupdatedeletesourceapplication = 'woocommerce';
 
-		$url     = get_url_for_call( self::$tax_update_call );
-		$tax_obj = wrap_json( $tax_obj );
-		$data    = send_json( $url, $tax_obj );
+		$url     = \Megaventory\API::get_url_for_call( self::$tax_update_call );
+		$tax_obj = \Megaventory\API::wrap_json( $tax_obj );
+		$data    = \Megaventory\API::send_json( $url, $tax_obj );
 
 		if ( count( $data['mvTax'] ) <= 0 ) {
 

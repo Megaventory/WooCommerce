@@ -13,11 +13,15 @@
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  */
 
+namespace Megaventory\Models;
+
+use WooCommerce;
+
 /**
  * Imports.
  */
-require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/api.php';
-require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/address.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'class-api.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/class-address.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-error.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-errors.php';
 
@@ -25,6 +29,15 @@ require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-errors.php';
  * This class works a model for coupons (WC) / discounts (MV).
  */
 class Coupon {
+
+	const PERCENTAGE_COUPONS_KEY = 'percentage';
+
+	const FIXED_COUPONS_KEY = 'fixed';
+
+	const PRODUCT_COUPONS_KEY = 'product';
+
+	const ORDER_TAG_COUPONS_KEY = 'order_tags';
+
 	/**
 	 * Megaventory discount id.
 	 *
@@ -217,7 +230,7 @@ class Coupon {
 	 */
 	public static function wc_find_coupon( $id ) {
 
-		$wc_coupon = new WC_Coupon( $id );
+		$wc_coupon = new \WC_Coupon( $id );
 
 		$coupon = new Coupon();
 
@@ -476,11 +489,11 @@ class Coupon {
 
 		$current_coupons = self::wc_all_as_name_rate();
 
-		$url = create_json_url( self::$mv_url_discount_get );
+		$url = \Megaventory\API::get_url_for_call( self::$mv_url_discount_get );
 
 		$json_request = $this->json_get_all_from_discount();
 
-		$data  = send_json( $url, $json_request );
+		$data  = \Megaventory\API::send_json( $url, $json_request );
 		$all   = 0;
 		$added = 0;
 
@@ -620,7 +633,7 @@ class Coupon {
 	private function json_get_all_from_discount() {
 
 		$discount_object = new \stdClass();
-		$object_to_send  = wrap_json( $discount_object );
+		$object_to_send  = \Megaventory\API::wrap_json( $discount_object );
 
 		/**
 		 * $object_to_send = wp_json_encode( $object_to_send );
@@ -646,7 +659,7 @@ class Coupon {
 		);
 
 		$discount_object->filters = $discount_object_fields;
-		$discount_object          = wrap_json( $discount_object );
+		$discount_object          = \Megaventory\API::wrap_json( $discount_object );
 
 		/**
 		 * $json_object = wp_json_encode( $discount_object );
@@ -681,14 +694,14 @@ class Coupon {
 		);
 
 		$discount_object->filters = array( $discount_filter_1, $discount_filter_2 );
-		$discount_object          = wrap_json( $discount_object );
+		$discount_object          = \Megaventory\API::wrap_json( $discount_object );
 
 		/**
 		 * $json_object = wp_json_encode( $discount_object );
 		 */
 
-		$url  = create_json_url( self::$mv_url_discount_get );
-		$data = send_json( $url, $discount_object );
+		$url  = \Megaventory\API::get_url_for_call( self::$mv_url_discount_get );
+		$data = \Megaventory\API::send_json( $url, $discount_object );
 
 		return $data;
 
@@ -753,10 +766,10 @@ class Coupon {
 
 		$discount_object->mvinsertupdatedeletesourceapplication = 'woocommerce';
 
-		$discount_object = wrap_json( $discount_object );
+		$discount_object = \Megaventory\API::wrap_json( $discount_object );
 
-		$json_url = create_json_url( self::$mv_url_discount_update );
-		$results  = send_json( $json_url, $discount_object );
+		$json_url = \Megaventory\API::get_url_for_call( self::$mv_url_discount_update );
+		$results  = \Megaventory\API::send_json( $json_url, $discount_object );
 
 		if ( '0' === $results['ResponseStatus']['ErrorCode'] ) {
 

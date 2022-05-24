@@ -21,12 +21,13 @@ if ( ! defined( 'MEGAVENTORY__PLUGIN_DIR' ) ) {
 }
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-product.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-client.php';
-require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/order.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mv-constants.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-order.php';
 
-$products = Product::wc_get_all_products();
+$products = \Megaventory\Models\Product::wc_get_all_products();
 
-Client::delete_default_client();
-$clients = Client::wc_get_all_clients();
+\Megaventory\Models\Client::delete_default_client();
+$clients = \Megaventory\Models\Client::wc_get_all_clients();
 
 foreach ( $products as $product ) {
 
@@ -41,7 +42,7 @@ foreach ( $clients as $client ) {
 	}
 }
 
-delete_mv_data_from_orders();
+\Megaventory\Models\Order::delete_mv_data_from_orders();
 
 delete_option( 'correct_currency' );
 delete_option( 'correct_connection' );
@@ -54,7 +55,7 @@ delete_option( 'new_mv_api_key' );
 delete_option( 'last_valid_api_key' );
 
 delete_option( 'mv_session_messages' );
-delete_option( 'mv_location_id_to_abbr' );
+delete_option( \Megaventory\Models\MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION );
 
 delete_option( 'megaventory_api_key' );
 delete_option( 'megaventory_api_host' );
@@ -74,6 +75,13 @@ delete_option( 'megaventory_clients_synchronized_time' );
 delete_option( 'megaventory_coupons_synchronized_time' );
 delete_option( 'megaventory_stock_synchronized_time' );
 delete_option( 'megaventory_adjustment_document_status_option' );
+
+delete_option( \Megaventory\Models\MV_Constants::SHIPPING_ZONES_ENABLE_OPT );
+delete_option( \Megaventory\Models\MV_Constants::SHIPPING_ZONES_PRIORITY_OPT );
+delete_option( \Megaventory\Models\MV_Constants::MV_ORDERS_TO_SYNC_OPT );
+delete_option( \Megaventory\Models\MV_Constants::MV_ORDER_DELAY_CHOICE_OPT );
+delete_option( \Megaventory\Models\MV_Constants::MV_ORDER_DELAY_SECONDS_CHOICE_OPT );
+delete_option( \Megaventory\Models\MV_Constants::MV_EXCLUDED_LOCATION_IDS_OPT );
 
 global $wpdb;
 

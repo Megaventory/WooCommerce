@@ -13,11 +13,13 @@
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  */
 
+namespace Megaventory\Models;
+
 /**
  * Imports.
  */
-require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/api.php';
-require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/address.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'class-api.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/class-address.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-error.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-errors.php';
 /**
@@ -56,21 +58,21 @@ class Client {
 	/**
 	 * Client's Billing address.
 	 *
-	 * @var string
+	 * @var array
 	 */
 	public $billing_address;
 
 	/**
 	 * Client's Shipping address.
 	 *
-	 * @var string
+	 * @var array
 	 */
 	public $shipping_address;
 
 	/**
 	 * Client's second Shipping address.
 	 *
-	 * @var string
+	 * @var array
 	 */
 	public $shipping_address2;
 
@@ -320,14 +322,33 @@ class Client {
 	}
 
 	/**
+	 * Get the Default client
+	 */
+	public static function get_guest_mv_client() {
+
+		$client = self::wc_find( (int) get_option( 'woocommerce_guest' ) );
+
+		if ( ! empty( $client ) ) {
+
+			return $client;
+		}
+
+		self::create_default_client();
+
+		$client = self::wc_find( (int) get_option( 'woocommerce_guest' ) );
+
+		return $client;
+	}
+
+	/**
 	 * Get all clients from Megaventory.
 	 *
 	 * @return array
 	 */
 	public static function mv_all() {
 
-		$url       = get_url_for_call( self::$supplierclient_get_call );
-		$json_data = perform_call_to_megaventory( $url );
+		$url       = \Megaventory\API::get_url_for_call( self::$supplierclient_get_call );
+		$json_data = \Megaventory\API::perform_call_to_megaventory( $url );
 		$clients   = $json_data['mvSupplierClients'];
 		$temp      = array();
 
@@ -368,8 +389,8 @@ class Client {
 			),
 		);
 
-		$url      = get_url_for_call( self::$supplierclient_get_call );
-		$response = send_request_to_megaventory( $url, $data );
+		$url      = \Megaventory\API::get_url_for_call( self::$supplierclient_get_call );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
 		if ( count( $response['mvSupplierClients'] ) <= 0 ) {
 			return null;
@@ -393,8 +414,8 @@ class Client {
 			),
 		);
 
-		$url      = get_url_for_call( self::$supplierclient_get_call );
-		$response = send_request_to_megaventory( $url, $data );
+		$url      = \Megaventory\API::get_url_for_call( self::$supplierclient_get_call );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
 		if ( count( $response['mvSupplierClients'] ) <= 0 ) {
 			return null;
@@ -418,8 +439,8 @@ class Client {
 			),
 		);
 
-		$url      = get_url_for_call( self::$supplierclient_get_call );
-		$response = send_request_to_megaventory( $url, $data );
+		$url      = \Megaventory\API::get_url_for_call( self::$supplierclient_get_call );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
 		if ( count( $response['mvSupplierClients'] ) <= 0 ) {
 			return null;
@@ -518,7 +539,8 @@ class Client {
 		$shipping_address['city']     = strval( empty( $user_meta['shipping_city'][0] ) ? '' : $user_meta['shipping_city'][0] );
 		$shipping_address['postcode'] = strval( empty( $user_meta['shipping_postcode'][0] ) ? '' : $user_meta['shipping_postcode'][0] );
 		$shipping_address['country']  = strval( empty( $user_meta['shipping_country'][0] ) ? '' : $user_meta['shipping_country'][0] );
-		$client->shipping_address     = format_address( $shipping_address );
+
+		$client->shipping_address = \Megaventory\Helpers\Address::format_multifield_address( $shipping_address, MV_Constants::ADDRESS_TYPE_SHIPPING_1 );
 
 		$billing_address['name']     = $client->contact_name;
 		$billing_address['company']  = $client->company;
@@ -527,7 +549,8 @@ class Client {
 		$billing_address['city']     = strval( empty( $user_meta['billing_city'][0] ) ? '' : $user_meta['billing_city'][0] );
 		$billing_address['postcode'] = strval( empty( $user_meta['billing_postcode'][0] ) ? '' : $user_meta['billing_postcode'][0] );
 		$billing_address['country']  = strval( empty( $user_meta['billing_country'][0] ) ? '' : $user_meta['billing_country'][0] );
-		$client->billing_address     = format_address( $billing_address );
+
+		$client->billing_address = \Megaventory\Helpers\Address::format_multifield_address( $billing_address, MV_Constants::ADDRESS_TYPE_BILLING );
 
 		$client->phone = strval( empty( $user_meta['billing_phone'][0] ) ? '' : $user_meta['billing_phone'][0] );
 		$client->type  = 'Client'; // you can change it to 'Both' aka supplier and client.
@@ -543,17 +566,39 @@ class Client {
 	 */
 	private static function mv_convert( $supplierclient ) {
 
-		$client                    = new Client();
-		$client->mv_id             = $supplierclient['SupplierClientID'];
-		$client->username          = $supplierclient['SupplierClientName'];
-		$client->contact_name      = $supplierclient['SupplierClientName'];
-		$client->shipping_address  = $supplierclient['SupplierClientShippingAddress1'];
-		$client->shipping_address2 = $supplierclient['SupplierClientShippingAddress2'];
-		$client->billing_address   = $supplierclient['SupplierClientBillingAddress'];
-		$client->tax_id            = $supplierclient['SupplierClientTaxID'];
-		$client->phone             = $supplierclient['SupplierClientPhone1'];
-		$client->email             = $supplierclient['SupplierClientEmail'];
-		$client->type              = $supplierclient['SupplierClientType'];
+		$client               = new Client();
+		$client->mv_id        = $supplierclient['SupplierClientID'];
+		$client->username     = $supplierclient['SupplierClientName'];
+		$client->contact_name = $supplierclient['SupplierClientName'];
+		$client->tax_id       = $supplierclient['SupplierClientTaxID'];
+		$client->phone        = $supplierclient['SupplierClientPhone1'];
+		$client->email        = $supplierclient['SupplierClientEmail'];
+		$client->type         = $supplierclient['SupplierClientType'];
+
+		$shipping_address_1 = array_filter(
+			$supplierclient['SupplierClientAddresses'],
+			function ( $val ) {
+				return MV_Constants::ADDRESS_TYPE_SHIPPING_1 === $val['AddressType'];
+			}
+		);
+
+		$shipping_address_2 = array_filter(
+			$supplierclient['SupplierClientAddresses'],
+			function ( $val ) {
+				return MV_Constants::ADDRESS_TYPE_SHIPPING_2 === $val['AddressType'];
+			}
+		);
+
+		$billing_address = array_filter(
+			$supplierclient['SupplierClientAddresses'],
+			function ( $val ) {
+				return MV_Constants::ADDRESS_TYPE_BILLING === $val['AddressType'];
+			}
+		);
+
+		$client->shipping_address  = reset( $shipping_address_1 );
+		$client->shipping_address2 = reset( $shipping_address_2 );
+		$client->billing_address   = reset( $billing_address );
 
 		return $client;
 	}
@@ -565,9 +610,9 @@ class Client {
 	 */
 	public function mv_save() {
 
-		$url          = create_json_url( self::$supplierclient_update_call );
+		$url          = \Megaventory\API::get_url_for_call( self::$supplierclient_update_call );
 		$json_request = $this->generate_update_json();
-		$data         = send_json( $url, $json_request );
+		$data         = \Megaventory\API::send_request_to_megaventory( $url, $json_request );
 
 		if ( array_key_exists( 'InternalErrorCode', $data ) ) {
 
@@ -598,7 +643,7 @@ class Client {
 
 			$this->mv_id = $data['mvSupplierClient']['SupplierClientID'];
 
-			if ( 'Insert' === $json_request->mvrecordaction ) {
+			if ( 'Insert' === $json_request['mvrecordaction'] ) {
 
 				$this->log_success( 'created', 'customer successfully created in Megaventory', 1 );
 			} else {
@@ -629,9 +674,9 @@ class Client {
 			'mvInsertUpdateDeleteSourceApplication' => 'woocommerce',
 		);
 
-		$url = get_url_for_call( MV_Constants::SUPPLIER_CLIENT_DELETE );
+		$url = \Megaventory\API::get_url_for_call( MV_Constants::SUPPLIER_CLIENT_DELETE );
 
-		$response = send_request_to_megaventory( $url, $data_to_send );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $data_to_send );
 
 		if ( '0' === ( $response['ResponseStatus']['ErrorCode'] ) ) {
 
@@ -650,9 +695,9 @@ class Client {
 
 
 	/**
-	 * Create an object for client update.
+	 * Create an array for client update.
 	 *
-	 * @return stdClass
+	 * @return array
 	 */
 	private function generate_update_json() {
 
@@ -670,28 +715,27 @@ class Client {
 		$create_new = empty( $this->mv_id );
 		$action     = ( $create_new ? 'Insert' : 'Update' );
 
-		$product_update_client = new \stdClass();
-		$product_client        = new \stdClass();
+		$client_update    = array();
+		$mv_client        = array();
+		$client_addresses = array();
 
-		$product_client->supplierclientid   = $create_new ? '' : $this->mv_id;
-		$product_client->supplierclienttype = $this->type ? $this->type : 'Client';
-		$product_client->supplierclientname = $this->username;
+		$client_shipping_address = is_array( $this->shipping_address ) ? $this->shipping_address : array( 'AddressType' => MV_Constants::ADDRESS_TYPE_SHIPPING_1 );
+		$client_billing_address  = is_array( $this->billing_address ) ? $this->billing_address : array( 'AddressType' => MV_Constants::ADDRESS_TYPE_BILLING );
 
-		$this->billing_address ? $product_client->supplierclientbillingaddress    = $this->contact_name . " \n " . $this->billing_address : '';
-		$this->shipping_address ? $product_client->supplierclientshippingaddress1 = $this->shipping_address : '';
-		$this->phone ? $product_client->supplierclientphone1                      = $this->phone : '';
-		$this->email ? $product_client->supplierclientemail                       = $this->email : '';
-		$product_client->supplierclientcomments                                   = 'WooCommerce client';
+		array_push( $client_addresses, $client_shipping_address, $client_billing_address );
 
-		$product_update_client->mvsupplierclient = $product_client;
-		$product_update_client->mvrecordaction   = $action;
+		$mv_client['supplierclientid']        = $create_new ? '' : $this->mv_id;
+		$mv_client['supplierclienttype']      = $this->type ? $this->type : 'Client';
+		$mv_client['supplierclientname']      = $this->username;
+		$mv_client['supplierclientphone1']    = $this->phone ? $this->phone : '';
+		$mv_client['supplierclientemail']     = $this->email ? $this->email : '';
+		$mv_client['supplierclientcomments']  = 'WooCommerce client';
+		$mv_client['supplierclientaddresses'] = $client_addresses;
 
-		$object_to_send = wrap_json( $product_update_client );
-		/**
-		 * $object_to_send = wp_json_encode( $object_to_send );
-		 */
+		$client_update['mvsupplierclient'] = $mv_client;
+		$client_update['mvrecordaction']   = $action;
 
-		return $object_to_send;
+		return $client_update;
 
 	}
 
@@ -707,9 +751,9 @@ class Client {
 			'SupplierClientIDToUndelete' => $id,
 		);
 
-		$url = get_url_for_call( self::$supplierclient_undelete_call );
+		$url = \Megaventory\API::get_url_for_call( self::$supplierclient_undelete_call );
 
-		$call = send_request_to_megaventory( $url, $data );
+		$call = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
 		return $call;
 	}

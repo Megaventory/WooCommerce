@@ -13,10 +13,12 @@
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  */
 
+namespace Megaventory\Models;
+
 /**
  * Imports.
  */
-require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/api.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'class-api.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-error.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-errors.php';
 
@@ -185,9 +187,9 @@ class Location {
 	 */
 	public static function get_megaventory_locations() {
 
-		$url = get_url_for_call( self::LOCATION_GET_CALL );
+		$url = \Megaventory\API::get_url_for_call( self::LOCATION_GET_CALL );
 
-		$data = perform_call_to_megaventory( $url );
+		$data = \Megaventory\API::perform_call_to_megaventory( $url );
 
 		$inventory_locations = $data['mvInventoryLocations'];
 
@@ -241,11 +243,11 @@ class Location {
 		}
 		$request_object->mvinventorylocation = $location_object;
 
-		$location_update_url = get_url_for_call( self::LOCATION_UPDATE_CALL );
+		$location_update_url = \Megaventory\API::get_url_for_call( self::LOCATION_UPDATE_CALL );
 
-		$request_object = wrap_json( $request_object );
+		$request_object = \Megaventory\API::wrap_json( $request_object );
 
-		$results = send_json( $location_update_url, $request_object );
+		$results = \Megaventory\API::send_json( $location_update_url, $request_object );
 
 		$return_bool = false;
 
@@ -268,5 +270,108 @@ class Location {
 
 		return $return_bool;
 
+	}
+
+	/**
+	 * Get location ID to location Abbreviation dictionary.
+	 * Performs API Call if option is not set.
+	 *
+	 * @return array
+	 */
+	public static function get_location_id_to_abbreviation_dict() {
+
+		$mv_location_id_to_abbr = get_option( MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION );
+
+		if ( ! isset( $mv_location_id_to_abbr ) ) {
+
+			$mv_location_id_to_abbr = array();
+
+			$mv_locations = self::get_megaventory_locations();
+
+			foreach ( $mv_locations as $location ) {
+
+				$mv_location_id_to_abbr[ $location['InventoryLocationID'] ] = $location['InventoryLocationAbbreviation'];
+
+			}
+
+			update_option( MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION, $mv_location_id_to_abbr );
+		}
+
+		return $mv_location_id_to_abbr;
+	}
+
+	/**
+	 * Checks if location is excluded.
+	 *
+	 * @param int $location_id as location id.
+	 * @return bool
+	 */
+	public static function is_location_excluded( $location_id ) {
+
+		$excluded_locations_ids = get_option( MV_Constants::MV_EXCLUDED_LOCATION_IDS_OPT );
+
+		if ( empty( $excluded_locations_ids ) ) {
+			return false;
+		}
+
+		if ( in_array( (int) $location_id, $excluded_locations_ids, true ) ) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Includes a Location.
+	 *
+	 * @param int $location_id as location id.
+	 * @return bool
+	 */
+	public static function include_location( $location_id ) {
+
+		$excluded_locations_ids = get_option( MV_Constants::MV_EXCLUDED_LOCATION_IDS_OPT );
+
+		if ( empty( $excluded_locations_ids ) ) {
+			return true;
+		}
+
+		$key = array_search( $location_id, $excluded_locations_ids, true );
+
+		if ( false !== $key ) {
+
+			array_splice( $excluded_locations_ids, $key, 1 );
+
+			update_option( MV_Constants::MV_EXCLUDED_LOCATION_IDS_OPT, $excluded_locations_ids );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Exclude a Location.
+	 *
+	 * @param int $location_id as location id.
+	 * @return bool
+	 */
+	public static function exclude_location( $location_id ) {
+
+		$excluded_locations_ids = get_option( MV_Constants::MV_EXCLUDED_LOCATION_IDS_OPT );
+
+		if ( empty( $excluded_locations_ids ) ) {
+			$excluded_locations_ids = array();
+		}
+
+		$key = array_search( $location_id, $excluded_locations_ids, true );
+
+		if ( false !== $key ) { // already excluded.
+
+			return true;
+		}
+
+		array_push( $excluded_locations_ids, $location_id );
+
+		update_option( MV_Constants::MV_EXCLUDED_LOCATION_IDS_OPT, $excluded_locations_ids );
+
+		return true;
 	}
 }

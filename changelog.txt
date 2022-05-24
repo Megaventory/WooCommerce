@@ -1,4 +1,22 @@
 *** Megaventory Extension Template Changelog ***
+2022-05-25 - version 2.4.0
+* Synchronize order extra fees
+* The administrator UI has been redesigned to declutter the interface a bit
+* Minor improvements
+* Bug fixes
+* Compatible with WooCommerce 6.5.1
+
+2022-04-18 - version 2.3.0
+* Support for product bundles (specific extension needed - woocommerce product bundles), this includes the synchronization of the bundle products and the synchronization of order lines that have a bundle product.
+* The ability for the administrator to delete error/success logs in order to see older ones.
+* The ability to exclude specific inventory locations from the synchronization tasks.
+* The administrator UI has been redesigned to declutter the interface a bit.
+* Other minor improvements
+* Bug fixes
+* Compatible with WooCommerce 6.4.1
+* Compatible with WordPress 5.9.3
+* Compatible with PHP 7.4
+
 2022-02-17 - version 2.2.28
 * Bug fixes.
 

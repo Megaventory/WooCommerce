@@ -13,11 +13,15 @@
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  */
 
+namespace Megaventory\Models;
+
+use WC_Product;
+
 /**
  * Imports.
  */
-require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/api.php';
-require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/address.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'class-api.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/class-address.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mv-constants.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-error.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-errors.php';
@@ -384,7 +388,7 @@ class Product {
 			'limit' => $limit,
 			'page'  => $page,
 		);
-		$wc_products = wc_get_products( $args );
+		$wc_products = wc_get_products( $args ); // May throw out of memory if the server has limited memory.
 
 		foreach ( $wc_products as $wc_product ) {
 
@@ -419,7 +423,7 @@ class Product {
 			'type'  => array( 'simple', 'variable' ),
 			'limit' => $limit,
 		);
-		$wc_products = wc_get_products( $args );
+		$wc_products = wc_get_products( $args ); // May throw out of memory if the server has limited memory.
 
 		foreach ( $wc_products as $wc_product ) {
 
@@ -452,7 +456,7 @@ class Product {
 			'limit' => -1,
 		);
 
-		$all_wc_products = wc_get_products( $args );
+		$all_wc_products = wc_get_products( $args ); // May throw out of memory if the server has limited memory.
 
 		$all_wc_products = self::get_woocommerce_products_with_unique_sku( $all_wc_products );
 
@@ -471,7 +475,7 @@ class Product {
 			'limit' => -1,
 		);
 
-		$all_wc_products = wc_get_products( $args );
+		$all_wc_products = wc_get_products( $args ); // May throw out of memory if the server has limited memory.
 
 		$all_wc_products = self::get_woocommerce_products_with_unique_sku( $all_wc_products, 'id' );
 
@@ -534,8 +538,8 @@ class Product {
 	public static function mv_all() {
 
 		$categories = self::mv_get_categories();
-		$url        = get_url_for_call( MV_Constants::PRODUCT_GET );
-		$json_prod  = perform_call_to_megaventory( $url );
+		$url        = \Megaventory\API::get_url_for_call( MV_Constants::PRODUCT_GET );
+		$json_prod  = \Megaventory\API::perform_call_to_megaventory( $url );
 
 		/* Map json to Product class. */
 
@@ -596,8 +600,8 @@ class Product {
 			),
 		);
 
-		$url      = get_url_for_call( MV_Constants::PRODUCT_GET );
-		$response = send_request_to_megaventory( $url, $data );
+		$url      = \Megaventory\API::get_url_for_call( MV_Constants::PRODUCT_GET );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
 		if ( count( $response['mvProducts'] ) <= 0 ) {
 			return null; // No such ID.
@@ -627,6 +631,44 @@ class Product {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Create a service product on Megaventory that handles additional fees.
+	 *
+	 * @param string $sku as string.
+	 *
+	 * @return boolean
+	 */
+	public static function create_additional_fee_service( $sku = MV_Constants::DEFAULT_EXTRA_FEE_SERVICE_SKU ) {
+
+		$additional_fee_product              = new Product();
+		$additional_fee_product->name        = 'WooCommerce extra fees';
+		$additional_fee_product->sku         = $sku;
+		$additional_fee_product->mv_type     = 'Service';
+		$additional_fee_product->description = 'Service for handling WooCommerce additional fees';
+
+		$currently_saved_product_id = get_option( 'megaventory_extra_fee_product_id' );
+
+		$currently_saved_sku = get_option( 'megaventory_extra_fee_sku' );
+
+		if ( $currently_saved_sku === $sku && ! empty( $currently_saved_product_id ) ) {
+			return true;
+		}
+
+		$additional_fee_product->mv_id = $currently_saved_product_id;
+
+		$megaventory_saved_product = $additional_fee_product->mv_save( null, true );
+
+		if ( empty( $megaventory_saved_product['ProductID'] ) ) {
+
+			return false;
+		}
+
+		update_option( 'megaventory_extra_fee_product_id', $megaventory_saved_product['ProductID'] );
+		update_option( 'megaventory_extra_fee_sku', $sku );
+
+		return true;
 	}
 
 	/**
@@ -699,8 +741,8 @@ class Product {
 			'Filters' => $filters,
 		);
 
-		$url      = get_url_for_call( MV_Constants::INVENTORY_LOCATION_STOCK_GET );
-		$response = send_request_to_megaventory( $url, $stock_get_body );
+		$url      = \Megaventory\API::get_url_for_call( MV_Constants::INVENTORY_LOCATION_STOCK_GET );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $stock_get_body );
 
 		if ( '0' !== ( $response['ResponseStatus']['ErrorCode'] ) ) {
 
@@ -796,7 +838,15 @@ class Product {
 
 			foreach ( $mv_product_stock_list['mvStock'] as $inventory ) {
 
-				$mv_location_id_to_abbr = get_option( 'mv_location_id_to_abbr' );
+				$mv_location_id_to_abbr = get_option( MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION );
+
+				if ( ! array_key_exists( $inventory['InventoryLocationID'], $mv_location_id_to_abbr ) ) {
+					continue;
+				}
+
+				if ( Location::is_location_excluded( (int) $inventory['InventoryLocationID'] ) ) {
+					continue;
+				}
 
 				$inventory_name = $mv_location_id_to_abbr[ $inventory['InventoryLocationID'] ];
 
@@ -867,7 +917,7 @@ class Product {
 		$non_received_po = $stocknonreceivedqty;
 		$non_received_wo = $stocknonreceivedwoqty;
 
-		$mv_location_id_to_abbr = get_option( 'mv_location_id_to_abbr' );
+		$mv_location_id_to_abbr = get_option( MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION );
 
 		$inventory_name = $mv_location_id_to_abbr[ $mv_stock_details['inventory_id'] ];
 
@@ -919,8 +969,8 @@ class Product {
 			),
 		);
 
-		$url      = get_url_for_call( self::$inventory_get_call );
-		$response = send_request_to_megaventory( $url, $data );
+		$url      = \Megaventory\API::get_url_for_call( self::$inventory_get_call );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
 		if ( count( $response['mvInventoryLocations'] ) <= 0 ) { // Not found.
 			return null;
@@ -954,8 +1004,8 @@ class Product {
 			'Filters'     => $filters,
 		);
 
-		$url  = get_url_for_call( MV_Constants::PRODUCT_GET );
-		$data = send_request_to_megaventory( $url, $product_get_body );
+		$url  = \Megaventory\API::get_url_for_call( MV_Constants::PRODUCT_GET );
+		$data = \Megaventory\API::send_request_to_megaventory( $url, $product_get_body );
 
 		if ( count( $data['mvProducts'] ) <= 0 ) {
 			return null; // No such sku.
@@ -1197,7 +1247,7 @@ class Product {
 
 		foreach ( $variations_ids as $variation_id ) {
 
-			$wc_variation_product = new WC_Product_Variation( $variation_id );
+			$wc_variation_product = new \WC_Product_Variation( $variation_id );
 			$product              = self::wc_variation_convert( $wc_variation_product, $wc_variable );
 
 			array_push( $prods, $product );
@@ -1218,7 +1268,7 @@ class Product {
 
 		foreach ( $variation_ids as $variation_id ) {
 
-			$wc_variation_product = new WC_Product_Variation( $variation_id );
+			$wc_variation_product = new \WC_Product_Variation( $variation_id );
 
 			$variation_product = self::wc_variation_convert( $wc_variation_product, $wc_product );
 
@@ -1269,9 +1319,10 @@ class Product {
 	 * Save Product to Megaventory.
 	 *
 	 * @param null|boolean $categories search with categories.
+	 * @param bool         $force_update_sku force SKU update in Megaventory.
 	 * @return array
 	 */
-	public function mv_save( $categories = null ) {
+	public function mv_save( $categories = null, $force_update_sku = false ) {
 		/*
 			Passing categories makes things faster and requires less API calls.
 			always use $categories when using this function in a loop with many users
@@ -1314,10 +1365,10 @@ class Product {
 			}
 		}
 
-		$update_url = create_json_url( MV_Constants::PRODUCT_UPDATE );
-		$mv_request = $this->generate_update_json( $category_id );
+		$update_url = \Megaventory\API::get_url_for_call( MV_Constants::PRODUCT_UPDATE );
+		$mv_request = $this->generate_update_json( $category_id, $force_update_sku );
 
-		$data = send_request_to_megaventory( $update_url, $mv_request );
+		$data = \Megaventory\API::send_request_to_megaventory( $update_url, $mv_request );
 
 		/*if product didn't save in Megaventory it will return an error code != 0*/
 
@@ -1335,13 +1386,13 @@ class Product {
 			}
 
 			$this->mv_id = $data['entityID'];
-			$url         = get_url_for_call( self::$product_undelete_call );
+			$url         = \Megaventory\API::get_url_for_call( self::$product_undelete_call );
 
 			$params = array(
 				'ProductIdToUndelete' => $this->mv_id,
 			);
 
-			$undelete_data = send_request_to_megaventory( $url, $params );
+			$undelete_data = \Megaventory\API::send_request_to_megaventory( $url, $params );
 
 			if ( array_key_exists( 'InternalErrorCode', $undelete_data ) ) {
 				$this->log_error( 'Product is deleted. Undelete failed', $undelete_data['ResponseStatus']['Message'], -1, 'error', $data['json_object'] );
@@ -1369,9 +1420,11 @@ class Product {
 	 * Create a json.
 	 *
 	 * @param null|bool $category_id filter with categories.
+	 * @param bool      $force_update_sku force SKU update in Megaventory.
+	 *
 	 * @return array
 	 */
-	private function generate_update_json( $category_id = null ) {
+	private function generate_update_json( $category_id = null, $force_update_sku = false ) {
 
 		$special_characters = array( '?', '$', '@', '!', '*', '#' );// Special characters that need to be removed in order to be accepted by Megaventory.
 
@@ -1395,6 +1448,7 @@ class Product {
 
 			$mv_product['ProductEAN'] = $this->ean;
 		}
+
 		if ( empty( $this->mv_id ) ) { // Purchase price is synchronized only if the product is not synchronized with Megaventory.
 
 			$mv_product['ProductPurchasePrice'] = $this->purchase_price;
@@ -1403,6 +1457,7 @@ class Product {
 		$object_to_send = array();
 
 		$object_to_send['mvProduct']                             = $mv_product;
+		$object_to_send['forceSkuUpdateEvenIfUsedInDocuments']   = $force_update_sku;
 		$object_to_send['mvRecordAction']                        = MV_Constants::MV_RECORD_ACTION['InsertOrUpdateNonEmptyFields'];
 		$object_to_send['mvInsertUpdateDeleteSourceApplication'] = 'woocommerce';
 
@@ -1425,9 +1480,9 @@ class Product {
 			'mvInsertUpdateDeleteSourceApplication' => 'woocommerce',
 		);
 
-		$url = get_url_for_call( MV_Constants::PRODUCT_DELETE );
+		$url = \Megaventory\API::get_url_for_call( MV_Constants::PRODUCT_DELETE );
 
-		$response = send_request_to_megaventory( $url, $data_to_send );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $data_to_send );
 
 		if ( '0' === ( $response['ResponseStatus']['ErrorCode'] ) ) {
 
@@ -1567,8 +1622,8 @@ class Product {
 	 * @return array
 	 */
 	public static function mv_get_categories() {
-		$url     = create_json_url( self::$category_get_call );
-		$jsoncat = perform_call_to_megaventory( $url );
+		$url     = \Megaventory\API::get_url_for_call( self::$category_get_call );
+		$jsoncat = \Megaventory\API::perform_call_to_megaventory( $url );
 
 		$categories = array();
 		foreach ( $jsoncat['mvProductCategories'] as $cat ) {
@@ -1586,22 +1641,22 @@ class Product {
 	 */
 	public static function mv_create_category( $name ) {
 
-		$url      = get_url_for_call( self::$category_update_call );
+		$url      = \Megaventory\API::get_url_for_call( self::$category_update_call );
 		$data     = array(
 			'mvProductCategory' => array(
 				'ProductCategoryName' => $name,
 			),
 		);
-		$response = send_request_to_megaventory( $url, $data );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
 		if ( isset( $response['InternalErrorCode'] ) && 'CategoryWasDeleted' === $response['InternalErrorCode'] ) { // needs to be undeleted.
 
 			$id           = $response['entityID'];
-			$undelete_url = create_json_url( self::$category_undelete_call );
+			$undelete_url = \Megaventory\API::get_url_for_call( self::$category_undelete_call );
 			$params       = array(
 				'ProductCategoryIDToUndelete' => $id,
 			);
-			$response     = send_request_to_megaventory( $undelete_url, $params );
+			$response     = \Megaventory\API::send_request_to_megaventory( $undelete_url, $params );
 
 			if ( $response['result'] ) {
 
@@ -1668,10 +1723,12 @@ class Product {
 	/**
 	 * Push stock to Megaventory.
 	 *
-	 * @param int $starting_index as the position.
+	 * @param int    $starting_index         as the position.
+	 * @param string $adjustment_status      as adjustment status.
+	 * @param int    $adjustment_location_id as adjustment location id.
 	 * @return array['starting_index','next_index','error_occurred','finished','message']
 	 */
-	public static function push_stock( $starting_index ) {
+	public static function push_stock( $starting_index, $adjustment_status, $adjustment_location_id ) {
 
 		$return_values = array(
 			'starting_index' => $starting_index,
@@ -1755,8 +1812,8 @@ class Product {
 			'Filters' => $filters,
 		);
 
-		$url      = get_url_for_call( MV_Constants::INVENTORY_LOCATION_STOCK_GET );
-		$response = send_request_to_megaventory( $url, $stock_get_body );
+		$url      = \Megaventory\API::get_url_for_call( MV_Constants::INVENTORY_LOCATION_STOCK_GET );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $stock_get_body );
 
 		if ( '0' !== ( $response['ResponseStatus']['ErrorCode'] ) ) {
 
@@ -1774,8 +1831,6 @@ class Product {
 		}
 
 		$megaventory_product_stock_list = $response['mvProductStockList'];
-		$issuance_status                = get_option( 'megaventory_adjustment_document_status_option', 'Pending' );
-		$mv_location_id                 = (int) get_option( 'default-megaventory-inventory-location' );
 
 		foreach ( $selected_products_to_sync_stock as $selected_product ) {
 
@@ -1826,7 +1881,7 @@ class Product {
 
 		if ( 0 === count( $document_details_adj_plus ) && 0 === count( $document_details_adj_minus ) && $is_last_page ) {
 
-			register_warning( 'No adjustment was needed.' );
+			\Megaventory\Helpers\Admin_Notifications::register_warning( 'No adjustment was needed.' );
 
 			$return_values = array(
 				'starting_index' => $starting_index,
@@ -1854,11 +1909,11 @@ class Product {
 					'DocumentSupplierClientID' => MV_Constants::INTERNAL_SUPPLIER_CLIENT_FOR_ADJUSTMENTS_AND_OTHER_OPERATIONS,
 					'DocumentComments'         => 'This is the initial stock document that was created based on available quantity for the following products',
 					'DocumentDetails'          => $document_details_adj_plus,
-					'DocumentStatus'           => $issuance_status,
+					'DocumentStatus'           => $adjustment_status,
 				);
 
-				if ( 'Verified' === $issuance_status ) {
-					$mv_document_plus['DocumentInventoryLocationID'] = $mv_location_id;
+				if ( 'Verified' === $adjustment_status ) {
+					$mv_document_plus['DocumentInventoryLocationID'] = $adjustment_location_id;
 				}
 
 				$document_update = array(
@@ -1867,8 +1922,8 @@ class Product {
 					'mvInsertUpdateDeleteSourceApplication' => 'woocommerce',
 				);
 
-				$url      = get_url_for_call( MV_Constants::DOCUMENT_UPDATE );
-				$response = send_request_to_megaventory( $url, $document_update );
+				$url      = \Megaventory\API::get_url_for_call( MV_Constants::DOCUMENT_UPDATE );
+				$response = \Megaventory\API::send_request_to_megaventory( $url, $document_update );
 
 				delete_transient( 'adjustment_plus_items_array' );
 
@@ -1914,11 +1969,11 @@ class Product {
 					'DocumentSupplierClientID' => MV_Constants::INTERNAL_SUPPLIER_CLIENT_FOR_ADJUSTMENTS_AND_OTHER_OPERATIONS,
 					'DocumentComments'         => 'This is the initial stock document that was created based on available quantity for the following products',
 					'DocumentDetails'          => $document_details_adj_minus,
-					'DocumentStatus'           => $issuance_status,
+					'DocumentStatus'           => $adjustment_status,
 				);
 
-				if ( 'Verified' === $issuance_status ) {
-					$mv_document_plus['DocumentInventoryLocationID'] = $mv_location_id;
+				if ( 'Verified' === $adjustment_status ) {
+					$mv_document_plus['DocumentInventoryLocationID'] = $adjustment_location_id;
 				}
 
 				$document_update = array(
@@ -1927,8 +1982,8 @@ class Product {
 					'mvInsertUpdateDeleteSourceApplication' => 'woocommerce',
 				);
 
-				$url      = get_url_for_call( MV_Constants::DOCUMENT_UPDATE );
-				$response = send_request_to_megaventory( $url, $document_update );
+				$url      = \Megaventory\API::get_url_for_call( MV_Constants::DOCUMENT_UPDATE );
+				$response = \Megaventory\API::send_request_to_megaventory( $url, $document_update );
 
 				delete_transient( 'adjustment_minus_items_array' );
 
@@ -1973,6 +2028,34 @@ class Product {
 		);
 
 		return $return_values;
+	}
+
+	/**
+	 * Get stock qty for product in location.
+	 * Returns Physical excluding Non Allocated and Non Shipped.
+	 *
+	 * @param int  $mv_location_id Inventory location id.
+	 * @param bool $physical_only  Return physical stock instead.
+	 * @return int
+	 */
+	public function get_mv_stock_for_location( $mv_location_id, $physical_only = false ) {
+
+		if ( empty( $this->mv_qty ) || ! is_array( $this->mv_qty ) || ! array_key_exists( $mv_location_id, $this->mv_qty ) ) {
+			return 0;
+		}
+
+		$stock_array = explode( ';', $this->mv_qty[ $mv_location_id ] );
+
+		$physical      = $stock_array[ self::MV_PHYSICAL_STOCK_QTY_KEY ];
+		$non_shipped   = $stock_array[ self::MV_NON_SHIPPED_QTY_KEY ];
+		$non_allocated = $stock_array[ self::MV_NON_ALLOCATED_WO_QTY_KEY ];
+
+		if ( $physical_only ) {
+			return (int) $physical;
+		}
+
+		return ( (int) $physical - (int) $non_allocated - (int) $non_shipped );
+
 	}
 
 	/**

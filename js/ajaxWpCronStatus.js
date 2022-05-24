@@ -16,7 +16,7 @@
  * Change alternate_wp_cron status function.
  */
 
-function changeWpCronStatus() {
+function megaventory_change_alternate_cron_status() {
 	jQuery( '#loading' ).show();
 	var checbox_value = jQuery( '#enable_alternate_wp_cron' ).prop( 'checked' );
 	var initial_value = ! checbox_value;
@@ -26,7 +26,7 @@ function changeWpCronStatus() {
 			url: "admin-ajax.php", // or example_ajax_obj.ajaxurl if using on frontend.
 			type: "POST",
 			data: {
-				'action': 'alternateWpCronStatus',
+				'action': 'megaventory_change_alternate_cron_status',
 				'newStatus': checbox_value,
 				'async-nonce': mv_ajax_object.nonce
 			},
