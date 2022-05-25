@@ -6,7 +6,7 @@ Contributors: grzalamp, ch-asimakopoulos, yyialouris, chandrianos, Shadow569, od
 Tags: megaventory, integration, inventory, stock
 Requires at least: 4.4
 Tested up to: 5.9.3
-Stable tag: 5.9.3
+Stable tag: 2.4.0
 Requires PHP: 7.2
 License: GPLv3 or later License
 URI: http://www.gnu.org/licenses/gpl-3.0.html

@@ -14,7 +14,7 @@
  * WC tested up to: 6.5.1
  * Requires at least: 4.4
  * Tested up to: 5.9.3
- * Stable tag: 5.9.3
+ * Stable tag: 2.4.0
  * Requires PHP: 7.2
  *
  * Author: Megaventory
