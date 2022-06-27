@@ -402,7 +402,7 @@ class Megaventory {
 	 * @return void
 	 */
 	public static function register_style() {
-		wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.41', 'all' );
+		wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.42', 'all' );
 		wp_register_style( 'mv_style_fonts', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css', false, '2.0.7', 'all' );
 	}
 

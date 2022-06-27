@@ -1,4 +1,11 @@
 *** Megaventory Extension Template Changelog ***
+2022-06-27 - version 2.4.1
+* Bundles stock status bug fixed.
+* Bulk edit bug fixed.
+* Other minor improvements.
+* Compatible with WooCommerce 6.6.1
+* Compatible with WordPress 6.0.0
+
 2022-05-25 - version 2.4.0
 * Synchronize order extra fees
 * The administrator UI has been redesigned to declutter the interface a bit

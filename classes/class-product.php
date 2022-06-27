@@ -15,6 +15,7 @@
 
 namespace Megaventory\Models;
 
+use WC_PB_DB_Sync;
 use WC_Product;
 
 /**
@@ -1142,8 +1143,8 @@ class Product {
 	/**
 	 * Convert WC_Product_Variation to Product.
 	 *
-	 * @param WC_Product_Variation $wc_variation variation Product.
-	 * @param WC_Product_Variable  $wc_variable variable Product.
+	 * @param \WC_Product_Variation $wc_variation variation Product.
+	 * @param \WC_Product_Variable  $wc_variable variable Product.
 	 * @return Product
 	 */
 	public static function wc_variation_convert( $wc_variation, $wc_variable ) {
@@ -1199,12 +1200,20 @@ class Product {
 			$prod->category = self::get_full_category_name( $cs[0] ); // Primary category.
 		}
 
-		// Version is | name - var1, var2, var3.
-		// Megaventory version should be | var1, var2, var3.
-		$version = $wc_variation->get_name();
-		$version = str_replace( ' ', '', $version ); // remove whitespaces.
-		$version = substr( $version, strrpos( $version, '-' ) + 1 ); // Finds last occurence of '-' and takes everything after it.
-		$version = str_replace( ',', '/', $version );
+		// Megaventory version should be | attr1_label: var1 | attr2_label: var2 | attr3_label: var3.
+		$variation_attrs = $wc_variation->get_variation_attributes( false );
+
+		$version = '';
+
+		foreach ( $variation_attrs as $attribute_code => $value ) {
+
+			$attribute_for_megaventory = wc_attribute_label( $attribute_code );
+
+			$version .= "{$attribute_for_megaventory}: {$value} | ";
+
+		}
+
+		$version = rtrim( $version, '| ' );
 
 		$prod->version = $version;
 
@@ -2115,5 +2124,13 @@ class Product {
 
 			update_post_meta( $product_variable->get_id(), '_stock_status', $variable_stock_status );
 		}
+
+		if ( defined( 'WC_PB_VERSION' ) ) {
+
+			$wc_product = wc_get_product( $this->wc_id ); // reload product attributes status, qty etc.
+
+			WC_PB_DB_Sync::bundled_product_stock_changed( $wc_product ); // if the product is not a bundled product, it will just return.
+		}
+
 	}
 }

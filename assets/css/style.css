@@ -90,14 +90,27 @@
 .qty-row {
 	width: 100%;
 	text-align: center;
+	box-sizing: border-box;
 }
 
-.qty-row td:first-child {
+.qty-row div.d-table-cell:first-child {
 	text-align: left;
 }
 
-.qty-row  td {
+.qty-row  div.d-table-cell {
 	padding: 0px;
+}
+
+.d-table{
+	display: table;
+}
+
+.d-table-row{
+	display: table-row;
+}
+
+.d-table-cell{
+	display: table-cell;
 }
 
 .initNoticeDiv {

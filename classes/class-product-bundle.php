@@ -470,7 +470,7 @@ class Product_Bundle extends Product {
 
 		$id          = $wc_prod->get_id();
 		$prod->wc_id = $id;
-		$prod->mv_id = (int) $post_meta['mv_id'][0];
+		$prod->mv_id = (int) ( ( empty( $post_meta['mv_id'][0] ) ) ? 0 : $post_meta['mv_id'][0] );
 
 		$prod->name             = $wc_prod->get_name();
 		$prod->long_description = $wc_prod->get_description();
@@ -504,7 +504,7 @@ class Product_Bundle extends Product {
 
 		$all_wc_products = wc_get_products( $args );
 
-		$all_wc_products = self::get_products_with_unique_sku( $all_wc_products, 'id' );
+		$all_wc_products = self::get_woocommerce_products_with_unique_sku( $all_wc_products, 'id' );
 
 		return count( $all_wc_products );
 	}

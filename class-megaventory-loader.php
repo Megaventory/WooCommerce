@@ -246,9 +246,9 @@ class Megaventory_Loader {
 			}
 			/* build stock table */
 			?>
-			<table class="qty-row">
+			<div class="d-table qty-row">
 			<?php foreach ( $mv_qty as $key => $qty ) : ?>
-				<tr>
+				<div class="d-table-row">
 				<?php
 				$mv_location_id_to_abbr = get_option( Models\MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION );
 
@@ -259,16 +259,16 @@ class Megaventory_Loader {
 				$inventory_name = $mv_location_id_to_abbr[ $key ];
 				?>
 				<?php $qty = explode( ';', $qty ); ?>
-					<td colspan="2"><span><?php echo esc_attr( $inventory_name ); ?></span></td>
-					<td class="mv-tooltip" title="Total"><span><?php echo esc_attr( $qty[1] ); ?></span></td>
-					<td class="mv-tooltip" title="On Hand"><span class="qty-on-hand">(<?php echo esc_attr( $qty[2] ); ?>)</span></td>
-					<td class="mv-tooltip" title="Non-shipped Quantity in Sales Orders"><span class="qty-non-shipped"><?php echo esc_attr( $qty[3] ); ?></span></td>
-					<td class="mv-tooltip" title="Non-Allocated Quantity in Production Orders"><span class="qty-non-allocated"><?php echo esc_attr( $qty[4] ); ?></span></td>
-					<td class="mv-tooltip" title="Non-Received Quantity in Purchase Orders"><span class="qty-non-received"><?php echo esc_attr( $qty[5] ); ?></span></td>
-					<td class="mv-tooltip" title="Non-Received Quantity in Production Orders"><span class="qty-non-received"><?php echo esc_attr( $qty[6] ); ?></span></td>
-				</tr>
+					<div class="d-table-cell" colspan="2"><span><?php echo esc_attr( $inventory_name ); ?></span></div>
+					<div class="d-table-cell mv-tooltip" title="Total"><span><?php echo esc_attr( $qty[1] ); ?></span></div>
+					<div class="d-table-cell mv-tooltip" title="On Hand"><span class="qty-on-hand">(<?php echo esc_attr( $qty[2] ); ?>)</span></div>
+					<div class="d-table-cell mv-tooltip" title="Non-shipped Quantity in Sales Orders"><span class="qty-non-shipped"><?php echo esc_attr( $qty[3] ); ?></span></div>
+					<div class="d-table-cell mv-tooltip" title="Non-Allocated Quantity in Production Orders"><span class="qty-non-allocated"><?php echo esc_attr( $qty[4] ); ?></span></div>
+					<div class="d-table-cell mv-tooltip" title="Non-Received Quantity in Purchase Orders"><span class="qty-non-received"><?php echo esc_attr( $qty[5] ); ?></span></div>
+					<div class="d-table-cell mv-tooltip" title="Non-Received Quantity in Production Orders"><span class="qty-non-received"><?php echo esc_attr( $qty[6] ); ?></span></div>
+				</div>
 			<?php endforeach; ?>
-			</table>
+			</div>
 			<?php
 		}
 	}

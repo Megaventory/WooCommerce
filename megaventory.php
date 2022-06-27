@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.4.0
+ * Version: 2.4.1
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -11,10 +11,10 @@
  * @since 1.0.0
  *
  * WC requires at least: 3.0
- * WC tested up to: 6.5.1
+ * WC tested up to: 6.6.1
  * Requires at least: 4.4
- * Tested up to: 5.9.3
- * Stable tag: 2.4.0
+ * Tested up to: 6.0.0
+ * Stable tag: 2.4.1
  * Requires PHP: 7.2
  *
  * Author: Megaventory
