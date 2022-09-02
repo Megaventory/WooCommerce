@@ -440,6 +440,42 @@ class Order {
 	}
 
 	/**
+	 * Get WooCommerce Payment Methods as a key-value pair
+	 *
+	 * @return array
+	 */
+	public static function get_wc_payment_methods() {
+		$wc_payment_methods = array();
+
+		foreach ( WC()->payment_gateways()->payment_gateways as $wc_payment_method ) {
+			$wc_payment_methods[ $wc_payment_method->id ] = $wc_payment_method->title;
+		}
+
+		return $wc_payment_methods;
+	}
+
+	/**
+	 * Get the available Megaventory Payment Methods as key-value pair
+	 *
+	 * @return array
+	 */
+	public static function get_mv_payment_methods() {
+		$mv_payment_methods = array(
+			'None'                 => '-- Not a payment --',
+			'Cash'                 => 'Cash',
+			'BankTransfer'         => 'Bank Transfer',
+			'Check'                => 'Cheque',
+			'Credit'               => '(On) Credit',
+			'CustomPaymentMethod1' => 'Custom Payment Method',
+			'CustomPaymentMethod2' => 'Custom Payment Method Alt 1',
+			'CustomPaymentMethod3' => 'Custom Payment Method Alt 2',
+			'Other'                => 'Other',
+		);
+
+		return $mv_payment_methods;
+	}
+
+	/**
 	 * Generate salesorderdetails array to send.
 	 *
 	 * @param MV_Order_Item[] $mv_order_items Array of MV_Order_Items with relevant info.
@@ -547,11 +583,11 @@ class Order {
 	/**
 	 * Generate the actual sales order json object to send to mv.
 	 *
-	 * @param WC_Order $order The wc order object.
-	 * @param Client   $client Client instance for this order.
-	 * @param int      $location_id Location ID to create the order in.
-	 * @param string   $coupon_names_order_tags Coupons concatenated string.
-	 * @param array    $sales_array Sales Order Details to include in this order.
+	 * @param \WC_Order $order The wc order object.
+	 * @param Client    $client Client instance for this order.
+	 * @param int       $location_id Location ID to create the order in.
+	 * @param string    $coupon_names_order_tags Coupons concatenated string.
+	 * @param array     $sales_array Sales Order Details to include in this order.
 	 * @return array
 	 */
 	private static function generate_order_json( $order, $client, $location_id, $coupon_names_order_tags, $sales_array ) {
@@ -603,6 +639,7 @@ class Order {
 		$order_object['salesordertags']                 = $order_tags;
 		$order_object['salesorderdetails']              = $sales_array;
 		$order_object['salesorderinventorylocationid']  = $location_id;
+		$order_object['salesorderpaymentmethod']        = self::get_mv_payment_method( $order->get_payment_method() );
 		$order_object['salesorderstatus']               = 'Verified';
 
 		$order_update_json['mvsalesorder'] = $order_object;
@@ -663,6 +700,24 @@ class Order {
 	private static function update_order_queue_option( $order_queue_arr ) {
 
 		update_option( MV_Constants::MV_ORDERS_TO_SYNC_OPT, $order_queue_arr );
+
+	}
+
+	/**
+	 * Get MV Payment Method
+	 *
+	 * @param string $wc_payment_method The woocommerce payment method.
+	 * @return string
+	 */
+	public static function get_mv_payment_method( $wc_payment_method ) {
+
+		$mappings = get_option( \Megaventory\Models\MV_Constants::MV_PAYMENT_METHOD_MAPPING_OPT, array() );
+
+		if ( ! is_array( $mappings ) || ! array_key_exists( $wc_payment_method, $mappings ) ) {
+			return \Megaventory\Models\MV_Constants::DEFAULT_MEGAVENTORY_PAYMENT_METHOD;
+		}
+
+		return $mappings[ $wc_payment_method ];
 
 	}
 

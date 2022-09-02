@@ -31,6 +31,7 @@ function megaventory_change_default_location(inventory_id) {
 			},
 			success: function (data) { // This outputs the result of the ajax request.
 				jQuery( '#loading' ).hide();
+				location.reload();
 			},
 
 			error: function (errorThrown) {
@@ -60,7 +61,7 @@ function megaventory_include_location(inventory_id) {
 			},
 			success: function (data) { // This outputs the result of the ajax request.
 				jQuery( '#loading' ).hide();
-				location.reload();
+				jQuery( "#massImportInventoryAfterLocationIsIncludedOrExcluded" ).removeClass( 'hidden' );
 			},
 
 			error: function (errorThrown) {
@@ -90,7 +91,7 @@ function megaventory_exclude_location(inventory_id) {
 			},
 			success: function (data) { // This outputs the result of the ajax request.
 				jQuery( '#loading' ).hide();
-				location.reload();
+				jQuery( "#massImportInventoryAfterLocationIsIncludedOrExcluded" ).removeClass( 'hidden' );
 			},
 
 			error: function (errorThrown) {

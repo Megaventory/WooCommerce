@@ -40,6 +40,10 @@ class Shipping_Zones {
 
 			update_option( \Megaventory\Models\MV_Constants::SHIPPING_ZONES_ENABLE_OPT, $status );
 
+			delete_option( 'default-megaventory-inventory-location' );
+
+			\Megaventory\Helpers\Tools::notify_user_for_stock();
+
 			wp_send_json_success( array( 'success' => true ), 200 );
 		} else {
 
@@ -56,14 +60,20 @@ class Shipping_Zones {
 	 */
 	public static function megaventory_save_shipping_zones_priority_order() {
 
-		if ( isset( $_POST['shipping-priorities'], $_POST['async-nonce'] ) &&
+		if ( isset( $_POST['shipping-priorities'], $_POST['async-nonce'], $_POST['excluded-locations'] ) &&
 			wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
 
 			$zone_priority_serialized = sanitize_text_field( wp_unslash( $_POST['shipping-priorities'] ) );
 
 			$zone_priority = json_decode( $zone_priority_serialized, true );
 
+			$zone_excluded_locations_serialized = sanitize_text_field( wp_unslash( $_POST['excluded-locations'] ) );
+
+			$zone_excluded_locations = json_decode( $zone_excluded_locations_serialized, true );
+
 			update_option( \Megaventory\Models\MV_Constants::SHIPPING_ZONES_PRIORITY_OPT, $zone_priority );
+
+			update_option( \Megaventory\Models\MV_Constants::SHIPPING_ZONES_EXCLUDED_LOCATION_OPT, $zone_excluded_locations );
 
 			wp_send_json_success( array( 'success' => true ), 200 );
 

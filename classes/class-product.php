@@ -15,7 +15,6 @@
 
 namespace Megaventory\Models;
 
-use WC_PB_DB_Sync;
 use WC_Product;
 
 /**
@@ -708,6 +707,8 @@ class Product {
 
 			update_option( 'is_megaventory_stock_adjusted', 1 );
 
+			delete_transient( \Megaventory\Models\MV_Constants::MV_STOCK_UPDATE_NOTICE_OPT );
+
 			$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
 
 			$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
@@ -799,6 +800,8 @@ class Product {
 			);
 
 			update_option( 'is_megaventory_stock_adjusted', 1 );
+
+			delete_transient( \Megaventory\Models\MV_Constants::MV_STOCK_UPDATE_NOTICE_OPT );
 
 			$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
 
@@ -2129,7 +2132,7 @@ class Product {
 
 			$wc_product = wc_get_product( $this->wc_id ); // reload product attributes status, qty etc.
 
-			WC_PB_DB_Sync::bundled_product_stock_changed( $wc_product ); // if the product is not a bundled product, it will just return.
+			\WC_PB_DB_Sync::bundled_product_stock_changed( $wc_product ); // if the product is not a bundled product, it will just return.
 		}
 
 	}

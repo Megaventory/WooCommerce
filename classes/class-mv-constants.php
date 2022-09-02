@@ -172,9 +172,15 @@ class MV_Constants {
 
 	const SHIPPING_ZONES_PRIORITY_OPT = 'megaventory_shipping_zone_priority';
 
+	const SHIPPING_ZONES_EXCLUDED_LOCATION_OPT = 'megaventory_shipping_zone_excluded_locations';
+
 	const MV_ORDER_DELAY_CHOICE_OPT = 'megaventory_delay_order_sync';
 
 	const MV_ORDER_DELAY_SECONDS_CHOICE_OPT = 'megaventory_order_delay_seconds';
+
+	const MV_STOCK_UPDATE_NOTICE_OPT = 'megaventory_stock_notify_user';
+
+	const MV_STOCK_UPDATE_NOTICE_EXP_SECS = 3600;
 
 	const MV_ORDERS_TO_SYNC_OPT = 'megaventory_orders_to_sync_queue';
 
@@ -185,6 +191,10 @@ class MV_Constants {
 	const MV_ORDER_SYNC_EVENT = 'sync_orders_to_megaventory_event';
 
 	const DEFAULT_EXTRA_FEE_SERVICE_SKU = 'extra_fee_service';
+
+	const MV_PAYMENT_METHOD_MAPPING_OPT = 'megaventory_wc_payment_method_mappings';
+
+	const DEFAULT_MEGAVENTORY_PAYMENT_METHOD = 'None';
 
 	/**
 	 * The default time to wait before synchronizing a new WC Order to Megaventory.

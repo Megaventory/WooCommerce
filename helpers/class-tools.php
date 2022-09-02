@@ -52,4 +52,13 @@ class Tools {
 
 		return $subject;
 	}
+
+	/**
+	 * This will display a notification to the user to pull all the stock from Megaventory.
+	 *
+	 * @return void
+	 */
+	public static function notify_user_for_stock() {
+		set_transient( \Megaventory\Models\MV_Constants::MV_STOCK_UPDATE_NOTICE_OPT, true, \Megaventory\Models\MV_Constants::MV_STOCK_UPDATE_NOTICE_EXP_SECS );
+	}
 }

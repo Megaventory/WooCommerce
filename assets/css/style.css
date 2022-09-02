@@ -1,48 +1,3 @@
-.checkmark {
-	display:inline-block;
-	width: 22px;
-	height:22px;
-	-ms-transform: rotate(45deg); /* IE 9 */
-	-webkit-transform: rotate(45deg); /* Chrome, Safari, Opera */
-	transform: rotate(45deg);
-}
-
-.checkmark_stem {
-	position: absolute;
-	width:3px;
-	height:9px;
-	background-color:green;
-	left:17px;
-	top:6px;
-}
-
-.checkmark_kick {
-	position: absolute;
-	width:3px;
-	height:3px;
-	background-color:green;
-	left:14px;
-	top:12px;
-}
-
-.checkmark_stem_error {
-	position: absolute;
-	width:3px;
-	height:9px;
-	background-color:red;
-	left:17px;
-	top:9px;
-}
-
-.checkmark_kick_error {
-	position: absolute;
-	width:9px;
-	height:3px;
-	background-color:red;
-	left:14px;
-	top:12px;
-}
-
 #delete-error-logs, #delete-success-logs {
 	width: 10%;
 	margin: 1em 0;
@@ -93,6 +48,19 @@
 	box-sizing: border-box;
 }
 
+.mv-notice{
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-left-width: 4px;
+	box-shadow: 0 1px 1px rgba(0,0,0,.04);
+	margin: 5px 0 15px;
+	padding: 1px 12px;
+}
+
+.mv-notice.notice-warning{
+	border-left-color: #dba617;
+}
+
 .qty-row div.d-table-cell:first-child {
 	text-align: left;
 }
@@ -101,16 +69,8 @@
 	padding: 0px;
 }
 
-.d-table{
-	display: table;
-}
-
-.d-table-row{
-	display: table-row;
-}
-
-.d-table-cell{
-	display: table-cell;
+.mv-payment-method-mapping, .mv-notice-wrap{
+	margin-top: 1em;
 }
 
 .initNoticeDiv {
@@ -118,10 +78,12 @@
 	text-align: start;
 }
 
-.inventories {
+.inventories, .mv-payment-method-mapping, .mv-notice-wrap {
 	text-align: left;
 	width: 40%;
 }
+
+
 
 /* ADMIN PANEL */
 
@@ -240,6 +202,11 @@
 	display: table-cell;
 }
 
+.inventories .mv-disabled-checkbox{
+	background: #EEE;
+	opacity: 1;
+}
+
 .mv-form .mv-form-bottom {
 	margin-top: 10px;
 	display: block;
@@ -249,14 +216,6 @@
 
 div.mv-row.row-main {
 	width: 100%;
-}
-
-.wrap-init {
-	text-align: center;
-}
-
-.wrap-init input {
-	width: 90%;
 }
 
 .mv-admin {
@@ -323,21 +282,7 @@ div.mv-row.row-main {
 	text-align: center;
 	display: block;
 }
-.showInitSync {
-	background-color: #f3f5f6;
-	border: 1px solid #0071a1;
-	border-color:#016087;
-	color:#016087;
-	padding: 3px 2px;
-	text-align: center;
-	text-decoration: none;
-	display: inline-block;
-	margin: 4px 2px;
-	cursor: pointer;
-}
-.showInitSync:hover {
-	background-color: #f1f1f1;
-}
+
 .stockNotice {
 	background: #ccc;
 	padding: 20px;
@@ -426,6 +371,7 @@ div.mv-row.row-main {
 	padding: 0.45em 1.5em;
 	text-shadow: none;
 	margin-bottom: 5px;
+	margin-top: 15px;
 }
 
 @font-face {
@@ -435,14 +381,21 @@ div.mv-row.row-main {
 	src: url(https://jsbin-user-assets.s3.amazonaws.com/rafaelcastrocouto/password.ttf);
 }
 
-.form-table th {
-	width: 15%;
+.inventories .form-table th{
+	width:auto;
 }
 
-.mvDocStatusUpdate {
-	padding: 0.4em 1em;
-	vertical-align: middle;
-	margin-left: 1em;
+.inventories .form-table{
+	width:auto;
+}
+
+.shipping_sortable{
+	min-height: 100px;
+	min-width: 100px;
+}
+
+.form-table th {
+	width: 15%;
 }
 
 .sortableRowEnabled {
@@ -484,3 +437,6 @@ div.mv-row.row-main {
 .none{display:none}
 .CurPointer {cursor: pointer}
 .margin5px{margin:5px;}
+.d-table{display:table;}
+.d-table-row{display:table-row;}
+.d-table-cell{display:table-cell;}

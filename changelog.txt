@@ -1,4 +1,13 @@
 *** Megaventory Extension Template Changelog ***
+
+2022-09-02 - version 2.4.2
+* New feature: map WooCommerce Payment methods to Megaventory Payment methods.
+* New feature: exclude locations in shipping zones.
+* UI improvements.
+* Other minor improvements.
+* Compatible with WooCommerce 6.8.2
+* Compatible with WordPress 6.0.2
+
 2022-06-27 - version 2.4.1
 * Bundles stock status bug fixed.
 * Bulk edit bug fixed.

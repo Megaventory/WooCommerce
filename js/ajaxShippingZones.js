@@ -17,9 +17,6 @@
  */
 function megaventory_change_shipping_zones_option() {
 	jQuery( '#loading' ).show();
-	var checbox_value = jQuery( '#enable_mv_shipping_zones' ).prop( 'checked' );
-	var initial_value = ! checbox_value;
-	let isSuccess     = true;
 
 	jQuery.ajax(
 		{
@@ -27,20 +24,19 @@ function megaventory_change_shipping_zones_option() {
 			type: "POST",
 			data: {
 				'action': 'megaventory_change_shipping_zones_option',
-				'newStatus': checbox_value,
+				'newStatus': true,
 				'async-nonce': mv_ajax_object.nonce
 			},
 			success: function (data) { // This outputs the result of the ajax request.
-				jQuery( '#enable_mv_shipping_zones' ).prop( 'checked', checbox_value );
+				jQuery( '#megaventory_wc_shipping_zones_radio' ).prop( 'checked', true );
 				jQuery( '#loading h1' ).html( "Progress: 100%" );
 				setTimeout( function () {jQuery( '#loading' ).hide();}, 2000 );
 				location.reload();
 			},
 
 			error: function (errorThrown) {
-				jQuery( '#enable_mv_shipping_zones' ).prop( 'checked', initial_value );
+				jQuery( '#megaventory_wc_shipping_zones_radio' ).prop( 'checked', false );
 				setTimeout( function () {jQuery( '#loading' ).hide();}, 2000 );
-				isSuccess = false;
 				alert( 'Error, unable to change the setting, try again!' );
 			}
 		}
@@ -54,7 +50,10 @@ function megaventory_change_shipping_zones_option() {
  */
 function megaventory_initialize_shipping_zones(){
 
-	jQuery( ".shipping_sortable" ).sortable();
+	jQuery( ".shipping_sortable" ).sortable({
+		connectWith:".shipping_sortable",
+		dropOnEmpty:true
+	});
 	jQuery( ".shipping_sortable" ).disableSelection();
 	jQuery( ".shipping_sortable" ).sortable( 'disable' );
 	jQuery( "#shippingZones_controls" ).show();
@@ -92,6 +91,8 @@ function megaventory_save_shipping_zones_priority_order(){
 
 	let shippingZonePriorities = {};
 
+	let shippingZoneExcludedLocations = {}
+
 	jQuery( ".shipping_zone_row" ).each(
 		function (i, el) {
 
@@ -99,7 +100,11 @@ function megaventory_save_shipping_zones_priority_order(){
 
 			let sortedElementIDs = jQuery( this ).find( 'td:eq(1) ol' ).sortable( 'toArray' );
 
+			let sortedElementIDsForExcludedLocations = jQuery( this ).find( 'td:eq(2) ol' ).sortable( 'toArray' );
+
 			let locationPriorities = {};
+
+			let excludedLocations = {}
 
 			sortedElementIDs.forEach(
 				(element, index) =>
@@ -108,7 +113,15 @@ function megaventory_save_shipping_zones_priority_order(){
 				}
 			);
 
+			sortedElementIDsForExcludedLocations.forEach(
+				(element, index) =>
+				{
+					excludedLocations[index] = parseInt( element.split( '###' )[1] );
+				}
+			);
+
 			shippingZonePriorities[shippingRowID] = locationPriorities;
+			shippingZoneExcludedLocations[shippingRowID] = excludedLocations;
 		}
 	);
 
@@ -119,6 +132,7 @@ function megaventory_save_shipping_zones_priority_order(){
 			data: {
 				'action': 'megaventory_save_shipping_zones_priority_order',
 				'shipping-priorities': JSON.stringify( shippingZonePriorities ),
+				'excluded-locations': JSON.stringify( shippingZoneExcludedLocations ),
 				'async-nonce': mv_ajax_object.nonce
 			},
 			success: function (data) { // This outputs the result of the ajax request.

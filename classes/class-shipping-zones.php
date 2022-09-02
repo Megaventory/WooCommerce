@@ -92,30 +92,26 @@ class Shipping_Zones {
 		return $zone_priority_array;
 	}
 
+
 	/**
-	 * Removes excluded location from shipping zone priorities.
+	 * Get excluded locations per shipping zone.
 	 *
-	 * @param int $location_id as excluded location id.
+	 * @return array
 	 */
-	public static function megaventory_delete_excluded_location_from_zone_priorities( $location_id ) {
+	public static function megaventory_get_shipping_zone_excluded_locations() {
 
-		$zone_priorities = get_option( MV_Constants::SHIPPING_ZONES_PRIORITY_OPT, array() );
-
-		$new_zone_priorities = $zone_priorities;
-
-		foreach ( $zone_priorities as $zone => $zone_priority ) {
-
-			$key = array_search( $location_id, $zone_priority, true );
-
-			if ( false !== $key ) {
-
-				array_splice( $zone_priority, $key, 1 );
-
-				$new_zone_priorities[ $zone ] = $zone_priority;
-			}
+		if ( ! self::megaventory_are_shipping_zones_enabled() ) {
+			return array();
 		}
 
-		update_option( MV_Constants::SHIPPING_ZONES_PRIORITY_OPT, $new_zone_priorities );
+		$zone_excluded_locations_array = get_option( MV_Constants::SHIPPING_ZONES_EXCLUDED_LOCATION_OPT, array() );
+
+		if ( empty( $zone_excluded_locations_array ) || ! is_array( $zone_excluded_locations_array ) ) {
+
+			$zone_excluded_locations_array = array();
+		}
+
+		return $zone_excluded_locations_array;
 	}
 
 	/**
@@ -136,7 +132,7 @@ class Shipping_Zones {
 
 			foreach ( $mv_location_id_to_abbr as $id => $abbr ) {
 
-				if ( Location::is_location_excluded( $id ) ) {
+				if ( Location::is_location_excluded_from_zone( $zone_id, $id ) ) {
 					continue;
 				}
 				array_push( $default_priority, $id );

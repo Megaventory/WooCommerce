@@ -291,5 +291,39 @@ class Order {
 		}
 		wp_die();
 	}
+
+	/**
+	 * Change MV payment method mappings
+	 */
+	public static function megaventory_update_payment_method_mappings() {
+		if ( isset( $_POST['mv_wc_mapping'], $_POST['async-nonce'] ) &&
+			wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
+
+			$wc_mv_payment_method_mapping_json = sanitize_text_field( wp_unslash( $_POST['mv_wc_mapping'] ) );
+
+			$wc_mv_current_mappings = get_option( \Megaventory\Models\MV_Constants::MV_PAYMENT_METHOD_MAPPING_OPT, false );
+
+			$wc_mv_payment_mappings_array = json_decode( $wc_mv_payment_method_mapping_json, true );
+
+			if ( empty( $wc_mv_current_mappings ) ) {
+				$wc_mv_current_mappings = $wc_mv_payment_mappings_array;
+			} else {
+				foreach ( $wc_mv_payment_mappings_array as $wc_payment_method_code => $mv_payment_method ) {
+					$wc_mv_current_mappings [ $wc_payment_method_code ] = $mv_payment_method;
+				}
+			}
+
+			update_option( \Megaventory\Models\MV_Constants::MV_PAYMENT_METHOD_MAPPING_OPT, $wc_mv_current_mappings );
+
+			wp_send_json_success( array( 'success' => true ), 200 );
+
+			wp_die();
+
+		} else {
+
+			wp_send_json_error( array( 'success' => false ), 200 );
+
+		}
+	}
 }
 

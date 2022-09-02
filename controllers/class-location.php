@@ -32,6 +32,13 @@ class Location {
 			$inventory_id = (int) sanitize_text_field( wp_unslash( $_POST['inventory_id'] ) );
 
 			update_option( 'default-megaventory-inventory-location', $inventory_id );
+
+			$are_shipping_zones_active = get_option( \Megaventory\Models\MV_Constants::SHIPPING_ZONES_ENABLE_OPT, false );
+
+			if ( $are_shipping_zones_active ) {
+				\Megaventory\Helpers\Tools::notify_user_for_stock();
+				update_option( \Megaventory\Models\MV_Constants::SHIPPING_ZONES_ENABLE_OPT, false );
+			}
 		}
 
 		wp_send_json_success( true );
@@ -50,6 +57,7 @@ class Location {
 			$inventory_id = (int) sanitize_text_field( wp_unslash( $_POST['inventory_id'] ) );
 
 			\Megaventory\Models\Location::include_location( $inventory_id );
+			\Megaventory\Helpers\Tools::notify_user_for_stock();
 		}
 
 		wp_send_json_success( true );
@@ -68,11 +76,7 @@ class Location {
 			$inventory_id = (int) sanitize_text_field( wp_unslash( $_POST['inventory_id'] ) );
 
 			\Megaventory\Models\Location::exclude_location( $inventory_id );
-
-			if ( \Megaventory\Models\Shipping_Zones::megaventory_are_shipping_zones_enabled() ) {
-
-				\Megaventory\Models\Shipping_Zones::megaventory_delete_excluded_location_from_zone_priorities( $inventory_id );
-			}
+			\Megaventory\Helpers\Tools::notify_user_for_stock();
 		}
 
 		wp_send_json_success( true );

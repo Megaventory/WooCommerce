@@ -1,12 +1,12 @@
 === Megaventory Inventory Management ===
 Plugin name: Megaventory
-Version: 2.4.1
+Version: 2.4.2
 Description: Integration between WooCommerce and Megaventory.
 Contributors: megaventory, grzalamp, ch-asimakopoulos, yyialouris, chandrianos, Shadow569, odieone44, kpsulla, oaxelou
 Tags: megaventory inventory management, inventory, inventory management, inventory manager, inventory tracking, stock, stock management, stock manager, stock alert, stock locations, stock tracking, supply chain management, order management, order tracking, sales order, purchase order, supplier, supplier management, warehouse management, invoicing, fulfillment
 Requires at least: 4.4
 Tested up to: 6.0.0
-Stable tag: 2.4.1
+Stable tag: 2.4.2
 Requires PHP: 7.2
 License: GPLv3 or later License
 URI: http://www.gnu.org/licenses/gpl-3.0.html

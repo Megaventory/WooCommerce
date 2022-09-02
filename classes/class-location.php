@@ -308,11 +308,41 @@ class Location {
 	 */
 	public static function is_location_excluded( $location_id ) {
 
+		$are_shipping_zones_active = \Megaventory\Models\Shipping_Zones::megaventory_are_shipping_zones_enabled();
+
+		if ( $are_shipping_zones_active ) {
+			return false;
+		}
+
 		$excluded_locations_ids = get_option( MV_Constants::MV_EXCLUDED_LOCATION_IDS_OPT );
 
 		if ( empty( $excluded_locations_ids ) ) {
 			return false;
 		}
+
+		if ( in_array( (int) $location_id, $excluded_locations_ids, true ) ) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Checks if location is excluded.
+	 *
+	 * @param int $zone_id as zone id.
+	 * @param int $location_id as location id.
+	 * @return bool
+	 */
+	public static function is_location_excluded_from_zone( $zone_id, $location_id ) {
+
+		$excluded_locations_by_zone = \Megaventory\Models\Shipping_Zones::megaventory_get_shipping_zone_excluded_locations();
+
+		if ( empty( $excluded_locations_by_zone ) || ! array_key_exists( $zone_id, $excluded_locations_by_zone ) ) {
+			return false;
+		}
+
+		$excluded_locations_ids = $excluded_locations_by_zone[ $zone_id ];
 
 		if ( in_array( (int) $location_id, $excluded_locations_ids, true ) ) {
 			return true;
