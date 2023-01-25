@@ -378,14 +378,14 @@ class Megaventory {
 
 		wp_enqueue_script( 'jquery-ui-sortable' ); // jQuery UI Sortable. Required for shipping zone/location priority UI.
 
-		wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.14', true );
-		wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.14', true );
-		wp_enqueue_script( 'ajaxWpCronStatus', plugins_url( '/js/ajaxWpCronStatus.js', __FILE__ ), array(), '2.0.14', true );
-		wp_enqueue_script( 'ajaxShippingZones', plugins_url( '/js/ajaxShippingZones.js', __FILE__ ), array(), '2.0.14', true );
-		wp_enqueue_script( 'ajaxLocation', plugins_url( '/js/ajaxLocation.js', __FILE__ ), array(), '2.0.14', true );
-		wp_enqueue_script( 'ajaxLogs', plugins_url( '/js/ajaxLogs.js', __FILE__ ), array(), '2.0.14', true );
-		wp_enqueue_script( 'ajaxProduct', plugins_url( '/js/ajaxProduct.js', __FILE__ ), array(), '2.0.14', true );
-		wp_enqueue_script( 'ajaxPayment', plugins_url( '/js/ajaxPayment.js', __FILE__ ), array(), '2.0.14', true );
+		wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.0.15', true );
+		wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.0.15', true );
+		wp_enqueue_script( 'ajaxWpCronStatus', plugins_url( '/js/ajaxWpCronStatus.js', __FILE__ ), array(), '2.0.15', true );
+		wp_enqueue_script( 'ajaxShippingZones', plugins_url( '/js/ajaxShippingZones.js', __FILE__ ), array(), '2.0.15', true );
+		wp_enqueue_script( 'ajaxLocation', plugins_url( '/js/ajaxLocation.js', __FILE__ ), array(), '2.0.15', true );
+		wp_enqueue_script( 'ajaxLogs', plugins_url( '/js/ajaxLogs.js', __FILE__ ), array(), '2.0.15', true );
+		wp_enqueue_script( 'ajaxProduct', plugins_url( '/js/ajaxProduct.js', __FILE__ ), array(), '2.0.15', true );
+		wp_enqueue_script( 'ajaxPayment', plugins_url( '/js/ajaxPayment.js', __FILE__ ), array(), '2.0.15', true );
 
 		$nonce_array = array(
 			'nonce' => $nonce,
@@ -407,8 +407,8 @@ class Megaventory {
 	 * @return void
 	 */
 	public static function register_style() {
-		wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), false, '2.0.43', 'all' );
-		wp_register_style( 'mv_style_fonts', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css', false, '2.0.7', 'all' );
+		wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), array(), '2.0.44', 'all' );
+		wp_register_style( 'mv_style_fonts', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css', array(), '2.0.7', 'all' );
 	}
 
 	/**
@@ -547,8 +547,8 @@ class Megaventory {
 	/**
 	 * Plugin upgrade hook.
 	 *
-	 * @param WP_Upgrader $upgrader_object as WP_Upgrader.
-	 * @param array       $options as array.
+	 * @param \WP_Upgrader $upgrader_object as WP_Upgrader.
+	 * @param array        $options as array.
 	 */
 	public static function upgrade_plugin( $upgrader_object, $options ) {
 

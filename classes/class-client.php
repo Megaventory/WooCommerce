@@ -162,24 +162,6 @@ class Client {
 	}
 
 	/**
-	 * Get Error messages.
-	 *
-	 * @return array
-	 */
-	public function errors() {
-		return $this->errors;
-	}
-
-	/**
-	 * Get Succeeded messages.
-	 *
-	 * @return array
-	 */
-	public function successes() {
-		return $this->successes;
-	}
-
-	/**
 	 * Log client errors.
 	 *
 	 * @param string $problem as string.
@@ -189,7 +171,7 @@ class Client {
 	 * @param string $json_object as string.
 	 * @return void
 	 */
-	private function log_error( $problem, $full_msg, $code, $type = 'error', $json_object ) {
+	private function log_error( $problem, $full_msg, $code, $type = 'error', $json_object = '' ) {
 
 		$args = array(
 			'entity_id'   => array(
@@ -341,24 +323,6 @@ class Client {
 	}
 
 	/**
-	 * Get all clients from Megaventory.
-	 *
-	 * @return array
-	 */
-	public static function mv_all() {
-
-		$url       = \Megaventory\API::get_url_for_call( self::$supplierclient_get_call );
-		$json_data = \Megaventory\API::perform_call_to_megaventory( $url );
-		$clients   = $json_data['mvSupplierClients'];
-		$temp      = array();
-
-		foreach ( $clients as $client ) {
-			array_push( $temp, self::mv_convert( $client ) );
-		}
-		return $temp;
-	}
-
-	/**
 	 * Finds client in wooCommerce by id.
 	 *
 	 * @param integer $id as client's id.
@@ -386,56 +350,6 @@ class Client {
 				'FieldName'      => 'SupplierClientID',
 				'SearchOperator' => 'Equals',
 				'SearchValue'    => $id,
-			),
-		);
-
-		$url      = \Megaventory\API::get_url_for_call( self::$supplierclient_get_call );
-		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
-
-		if ( count( $response['mvSupplierClients'] ) <= 0 ) {
-			return null;
-		}
-		return self::mv_convert( $response['mvSupplierClients'][0] );
-	}
-
-	/**
-	 * Finds client in Megaventory by name.
-	 *
-	 * @param string $name as client's name.
-	 * @return Client
-	 */
-	public static function mv_find_by_name( $name ) {
-
-		$data = array(
-			'Filters' => array(
-				'FieldName'      => 'SupplierClientName',
-				'SearchOperator' => 'Equals',
-				'SearchValue'    => $name,
-			),
-		);
-
-		$url      = \Megaventory\API::get_url_for_call( self::$supplierclient_get_call );
-		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
-
-		if ( count( $response['mvSupplierClients'] ) <= 0 ) {
-			return null;
-		}
-		return self::mv_convert( $response['mvSupplierClients'][0] );
-	}
-
-	/**
-	 * Finds client in Megaventory by e-mail.
-	 *
-	 * @param string $email as client's e-mail.
-	 * @return Client
-	 */
-	public static function mv_find_by_email( $email ) {
-
-		$data = array(
-			'Filters' => array(
-				'FieldName'      => 'SupplierClientEmail',
-				'SearchOperator' => 'Equals',
-				'SearchValue'    => $email,
 			),
 		);
 
@@ -506,7 +420,7 @@ class Client {
 	/**
 	 * Converts wooCommerce client to client.
 	 *
-	 * @param WP_User $wc_client as wooCommerce client.
+	 * @param \WP_User $wc_client as wooCommerce client.
 	 * @return Client|null
 	 */
 	private static function wc_convert( $wc_client ) {
@@ -713,7 +627,6 @@ class Client {
 		}
 
 		$create_new = empty( $this->mv_id );
-		$action     = ( $create_new ? 'Insert' : 'Update' );
 
 		$client_update    = array();
 		$mv_client        = array();
@@ -733,7 +646,7 @@ class Client {
 		$mv_client['supplierclientaddresses'] = $client_addresses;
 
 		$client_update['mvsupplierclient'] = $mv_client;
-		$client_update['mvrecordaction']   = $action;
+		$client_update['mvrecordaction']   = MV_Constants::MV_RECORD_ACTION['InsertOrUpdateNonEmptyFields'];
 
 		return $client_update;
 

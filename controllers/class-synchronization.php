@@ -121,11 +121,11 @@ class Synchronization {
 
 				foreach ( $wc_products as $wc_product ) {
 
-					$flag = $wc_product->mv_save( $categories );
+					$product_saved = $wc_product->mv_save( $categories );
 
-					if ( null !== $flag ) {
+					if ( null !== $product_saved ) { // not group/variable.
 
-						$flag ? $successes++ : $errors++;
+						is_array( $product_saved ) ? $successes++ : $errors++;
 					}
 				}
 

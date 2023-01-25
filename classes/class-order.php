@@ -31,8 +31,8 @@ class Order {
 	 * WooCommerce's Purchase Order is translated to a Megaventory Sales Order
 	 * Order is of type WC_ORDER - find documentation online
 	 *
-	 * @param WC_Order $order as wc_order.
-	 * @param Client   $client as client object.
+	 * @param \WC_Order $order as wc_order.
+	 * @param Client    $client as client object.
 	 * @return mixed
 	 */
 	public static function megaventory_place_sales_order_to_mv( $order, $client ) {
@@ -71,7 +71,7 @@ class Order {
 	/**
 	 * Cancel related orders in Megaventory.
 	 *
-	 * @param WC_Order $order as WooCommerce order.
+	 * @param \WC_Order $order as WooCommerce order.
 	 * @return void
 	 */
 	public static function cancel_sales_orders( $order ) {
@@ -219,10 +219,10 @@ class Order {
 	/**
 	 * Handles WC Order Status updates for one-to-many WC-MV order relation depending on the statuses of related mv orders.
 	 *
-	 * @param WC_Order $wc_order                The WC Order object.
-	 * @param int      $int_update_order_id     Integration Update Order ID.
-	 * @param string   $int_update_order_status Integration Update Order Status.
-	 * @param array    $related_mv_orders_arr   WC Order's related MV Orders array.
+	 * @param \WC_Order $wc_order                The WC Order object.
+	 * @param int       $int_update_order_id     Integration Update Order ID.
+	 * @param string    $int_update_order_status Integration Update Order Status.
+	 * @param array     $related_mv_orders_arr   WC Order's related MV Orders array.
 	 * @return void
 	 */
 	public static function handle_wc_order_status_update_for_multiple_orders( $wc_order, $int_update_order_id, $int_update_order_status, $related_mv_orders_arr ) {
@@ -334,7 +334,7 @@ class Order {
 	 * Get Megaventory Sales orders based on Sales order ID.
 	 * Will return all MV orders related to given WC Order.
 	 *
-	 * @param WC_Order $order as WooCommerce Order.
+	 * @param \WC_Order $order as WooCommerce Order.
 	 * @return array|null as an array of mvSalesOrder or null if no results exist.
 	 */
 	private static function megaventory_get_related_mv_sales_orders( $order ) {
@@ -391,7 +391,7 @@ class Order {
 	/**
 	 * Fill coupons arrays.
 	 *
-	 * @param WC_Order $order The woocommerce order object.
+	 * @param \WC_Order $order The woocommerce order object.
 	 * @return array
 	 */
 	private static function fill_order_coupon_arrays( $order ) {
@@ -512,8 +512,8 @@ class Order {
 	/**
 	 * Parse shipping lines from wc order and append to mv order details array.
 	 *
-	 * @param WC_Order $order The wc order object.
-	 * @param array    $sales_array The sales order details array passed by ref.
+	 * @param \WC_Order $order The wc order object.
+	 * @param array     $sales_array The sales order details array passed by ref.
 	 * @return void
 	 */
 	private static function append_shipping_to_order_details( $order, &$sales_array ) {
@@ -539,8 +539,8 @@ class Order {
 	/**
 	 * Parse extra fees from wc order and append to mv order details array.
 	 *
-	 * @param WC_Order $order The wc order object.
-	 * @param array    $sales_array The sales order details array passed by ref.
+	 * @param \WC_Order $order The wc order object.
+	 * @param array     $sales_array The sales order details array passed by ref.
 	 * @return void
 	 */
 	private static function append_additional_fees_to_order_details( $order, &$sales_array ) {
@@ -630,6 +630,7 @@ class Order {
 			}
 		}
 
+		$order_object['salesorderno']                   = $order->get_id();
 		$order_object['salesorderreferenceno']          = $order->get_id();
 		$order_object['salesorderreferenceapplication'] = 'woocommerce';
 		$order_object['salesorderclientid']             = $client->mv_id;

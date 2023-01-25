@@ -121,26 +121,6 @@ class Tax {
 	}
 
 	/**
-	 * Get Tax Errors.
-	 *
-	 * @return MVWC_Errors
-	 */
-	public function errors() {
-
-		return $this->errors;
-	}
-
-	/**
-	 * Get Tax Successes.
-	 *
-	 * @return MVWC_Successes
-	 */
-	public function successes() {
-
-		return $this->successes;
-	}
-
-	/**
 	 * Log Tax errors.
 	 *
 	 * @param string $problem as tax error problem.
@@ -150,7 +130,7 @@ class Tax {
 	 * @param string $json_object as string.
 	 * @return void
 	 */
-	public function log_error( $problem, $full_msg, $code, $type = 'error', $json_object ) {
+	public function log_error( $problem, $full_msg, $code, $type = 'error', $json_object = '' ) {
 
 		$args = array(
 			'entity_id'   => array(
@@ -448,32 +428,16 @@ class Tax {
 	 */
 	public function mv_save() {
 
-		$create_new = false;
-		if ( empty( $this->mv_id ) ) { // find by name first.
-
-			$tax = self::mv_find_by_name_and_rate( $this->name, $this->rate );
-
-			if ( null !== $tax ) {
-
-				$this->mv_id = $tax->mv_id;
-
-			} else {
-
-				$create_new = true;
-			}
-		}
-
-		$action     = ( $create_new ? 'Insert' : 'Update' );
 		$tax_object = new \stdClass();
 		$tax_obj    = new \stdClass();
 
-		$tax_object->taxid          = ! $create_new ? $this->mv_id : '';
+		$tax_object->taxid          = '';
 		$tax_object->taxname        = $this->name;
 		$tax_object->taxdescription = ( $this->description ? $this->description : '' );
 		$tax_object->taxvalue       = $this->rate;
 
 		$tax_obj->mvtax                                 = $tax_object;
-		$tax_obj->mvrecordaction                        = $action;
+		$tax_obj->mvrecordaction                        = MV_Constants::MV_RECORD_ACTION['InsertOrUpdate'];
 		$tax_obj->mvinsertupdatedeletesourceapplication = 'woocommerce';
 
 		$url     = \Megaventory\API::get_url_for_call( self::$tax_update_call );
@@ -491,13 +455,18 @@ class Tax {
 
 			// ensure correct id.
 			$new_id = $data['mvTax']['TaxID'];
+
+			$create_new = false;
 			if ( $new_id !== $this->mv_id ) {
 
+				$create_new  = true;
 				$this->mv_id = $new_id;
 				$this->wc_save();
 			}
 
-			$this->log_success( $action, 'Tax successfully ' . $action . ' in Megaventory', 1 );
+			$action = ( $create_new ? 'Insert' : 'Update' );
+
+			$this->log_success( $action, 'Tax successfully updated in Megaventory', 1 );
 		}
 
 		return $data;
@@ -527,47 +496,9 @@ class Tax {
 	}
 
 	/**
-	 * Deletes a Tax in WooCommerce.
-	 *
-	 * @return mixed
-	 */
-	public function wc_delete() {
-
-		global $wpdb;
-
-		$table_name = $wpdb->prefix . self::$table_name;
-
-		$sql_results = $wpdb->delete(
-			$table_name,
-			array( 'tax_rate_id' => $this->wc_id ),
-			array( '%d' )
-		); // db call ok; no-cache ok.
-
-		if ( ! $sql_results ) {
-
-			$this->log_error( 'Tax deletion error', $wpdb->last_error, -1, 'error', '' );
-
-			return false;
-		}
-
-		return true;
-	}
-
-	/**
-	 * Compares two Taxes.
-	 *
-	 * @param Tax $tax as Tax.
-	 * @return bool
-	 */
-	public function equals( $tax ) {
-
-		return $this->name === $tax->name && (float) $this->rate === (float) $tax->rate;
-	}
-
-	/**
 	 * Get Sales row taxes as array of Taxes.
 	 *
-	 * @param WC_Order_Item_Product|WC_Order_Item_Shipping $sales_row as order item.
+	 * @param \WC_Order_Item_Product|\WC_Order_Item_Shipping $sales_row as order item.
 	 * @return array[Tax]|array
 	 */
 	private static function get_all_sales_row_taxes( $sales_row ) {
@@ -584,7 +515,7 @@ class Tax {
 	/**
 	 * Get Megaventory tax based on sales row.
 	 *
-	 * @param WC_Order_Item_Product|WC_Order_Item_Shipping $sales_row as order item.
+	 * @param \WC_Order_Item_Product|\WC_Order_Item_Shipping|\WC_Order_item_Fee $sales_row as order item.
 	 * @return Tax
 	 */
 	public static function get_sales_row_tax( $sales_row ) {
@@ -635,4 +566,3 @@ class Tax {
 	}
 
 }
-

@@ -60,7 +60,7 @@ class Included_Product {
 
 	/** Create an Included_Product from a WooCommerce Bundled Item.
 	 *
-	 * @param WC_Bundled_Item $wc_bundled_item A Woo Commerce Bundled Item.
+	 * @param \WC_Bundled_Item $wc_bundled_item A Woo Commerce Bundled Item.
 	 * @return Included_Product
 	 */
 	public static function from_wc_bundled_item( $wc_bundled_item ) {

@@ -15,8 +15,6 @@
 
 namespace Megaventory\Models;
 
-use WC_Product;
-
 /**
  * Imports.
  */
@@ -26,6 +24,7 @@ require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mv-constants.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-error.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-errors.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mvwc-successes.php';
+
 /**
  * This class works as a model for a product
  * It holds all important attributes of a Megaventory/WooCommerce product
@@ -205,7 +204,7 @@ class Product {
 	/**
 	 * Product errors.
 	 *
-	 * @var MVWC-Errors
+	 * @var MVWC_Errors
 	 */
 	public $errors;
 
@@ -219,25 +218,11 @@ class Product {
 	/*API Calls*/
 
 	/**
-	 * Update Product API call.
-	 *
-	 * @var string
-	 */
-	private static $product_update_call = 'ProductUpdate';
-
-	/**
 	 * Undelete Product API call.
 	 *
 	 * @var string
 	 */
 	private static $product_undelete_call = 'ProductUndelete';
-
-	/**
-	 * Get Product stock API call.
-	 *
-	 * @var string
-	 */
-	private static $product_stock_call = 'InventoryLocationStockGet';
 
 	/**
 	 * Get Inventory Location API call.
@@ -259,13 +244,6 @@ class Product {
 	 * @var string
 	 */
 	private static $category_update_call = 'ProductCategoryUpdate';
-
-	/**
-	 * Delete Category API call.
-	 *
-	 * @var string
-	 */
-	private static $category_delete_call = 'ProductCategoryDelete';
 
 	/**
 	 * Undelete Category API call.
@@ -300,26 +278,6 @@ class Product {
 	}
 
 	/**
-	 * Get Product Errors.
-	 *
-	 * @return MVWC_Errors
-	 */
-	public function errors() {
-
-		return $this->errors;
-	}
-
-	/**
-	 * Get product Successes.
-	 *
-	 * @return MVWC_Successes
-	 */
-	public function successes() {
-
-		return $this->successes;
-	}
-
-	/**
 	 * Logs Product Errors.
 	 *
 	 * @param string $problem as problem type.
@@ -329,7 +287,7 @@ class Product {
 	 * @param string $json_object as string.
 	 * @return void
 	 */
-	public function log_error( $problem, $full_msg, $code, $type = 'error', $json_object ) {
+	public function log_error( $problem, $full_msg, $code, $type = 'error', $json_object = '' ) {
 
 		$args = array(
 			'entity_id'   => array(
@@ -531,31 +489,6 @@ class Product {
 	}
 
 	/**
-	 * Get all Products from Megaventory.
-	 *
-	 * @return array[Product]
-	 */
-	public static function mv_all() {
-
-		$categories = self::mv_get_categories();
-		$url        = \Megaventory\API::get_url_for_call( MV_Constants::PRODUCT_GET );
-		$json_prod  = \Megaventory\API::perform_call_to_megaventory( $url );
-
-		/* Map json to Product class. */
-
-		$products = array();
-
-		foreach ( $json_prod['mvProducts'] as $prod ) {
-
-			$product = self::mv_convert( $prod, $categories );
-
-			array_push( $products, $product );
-		}
-
-		return $products;
-	}
-
-	/**
 	 * Get Product from WooCommerce with id.
 	 *
 	 * @param int $id product id.
@@ -625,7 +558,7 @@ class Product {
 
 		$megaventory_saved_product = $shipping_product->mv_save();
 
-		if ( $megaventory_saved_product['ProductID'] ) {
+		if ( is_array( $megaventory_saved_product ) ) {
 
 			return true;
 		}
@@ -660,7 +593,7 @@ class Product {
 
 		$megaventory_saved_product = $additional_fee_product->mv_save( null, true );
 
-		if ( empty( $megaventory_saved_product['ProductID'] ) ) {
+		if ( ! is_array( $megaventory_saved_product ) ) {
 
 			return false;
 		}
@@ -737,41 +670,46 @@ class Product {
 
 			array_push( $filters, $filter );
 		}
-		// call to get stock information for ids.
 
-		$stock_get_body = array(
-			'Filters' => $filters,
-		);
+		$megaventory_product_stock_list = array();
 
-		$url      = \Megaventory\API::get_url_for_call( MV_Constants::INVENTORY_LOCATION_STOCK_GET );
-		$response = \Megaventory\API::send_request_to_megaventory( $url, $stock_get_body );
+		if ( ! empty( $filters ) ) {
 
-		if ( '0' !== ( $response['ResponseStatus']['ErrorCode'] ) ) {
-
-			$args = array(
-				'type'        => 'error',
-				'entity_name' => 'Stock Get',
-				'entity_id'   => 0,
-				'problem'     => 'Error on Stock Get, try again! If the error persists, contact Megaventory support.',
-				'full_msg'    => $response['ResponseStatus']['Message'],
-				'error_code'  => $response['ResponseStatus']['ErrorCode'],
-				'json_object' => '',
+			$stock_get_body = array(
+				'Filters' => $filters,
 			);
 
-			$e = new MVWC_Error( $args );
+			// call to get stock information for ids.
+			$url      = \Megaventory\API::get_url_for_call( MV_Constants::INVENTORY_LOCATION_STOCK_GET );
+			$response = \Megaventory\API::send_request_to_megaventory( $url, $stock_get_body );
 
-			$return_values = array(
-				'starting_index' => $starting_index,
-				'next_index'     => 0,
-				'error_occurred' => true,
-				'finished'       => true,
-				'message'        => '',
-			);
+			if ( '0' !== ( $response['ResponseStatus']['ErrorCode'] ) ) {
 
-			return $return_values;
+				$args = array(
+					'type'        => 'error',
+					'entity_name' => 'Stock Get',
+					'entity_id'   => 0,
+					'problem'     => 'Error on Stock Get, try again! If the error persists, contact Megaventory support.',
+					'full_msg'    => $response['ResponseStatus']['Message'],
+					'error_code'  => $response['ResponseStatus']['ErrorCode'],
+					'json_object' => '',
+				);
+
+				$e = new MVWC_Error( $args );
+
+				$return_values = array(
+					'starting_index' => $starting_index,
+					'next_index'     => 0,
+					'error_occurred' => true,
+					'finished'       => true,
+					'message'        => $response['ResponseStatus']['Message'],
+				);
+
+				return $return_values;
+			}
+
+			$megaventory_product_stock_list = $response['mvProductStockList'];
 		}
-
-		$megaventory_product_stock_list = $response['mvProductStockList'];
 
 		foreach ( $selected_products_to_sync_stock as $selected_product ) {
 
@@ -955,38 +893,6 @@ class Product {
 		$this->mv_qty             = $mv_qty;
 	}
 
-
-	/**
-	 * Get Inventory Name from Megaventory.
-	 *
-	 * @param int     $id as Inventory id.
-	 * @param boolean $abbrev boolean to return Inventory's abbreviation or name.
-	 * @return null|string
-	 */
-	public static function get_inventory_name( $id, $abbrev = false ) {
-
-		$data = array(
-			'Filters' => array(
-				'FieldName'      => 'InventoryLocationID',
-				'SearchOperator' => 'Equals',
-				'SearchValue'    => $id,
-			),
-		);
-
-		$url      = \Megaventory\API::get_url_for_call( self::$inventory_get_call );
-		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
-
-		if ( count( $response['mvInventoryLocations'] ) <= 0 ) { // Not found.
-			return null;
-		}
-
-		if ( $abbrev ) {
-			return $response['mvInventoryLocations'][0]['InventoryLocationAbbreviation'];
-		} else {
-			return $response['mvInventoryLocations'][0]['InventoryLocationName'];
-		}
-	}
-
 	/**
 	 * Get Product from Megaventory by sku.
 	 *
@@ -1020,8 +926,8 @@ class Product {
 	/**
 	 * Converts a mvProduct to Product.
 	 *
-	 * @param array     $mv_prod as Megaventory product.
-	 * @param null|bool $categories search with categories.
+	 * @param array      $mv_prod as Megaventory product.
+	 * @param null|array $categories search with categories.
 	 * @return Product
 	 */
 	private static function mv_convert( $mv_prod, $categories = null ) {
@@ -1063,7 +969,7 @@ class Product {
 	/**
 	 * Converts a WC_Product to Product.
 	 *
-	 * @param WC_Product $wc_prod as WooCommerce product.
+	 * @param \WC_Product $wc_prod as WooCommerce product.
 	 * @return Product
 	 */
 	private static function wc_convert( $wc_prod ) {
@@ -1146,8 +1052,8 @@ class Product {
 	/**
 	 * Convert WC_Product_Variation to Product.
 	 *
-	 * @param \WC_Product_Variation $wc_variation variation Product.
-	 * @param \WC_Product_Variable  $wc_variable variable Product.
+	 * @param \WC_Product_Variation|\WC_Product $wc_variation variation Product.
+	 * @param \WC_Product_Variable              $wc_variable variable Product.
 	 * @return Product
 	 */
 	public static function wc_variation_convert( $wc_variation, $wc_variable ) {
@@ -1226,7 +1132,7 @@ class Product {
 	/**
 	 * Generates the category's full name. From root category to corresponding.
 	 *
-	 * @param WP_Term $wp_term as category data.
+	 * @param \WP_Term $wp_term as category data.
 	 * @return string
 	 */
 	public static function get_full_category_name( $wp_term ) {
@@ -1248,7 +1154,7 @@ class Product {
 	/**
 	 * Get WooCommerce variations.
 	 *
-	 * @param WC_Product_Variable $wc_variable variable product.
+	 * @param \WC_Product_Variable $wc_variable variable product.
 	 * @return Product[]
 	 */
 	public static function wc_get_variations( $wc_variable ) {
@@ -1271,7 +1177,7 @@ class Product {
 	/**
 	 * Update each option of a variable product in Megaventory.
 	 *
-	 * @param WC_Product_Variation $wc_product as variable product.
+	 * @param \WC_Product_Variable $wc_product as variable product.
 	 * @return void
 	 */
 	public static function update_variable_product_in_megaventory( $wc_product ) {
@@ -1290,57 +1196,17 @@ class Product {
 	}
 
 	/**
-	 * Get WooCommerce categories.
-	 *
-	 * @param null|string $by filter categories.
-	 * @return array
-	 */
-	public function wc_get_prod_categories( $by = null ) {
-
-		$cats = wp_get_object_terms( $this->wc_id, 'product_cat' );
-
-		if ( null === $by ) {
-
-			return $cats;
-
-		} elseif ( 'id' === strtolower( $by ) ) {
-
-			$temp = array();
-
-			foreach ( $cats as $cat ) {
-
-				array_push( $temp, $cat->term_id );
-			}
-
-			return $temp;
-
-		} elseif ( 'name' === strtolower( $by ) ) {
-
-			$temp = array();
-
-			foreach ( $cats as $cat ) {
-
-				array_push( $temp, $cat->name );
-			}
-
-			return $temp;
-		}
-	}
-
-	/**
 	 * Save Product to Megaventory.
 	 *
-	 * @param null|boolean $categories search with categories.
-	 * @param bool         $force_update_sku force SKU update in Megaventory.
-	 * @return array
+	 * @param null|array $categories search with categories.
+	 * @param bool       $force_update_sku force SKU update in Megaventory.
+	 * @return array|bool|null array mvProduct if product saved, false if there is an error, null if it is grouped/variable
 	 */
 	public function mv_save( $categories = null, $force_update_sku = false ) {
 		/*
 			Passing categories makes things faster and requires less API calls.
 			always use $categories when using this function in a loop with many users
 		*/
-
-		$wc_product = wc_get_product( $this->wc_id );
 
 		if ( 'grouped' === $this->type ) {
 
@@ -1356,6 +1222,7 @@ class Product {
 			return false;
 		}
 		if ( ! $this->sku ) {
+
 			$this->log_error( 'Product not saved to Megaventory', 'SKU cannot be empty', -1, 'error', '' );
 			return false;
 		}
@@ -1407,6 +1274,7 @@ class Product {
 			$undelete_data = \Megaventory\API::send_request_to_megaventory( $url, $params );
 
 			if ( array_key_exists( 'InternalErrorCode', $undelete_data ) ) {
+
 				$this->log_error( 'Product is deleted. Undelete failed', $undelete_data['ResponseStatus']['Message'], -1, 'error', $data['json_object'] );
 				return false;
 			}
@@ -1512,123 +1380,6 @@ class Product {
 	}
 
 	/**
-	 * Image is attached only if a product has no image yet.
-	 *
-	 * @return bool
-	 */
-	public function attach_image() {
-
-		require_once ABSPATH . 'wp-admin/includes/media.php';
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		require_once ABSPATH . 'wp-admin/includes/image.php';
-
-		if ( null === $this->image_url || '' === $this->image_url ) {
-
-			return false;
-
-		} else { // only upload image id doesn't exist.
-
-			if ( false !== wp_get_attachment_image_src( get_post_thumbnail_id( $this->wc_id ) ) ) {
-
-				return false;
-			}
-		}
-
-		$dir          = dirname( __FILE__ );
-		$image_folder = $dir . '/../import/';
-		$image_file   = $this->sku;
-		$image_full   = $image_folder . $image_file;
-
-		// image.
-		$image = $this->image_url;
-
-		// Magic sideload image returns an HTML image, not an IDs.
-		$media = media_sideload_image( $image, $this->wc_id );
-
-		// therefore we must find it so we can set it as featured ID.
-		if ( ! empty( $media ) && ! is_wp_error( $media ) ) {
-
-			$args = array(
-				'post_type'      => 'attachment',
-				'posts_per_page' => -1,
-				'post_status'    => 'any',
-				'post_parent'    => $this->wc_id,
-			);
-
-			// reference new image to set as featured.
-			$attachments = get_posts( $args );
-
-			if ( isset( $attachments ) && is_array( $attachments ) ) {
-
-				foreach ( $attachments as $attachment ) {
-
-					// grab source of full size images (so no 300x150 nonsense in path).
-					$image = wp_get_attachment_image_src( $attachment->ID, 'full' );
-
-					// determine if in the $media image we created, the string of the URL exists.
-					if ( strpos( $media, $image[0] ) !== false ) {
-
-						// if so, we found our image. set it as thumbnail.
-						set_post_thumbnail( $this->wc_id, $attachment->ID );
-						// only want one image.
-						break;
-					}
-				}
-			}
-		} else {
-
-			return false;
-		}
-
-		return true;
-	}
-
-	/**
-	 * Get WooCommerce categories.
-	 *
-	 * @return array
-	 */
-	private static function wc_get_categories() {
-
-		return get_terms( 'product_cat' );
-	}
-
-	/**
-	 * Get Category from WooCommerce by name.
-	 *
-	 * @param string  $name as category name.
-	 * @param boolean $with_create as boolean.
-	 * @return null|string
-	 */
-	private function wc_get_category_id_by_name( $name, $with_create = false ) {
-
-		$product_categories = self::wc_get_categories();
-
-		$category_id = array();
-
-		foreach ( $product_categories as $item ) {
-
-			if ( $item->name === $this->category ) {
-
-				array_push( $category_id, $item->term_id );
-				return $category_id;
-			}
-		}
-
-		$category_id = array();
-		if ( $with_create ) {
-			$cid = wp_insert_term(
-				$name, // the term.
-				'product_cat', // the taxonomy.
-				array()
-			);
-			return array( $cid['term_id'] );
-		}
-
-		return null;
-	}
-
-	/**
 	 * Get Categories from Megaventory.
 	 *
 	 * @return array
@@ -1696,9 +1447,9 @@ class Product {
 	/**
 	 * Synchronize stock for a product.
 	 *
-	 * @param WC_Product_Variation|WC_Product_Simple $wc_product as WC variation.
-	 * @param array                                  $mv_product_stock_details as MV stock data.
-	 * @param int                                    $integration_update_id as integration update id.
+	 * @param \WC_Product_Variation|\WC_Product_Simple $wc_product as WC variation.
+	 * @param array                                    $mv_product_stock_details as MV stock data.
+	 * @param int                                      $integration_update_id as integration update id.
 	 * @return void
 	 */
 	public static function sync_stock_update( $wc_product, $mv_product_stock_details, $integration_update_id ) {
@@ -1818,31 +1569,52 @@ class Product {
 
 			array_push( $filters, $filter );
 		}
-		// call to get stock information for ids.
 
-		$stock_get_body = array(
-			'Filters' => $filters,
-		);
+		$megaventory_product_stock_list = array();
 
-		$url      = \Megaventory\API::get_url_for_call( MV_Constants::INVENTORY_LOCATION_STOCK_GET );
-		$response = \Megaventory\API::send_request_to_megaventory( $url, $stock_get_body );
+		if ( ! empty( $filters ) ) {
 
-		if ( '0' !== ( $response['ResponseStatus']['ErrorCode'] ) ) {
-
-			$args = array(
-				'type'        => 'error',
-				'entity_name' => 'Stock Get',
-				'entity_id'   => 0,
-				'problem'     => 'Error on Stock Get, check the the quantity on adjustments before approve them',
-				'full_msg'    => $response['ResponseStatus']['Message'],
-				'error_code'  => $response['ResponseStatus']['ErrorCode'],
-				'json_object' => '',
+			// call to get stock information for ids.
+			$stock_get_body = array(
+				'Filters' => $filters,
 			);
 
-			$e = new MVWC_Error( $args );
-		}
+			if ( 'Verified' === $adjustment_status ) {
+				$stock_get_body['InventoryLocationID'] = array( $adjustment_location_id );
+			}
 
-		$megaventory_product_stock_list = $response['mvProductStockList'];
+			$url      = \Megaventory\API::get_url_for_call( MV_Constants::INVENTORY_LOCATION_STOCK_GET );
+			$response = \Megaventory\API::send_request_to_megaventory( $url, $stock_get_body );
+
+			if ( '0' !== ( $response['ResponseStatus']['ErrorCode'] ) ) {
+
+				$args = array(
+					'type'        => 'error',
+					'entity_name' => 'Stock Get',
+					'entity_id'   => 0,
+					'problem'     => 'Error on Stock Get during pushing stock to Megaventory',
+					'full_msg'    => $response['ResponseStatus']['Message'],
+					'error_code'  => $response['ResponseStatus']['ErrorCode'],
+					'json_object' => '',
+				);
+
+				$e = new MVWC_Error( $args );
+
+				$return_values = array(
+					'starting_index' => $starting_index,
+					'next_index'     => $starting_index + MV_Constants::PUSH_STOCK_ADMIN_UPDATE_COUNT,
+					'error_occurred' => true,
+					'finished'       => false,
+					'message'        => 'Error occurred: ' . $response['ResponseStatus']['Message'],
+				);
+
+				return $return_values;
+
+			} else {
+
+				$megaventory_product_stock_list = $response['mvProductStockList'];
+			}
+		}
 
 		foreach ( $selected_products_to_sync_stock as $selected_product ) {
 
@@ -1854,7 +1626,7 @@ class Product {
 			$mv_qty = 0;
 
 			if ( false !== $index ) {
-				$mv_qty = $megaventory_product_stock_list[ $index ]['StockOnHandTotal'];
+				$mv_qty = $megaventory_product_stock_list[ $index ]['StockPhysicalTotal'];
 			}
 			$wc_qty = 0;
 
@@ -1891,7 +1663,7 @@ class Product {
 			}
 		}
 
-		if ( 0 === count( $document_details_adj_plus ) && 0 === count( $document_details_adj_minus ) && $is_last_page ) {
+		if ( empty( $document_details_adj_plus ) && empty( $document_details_adj_minus ) && $is_last_page ) {
 
 			\Megaventory\Helpers\Admin_Notifications::register_warning( 'No adjustment was needed.' );
 
@@ -1911,7 +1683,7 @@ class Product {
 		$products_added_to_adjustment_minus = count( $document_details_adj_minus );
 		$products_added_to_adjustment_plus  = count( $document_details_adj_plus );
 
-		if ( 0 < count( $document_details_adj_plus ) ) {
+		if ( ! empty( $document_details_adj_plus ) ) {
 
 			if ( MV_Constants::PUSH_STOCK_BATCH_COUNT > $products_added_to_adjustment_plus && ! $is_last_page ) {
 				set_transient( 'adjustment_plus_items_array', $document_details_adj_plus, 60 );
@@ -1971,7 +1743,7 @@ class Product {
 			}
 		}
 
-		if ( 0 < count( $document_details_adj_minus ) ) {
+		if ( ! empty( $document_details_adj_minus ) ) {
 
 			if ( MV_Constants::PUSH_STOCK_BATCH_COUNT > $products_added_to_adjustment_minus && ! $is_last_page ) {
 				set_transient( 'adjustment_minus_items_array', $document_details_adj_minus, 60 );
@@ -1985,7 +1757,7 @@ class Product {
 				);
 
 				if ( 'Verified' === $adjustment_status ) {
-					$mv_document_plus['DocumentInventoryLocationID'] = $adjustment_location_id;
+					$mv_document_minus['DocumentInventoryLocationID'] = $adjustment_location_id;
 				}
 
 				$document_update = array(

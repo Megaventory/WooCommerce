@@ -124,9 +124,9 @@ function megaventory_sync_stock_to_mv(starting_index) {
 
 				if ( error_occurred ) {
 
-					setTimeout( function () {jQuery( '#loading_operation' ).hide();}, 2000 );
-					location.reload();
-
+					alert( message );
+					jQuery( '#loading_operation' ).hide();
+					return;
 				}
 
 				jQuery( '#loading_operation h1' ).html( message );
@@ -175,9 +175,9 @@ function megaventory_sync_stock_from_mv(starting_index) {
 
 				if ( error_occurred ) {
 
-					setTimeout( function () {jQuery( '#loading_operation' ).hide();}, 2000 );
-					location.reload();
-
+					alert( message );
+					jQuery( '#loading_operation' ).hide();
+					return;
 				}
 
 				jQuery( '#loading_operation h1' ).html( message );

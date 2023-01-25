@@ -36,35 +36,42 @@ class MVWC_Error {
 	/**
 	 * Name.
 	 *
-	 * @var String
+	 * @var string
 	 */
 	private $entity_name;
 
 	/**
 	 * Problem.
 	 *
-	 * @var String
+	 * @var string
 	 */
 	private $problem;
 
 	/**
 	 * Error's full message.
 	 *
-	 * @var String
+	 * @var string
 	 */
 	private $full_msg;
 
 	/**
+	 * Log type.
+	 *
+	 * @var string
+	 */
+	private $type;
+
+	/**
 	 * Json object.
 	 *
-	 * @var String
+	 * @var string
 	 */
 	private $json_object;
 
 	/**
 	 * Error's code.
 	 *
-	 * @var String
+	 * @var string
 	 */
 	private $error_code;
 

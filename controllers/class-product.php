@@ -58,8 +58,8 @@ class Product {
 	/**
 	 * Product create from CSV Import.
 	 *
-	 * @param int        $product_id as product id.
-	 * @param WC_Product $product as WC_Product.
+	 * @param int         $product_id as product id.
+	 * @param \WC_Product $product as WC_Product.
 	 * @return void
 	 */
 	public static function new_product_from_import( $product_id, $product ) {

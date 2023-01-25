@@ -94,7 +94,7 @@ class Stock {
 				'next_index'     => 0,
 				'error_occurred' => true,
 				'finished'       => true,
-				'message'        => '',
+				'message'        => $ex->getMessage(),
 			);
 		}
 
@@ -131,7 +131,7 @@ class Stock {
 				'next_index'     => 0,
 				'error_occurred' => true,
 				'finished'       => true,
-				'message'        => '',
+				'message'        => $ex->getMessage(),
 			);
 		}
 

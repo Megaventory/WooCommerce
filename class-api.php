@@ -317,7 +317,7 @@ class API {
 	/**
 	 * Check API key.
 	 *
-	 * @return array with ApiKeyGet response.
+	 * @return array|false with ApiKeyGet response.
 	 */
 	public static function check_key() {
 
@@ -426,7 +426,7 @@ class API {
 	/**
 	 * Log API key.
 	 *
-	 * @param String $api_key as string.
+	 * @param string $api_key as string.
 	 */
 	public static function log_apikey( $api_key ) {
 

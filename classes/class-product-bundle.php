@@ -32,13 +32,13 @@ class Product_Bundle extends Product {
 	/**
 	 * Underlying WC Product Bundle
 	 *
-	 * @var WC_Product_Bundle
+	 * @var \WC_Product_Bundle
 	 */
 	public $wc_bundle_prod;
 
 	/** Product Bundle Constructor. Does not fill included_products.
 	 *
-	 * @param WC_Product_Bundle|null $wc_product_bundle a WooCommerce Product Bundle.
+	 * @param \WC_Product_Bundle|null $wc_product_bundle a WooCommerce Product Bundle.
 	 */
 	public function __construct( $wc_product_bundle = null ) {
 
@@ -61,7 +61,7 @@ class Product_Bundle extends Product {
 
 	/** Returns a Product_Bundle with the included_products property filled.
 	 *
-	 * @param WC_Product_Bundle $wc_product_bundle a WooCommerce Product Bundle.
+	 * @param \WC_Product_Bundle $wc_product_bundle a WooCommerce Product Bundle.
 	 * @return Product_Bundle
 	 */
 	public static function create_new_with_included_products( $wc_product_bundle ) {
@@ -81,7 +81,7 @@ class Product_Bundle extends Product {
 	/**
 	 * Save Product Bundle to Megaventory.
 	 *
-	 * @return array
+	 * @return array|bool
 	 */
 	public function mv_save_bundle() {
 
@@ -153,7 +153,7 @@ class Product_Bundle extends Product {
 	/**
 	 * Create a json.
 	 *
-	 * @return array
+	 * @return array|bool
 	 */
 	public function generate_bundle_update_json() {
 
@@ -226,7 +226,7 @@ class Product_Bundle extends Product {
 
 		/** Array of variable bundled items.
 		 *
-		 * @var WC_Bundled_Item[] $variable_bundled_items
+		 * @var \WC_Bundled_Item[] $variable_bundled_items
 		 */
 		$variable_bundled_items = array_filter(
 			$this->wc_bundle_prod->get_bundled_items(),
@@ -234,7 +234,7 @@ class Product_Bundle extends Product {
 
 				/** Bundle Item
 				 *
-				 * @var WC_Bundled_Item $prod
+				 * @var \WC_Bundled_Item $prod
 				 */
 				return $prod->product->get_type() === 'variable';
 			}
@@ -246,7 +246,7 @@ class Product_Bundle extends Product {
 
 		/** Array of non variable bundle products
 		 *
-		 * WC_Bundled_Item[] $non_variable_bundled
+		 * @var \WC_Bundled_Item[] $non_variable_bundled
 		 */
 		$non_variable_bundled = array_filter(
 			$this->wc_bundle_prod->get_bundled_items(),
@@ -254,7 +254,7 @@ class Product_Bundle extends Product {
 
 				/** Bundle Item
 				 *
-				 * @var WC_Bundled_Item $prod
+				 * @var \WC_Bundled_Item $prod
 				 */
 				return $prod->product->get_type() !== 'variable';
 			}
@@ -358,7 +358,7 @@ class Product_Bundle extends Product {
 
 		/** Define iteration variable type
 		 *
-		 * @var WC_Product_Bundle $wc_product_bundle
+		 * @var \WC_Product_Bundle $wc_product_bundle
 		 */
 		foreach ( $all_w_c_product_bundles as $wc_product_bundle ) {
 
@@ -459,7 +459,7 @@ class Product_Bundle extends Product {
 	/**
 	 * Converts a WC_Product_Bundle to ProductBundle.
 	 *
-	 * @param WC_Product_Bundle $wc_prod as WooCommerce product bundle.
+	 * @param \WC_Product_Bundle $wc_prod as WooCommerce product bundle.
 	 * @return Product_Bundle
 	 */
 	private static function wc_convert( $wc_prod ) {

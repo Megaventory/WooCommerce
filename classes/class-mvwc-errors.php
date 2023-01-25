@@ -42,17 +42,4 @@ class MVWC_Errors {
 		array_push( $this->errors, new MVWC_Error( $args ) );
 	}
 
-	/**
-	 * Error full message.
-	 *
-	 * @return string
-	 */
-	public function full_messages() {
-		$msgs = array();
-		foreach ( $this->errors as $error ) {
-			array_push( $msgs, $error->get_full_message() );
-		}
-
-		return $msgs;
-	}
 }

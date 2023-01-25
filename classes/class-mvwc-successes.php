@@ -42,17 +42,5 @@ class MVWC_Successes {
 		array_push( $this->successes, new MVWC_Success( $args ) );
 	}
 
-	/**
-	 * Get full message of success.
-	 *
-	 * @return string
-	 */
-	public function full_messages() {
-		$msgs = array();
-		foreach ( $this->successes as $success ) {
-			array_push( $msgs, $success->get_full_message() );
-		}
-		return $msgs;
-	}
 }
 

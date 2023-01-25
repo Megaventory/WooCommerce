@@ -27,8 +27,8 @@ class Shipping_Zones {
 	/**
 	 * Get the shipping zone of this order by the order address
 	 *
-	 * @param WC_Order $order the order object.
-	 * @return WC_Shipping_Zone
+	 * @param \WC_Order $order the order object.
+	 * @return \WC_Shipping_Zone
 	 */
 	public static function megaventory_get_shipping_zone_from_order( $order ) {
 

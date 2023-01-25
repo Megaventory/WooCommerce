@@ -93,26 +93,6 @@ class Location {
 	}
 
 	/**
-	 * Get Location Errors.
-	 *
-	 * @return MVWC_Errors
-	 */
-	public function errors() {
-
-		return $this->errors;
-	}
-
-	/**
-	 * Get Location Successes.
-	 *
-	 * @return MVWC_Successes
-	 */
-	public function successes() {
-
-		return $this->successes;
-	}
-
-	/**
 	 * Log Location errors.
 	 *
 	 * @param string $problem as Location error problem.
@@ -122,7 +102,7 @@ class Location {
 	 * @param string $json_object as string.
 	 * @return void
 	 */
-	public function log_error( $problem, $full_msg, $code, $type = 'error', $json_object ) {
+	public function log_error( $problem, $full_msg, $code, $type = 'error', $json_object = '' ) {
 
 		$args = array(
 			'entity_id'   => array(
@@ -200,7 +180,7 @@ class Location {
 	/**
 	 * Creates a default Megaventory Location.
 	 *
-	 * @return array
+	 * @return bool
 	 */
 	public static function create_default_location() {
 
@@ -220,7 +200,7 @@ class Location {
 	 * Update a Megaventory Location.
 	 *
 	 * @param bool $is_update as boolean if is a location update.
-	 * @return array
+	 * @return bool
 	 */
 	public function update_megaventory_location( $is_update ) {
 

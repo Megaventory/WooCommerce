@@ -75,7 +75,7 @@ class MV_Order_Item {
 	/**
 	 * Array of a Product Bundle's children order items.
 	 *
-	 * @var WC_Order_Item[]
+	 * @var \WC_Order_Item[]
 	 */
 	public $children_order_items;
 
@@ -100,18 +100,17 @@ class MV_Order_Item {
 	 */
 	public function __construct( $product = null ) {
 
-		$this->related_product  = empty( $product ) ? new Product() : $product;
-		$this->is_bundle        = false;
-		$this->children_row_ids = array();
-		$this->is_bundled_item  = false;
+		$this->related_product = empty( $product ) ? new Product() : $product;
+		$this->is_bundle       = false;
+		$this->is_bundled_item = false;
 
 	}
 
 	/**
 	 * Get MV_Order_Item from WC_Order_Item
 	 *
-	 * @param WC_Order_Item $wc_order_item The WooCommerce order item to map.
-	 * @param array         $coupons_array Array of coupon arrays.
+	 * @param \WC_Order_Item|array $wc_order_item The WooCommerce order item to map.
+	 * @param array                $coupons_array Array of coupon arrays.
 	 * @return MV_Order_Item
 	 */
 	public static function from_wc_order_item( $wc_order_item, &$coupons_array ) {
@@ -119,12 +118,12 @@ class MV_Order_Item {
 		$use_discount_sequentially = ( 'yes' === get_option( 'woocommerce_calc_discounts_sequentially', 'no' ) ) ? true : false;
 
 		$product = new Product();
-		if ( 0 === $wc_order_item['variation_id'] ) {
+		if ( 0 === $wc_order_item->get_data()['variation_id'] ) {
 
-			$product = Product::wc_find_product( $wc_order_item['product_id'] );
+			$product = Product::wc_find_product( $wc_order_item->get_data()['product_id'] );
 		} else {
 
-			$product = Product::wc_find_product( $wc_order_item['variation_id'] );
+			$product = Product::wc_find_product( $wc_order_item->get_data()['variation_id'] );
 		}
 
 		$mv_order_item = new MV_Order_Item( $product );
@@ -231,7 +230,7 @@ class MV_Order_Item {
 	 * If shipping zones are not active, it will assign all items to the default location.
 	 *
 	 * @param MV_Order_Item[] $mv_order_item_arr The array of mv order items to be handled.
-	 * @param WC_Order        $order             The WC Order Object.
+	 * @param \WC_Order       $order             The WC Order Object.
 	 * @param array           $coupons_arrays    An array of coupons arrays.
 	 * @return array
 	 */
@@ -315,8 +314,8 @@ class MV_Order_Item {
 	/**
 	 * Get array of mv_order_items from array of wc order items.
 	 *
-	 * @param WC_Order_Item[] $wc_items       Array of WC Order Items.
-	 * @param array           $coupons_arrays Array of coupon arrays for order.
+	 * @param \WC_Order_Item[] $wc_items       Array of WC Order Items.
+	 * @param array            $coupons_arrays Array of coupon arrays for order.
 	 * @return MV_Order_Item[]
 	 */
 	public static function get_mv_items_from_wc_items( $wc_items, $coupons_arrays ) {
@@ -438,8 +437,8 @@ class MV_Order_Item {
 	/**
 	 * Get price with percentage amount if applied.
 	 *
-	 * @param WC_Order_Item_Product $item_data as order item.
-	 * @param Discount              $discount as Megaventory discount.
+	 * @param \WC_Order_Item_Product $item_data as order item.
+	 * @param Coupon                 $discount as Megaventory discount.
 	 * @return float
 	 */
 	private static function get_unit_price_prediscounted( $item_data, $discount ) {

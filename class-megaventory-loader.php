@@ -108,9 +108,9 @@ class Megaventory_Loader {
 	/**
 	 * Add purchase price product option.
 	 *
-	 * @param int     $loop as int.
-	 * @param array   $variation_data as array.
-	 * @param WP_Post $variation as WP_Post.
+	 * @param int      $loop as int.
+	 * @param array    $variation_data as array.
+	 * @param \WP_Post $variation as WP_Post.
 	 *
 	 * @return void
 	 */

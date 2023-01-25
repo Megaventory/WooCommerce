@@ -85,7 +85,7 @@ class Address {
 	/**
 	 * Generate an array containing billing and shipping address objects from a WC Order object.
 	 *
-	 * @param WC_Order $order The WC Order object.
+	 * @param \WC_Order $order The WC Order object.
 	 * @return array
 	 */
 	public static function generate_addresses_array_from_order( $order ) {

@@ -30,33 +30,61 @@ class Order {
 
 		$order = wc_get_order( $order_id );
 
-		if ( ! get_post_meta( $order->get_id(), \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_ID_META, true ) ) {
+		if ( ! empty( get_post_meta( $order->get_id(), \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_ID_META, true ) ) ) {
 
-			$id     = $order->get_customer_id();
-			$client = \Megaventory\Models\Client::wc_find( $id );
+			return;
+		}
 
-			if ( $client && empty( $client->mv_id ) ) {
-				$client->mv_save(); // make sure id exists.
+		$id     = $order->get_customer_id();
+		$client = \Megaventory\Models\Client::wc_find( $id );
+
+		if ( $client && empty( $client->mv_id ) ) {
+			$client->mv_save(); // make sure id exists.
+		}
+
+		if ( null === $client || null === $client->mv_id || '' === $client->mv_id ) { // Get guest.
+
+			$client = \Megaventory\Models\Client::get_guest_mv_client();
+		}
+
+		$returned = array();
+		try {
+
+			if ( get_post_meta( $order->get_id(), 'megaventory_order_processing', true ) ) {
+
+				return; // Exit if already processed.
 			}
+			update_post_meta( $order->get_id(), 'megaventory_order_processing', 1 );
 
-			if ( null === $client || null === $client->mv_id || '' === $client->mv_id ) { // Get guest.
+			/* place order through Megaventory API */
+			$returned = \Megaventory\Models\Order::megaventory_place_sales_order_to_mv( $order, $client );
 
-				$client = \Megaventory\Models\Client::get_guest_mv_client();
-			}
+		} catch ( \Error $ex ) {
 
-			$returned = array();
-			try {
+			delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
 
-				if ( get_post_meta( $order->get_id(), 'megaventory_order_processing', true ) ) {
+			$args = array(
+				'type'        => 'error',
+				'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+				'entity_id'   => array( 'wc' => $order->get_id() ),
+				'problem'     => 'Order not placed in Megaventory.',
+				'full_msg'    => $ex->getMessage(),
+				'error_code'  => 500,
+				'json_object' => '',
+			);
 
-					return; // Exit if already processed.
-				}
-				update_post_meta( $order->get_id(), 'megaventory_order_processing', 1 );
+			$e = new \Megaventory\Models\MVWC_Error( $args );
 
-				/* place order through Megaventory API */
-				$returned = \Megaventory\Models\Order::megaventory_place_sales_order_to_mv( $order, $client );
+			return;
+		}
 
-			} catch ( \Error $ex ) {
+		$success_array  = array();
+		$statuses_array = array();
+
+		foreach ( $returned as $order_response ) {
+
+			if ( '0' !== $order_response['ResponseStatus']['ErrorCode'] || ! array_key_exists( 'mvSalesOrder', $order_response ) ) {
+				// Error happened. It needs to be reported.
 
 				delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
 
@@ -65,84 +93,58 @@ class Order {
 					'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
 					'entity_id'   => array( 'wc' => $order->get_id() ),
 					'problem'     => 'Order not placed in Megaventory.',
-					'full_msg'    => $ex->getMessage(),
-					'error_code'  => 500,
-					'json_object' => '',
+					'full_msg'    => $order_response['ResponseStatus']['Message'],
+					'error_code'  => $order_response['ResponseStatus']['ErrorCode'],
+					'json_object' => $order_response['json_object'],
 				);
 
 				$e = new \Megaventory\Models\MVWC_Error( $args );
 
-				return;
+				continue;
 			}
 
-			$success_array  = array();
-			$statuses_array = array();
+			$mv_order_id     = $order_response['mvSalesOrder']['SalesOrderId'];
+			$mv_order_abbr   = $order_response['mvSalesOrder']['SalesOrderTypeAbbreviation'];
+			$mv_order_no     = $order_response['mvSalesOrder']['SalesOrderNo'];
+			$mv_order_status = $order_response['mvSalesOrder']['SalesOrderStatus'];
+			$mv_location_id  = $order_response['mvSalesOrder']['SalesOrderInventoryLocationID'];
 
-			foreach ( $returned as $order_response ) {
+			$args = array(
+				'entity_id'          => array(
+					'wc' => $order->get_id(),
+					'mv' => $mv_order_id,
+				),
+				'entity_type'        => 'order',
+				'entity_name'        => $mv_order_abbr . ' ' . $mv_order_no,
+				'transaction_status' => 'Insert',
+				'full_msg'           => 'The order has been placed to your Megaventory account',
+				'success_code'       => 1,
+			);
 
-				if ( '0' !== $order_response['ResponseStatus']['ErrorCode'] || ! array_key_exists( 'mvSalesOrder', $order_response ) ) {
-					// Error happened. It needs to be reported.
+			$e = new \Megaventory\Models\MVWC_Success( $args );
 
-					delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
+			$success_array[ $mv_order_id ] = array(
+				'SalesOrderTypeAbbreviation'    => $mv_order_abbr,
+				'SalesOrderNo'                  => $mv_order_no,
+				'SalesOrderInventoryLocationID' => $mv_location_id,
+			);
 
-					$args = array(
-						'type'        => 'error',
-						'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
-						'entity_id'   => array( 'wc' => $order->get_id() ),
-						'problem'     => 'Order not placed in Megaventory.',
-						'full_msg'    => $order_response['ResponseStatus']['Message'],
-						'error_code'  => $order_response['ResponseStatus']['ErrorCode'],
-						'json_object' => $order_response['json_object'],
-					);
-
-					$e = new \Megaventory\Models\MVWC_Error( $args );
-
-					continue;
-				}
-
-				$mv_order_id     = $order_response['mvSalesOrder']['SalesOrderId'];
-				$mv_order_abbr   = $order_response['mvSalesOrder']['SalesOrderTypeAbbreviation'];
-				$mv_order_no     = $order_response['mvSalesOrder']['SalesOrderNo'];
-				$mv_order_status = $order_response['mvSalesOrder']['SalesOrderStatus'];
-				$mv_location_id  = $order_response['mvSalesOrder']['SalesOrderInventoryLocationID'];
-
-				$args = array(
-					'entity_id'          => array(
-						'wc' => $order->get_id(),
-						'mv' => $mv_order_id,
-					),
-					'entity_type'        => 'order',
-					'entity_name'        => $mv_order_abbr . ' ' . $mv_order_no,
-					'transaction_status' => 'Insert',
-					'full_msg'           => 'The order has been placed to your Megaventory account',
-					'success_code'       => 1,
-				);
-
-				$e = new \Megaventory\Models\MVWC_Success( $args );
-
-				$success_array[ $mv_order_id ] = array(
-					'SalesOrderTypeAbbreviation'    => $mv_order_abbr,
-					'SalesOrderNo'                  => $mv_order_no,
-					'SalesOrderInventoryLocationID' => $mv_location_id,
-				);
-
-				$statuses_array[ $mv_order_id ] = $mv_order_status;
-			}
-
-			/*
-				Hooks:
-				woocommerce_new_order hook, comes with no items. Because items are not saved in DB yet..
-				woocommerce_thankyou hook, can be ignored if checkout from paypal.
-			*/
-			update_post_meta( $order->get_id(), \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_ID_META, array_keys( $success_array ) );
-			update_post_meta( $order->get_id(), \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_NAMES_META, $success_array );
-
-			\Megaventory\Models\Order::update_mv_related_order_status_list( $order->get_id(), $statuses_array );
-
-			\Megaventory\Models\Order::remove_order_from_sync_queue( $order->get_id() );
-
-			delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
+			$statuses_array[ $mv_order_id ] = $mv_order_status;
 		}
+
+		/*
+			Hooks:
+			woocommerce_new_order hook, comes with no items. Because items are not saved in DB yet..
+			woocommerce_thankyou hook, can be ignored if checkout from paypal.
+		*/
+		update_post_meta( $order->get_id(), \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_ID_META, array_keys( $success_array ) );
+		update_post_meta( $order->get_id(), \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_NAMES_META, $success_array );
+
+		\Megaventory\Models\Order::update_mv_related_order_status_list( $order->get_id(), $statuses_array );
+
+		\Megaventory\Models\Order::remove_order_from_sync_queue( $order->get_id() );
+
+		delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
 	}
 
 	/**

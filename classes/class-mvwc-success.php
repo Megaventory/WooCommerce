@@ -42,6 +42,13 @@ class MVWC_Success {
 	private $entity_name;
 
 	/**
+	 * Entity type(customer, product etc).
+	 *
+	 * @var string
+	 */
+	private $entity_type;
+
+	/**
 	 * Transaction status.
 	 *
 	 * @var string

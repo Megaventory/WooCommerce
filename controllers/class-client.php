@@ -23,8 +23,8 @@ class Client {
 	/**
 	 * Updates a client to Megaventory.
 	 *
-	 * @param int     $user_id as user id.
-	 * @param WP_User $old_user_data as user data.
+	 * @param int      $user_id as user id.
+	 * @param \WP_User $old_user_data as user data.
 	 * @return void
 	 */
 	public static function sync_on_profile_update( $user_id, $old_user_data ) {

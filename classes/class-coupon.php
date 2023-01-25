@@ -81,6 +81,20 @@ class Coupon {
 	public $type;
 
 	/**
+	 * Errors messages.
+	 *
+	 * @var MVWC_Errors
+	 */
+	public $errors;
+
+	/**
+	 * Succeeded messages.
+	 *
+	 * @var MVWC_Successes
+	 */
+	public $successes;
+
+	/**
 	 * DiscountGet call.
 	 *
 	 * @var string
@@ -105,26 +119,6 @@ class Coupon {
 	}
 
 	/**
-	 * Get errors.
-	 *
-	 * @return array[string] of strings.
-	 */
-	public function errors() {
-
-		return $this->errors;
-	}
-
-	/**
-	 * Get successes.
-	 *
-	 * @return array[string] of strings.
-	 */
-	public function successes() {
-
-		return $this->successes;
-	}
-
-	/**
 	 * Log errors.
 	 *
 	 * @param string $problem as problem message.
@@ -134,7 +128,7 @@ class Coupon {
 	 * @param string $json_object as string.
 	 * @return void
 	 */
-	public function log_error( $problem, $full_msg, $code, $type = 'error', $json_object ) {
+	public function log_error( $problem, $full_msg, $code, $type = 'error', $json_object = '' ) {
 
 		$args = array(
 			'entity_id'   => array(
