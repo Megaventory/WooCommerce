@@ -1110,7 +1110,16 @@ class Product {
 		}
 
 		// Megaventory version should be | attr1_label: var1 | attr2_label: var2 | attr3_label: var3.
-		$variation_attrs = $wc_variation->get_variation_attributes( false );
+		$variation_attrs = array();
+
+		if ( $wc_variation instanceof \WC_Product_Variation ) {
+
+			$variation_attrs = $wc_variation->get_variation_attributes( false );
+
+		} else {
+
+			$variation_attrs = $wc_variation->get_variation_attributes();
+		}
 
 		$version = '';
 

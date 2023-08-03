@@ -88,7 +88,9 @@ class Integration_Updates {
 							continue;
 						}
 
-						update_post_meta( $wc_product_id, 'purchase_price', str_replace( '.', ',', (string) $mv_product['ProductPurchasePrice'] ) );
+						$purchase_price = str_replace( '.', wc_get_price_decimal_separator(), (string) $mv_product['ProductPurchasePrice'] );
+
+						update_post_meta( $wc_product_id, 'purchase_price', $purchase_price );
 					}
 				}
 

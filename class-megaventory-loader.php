@@ -359,7 +359,10 @@ class Megaventory_Loader {
 		$so_location  = empty( $megaventory_order_post_meta_name['SalesOrderInventoryLocationID'] ) ? '' : $megaventory_order_post_meta_name['SalesOrderInventoryLocationID'];
 		$loc_abbr     = '';
 
-		if ( ! empty( $so_location ) && array_key_exists( $so_location, $location_abbr_dict ) ) {
+		if ( ! empty( $so_location ) &&
+			is_array( $location_abbr_dict ) &&
+			array_key_exists( $so_location, $location_abbr_dict ) ) {
+
 			$loc_abbr = $location_abbr_dict[ $so_location ];
 			$loc_abbr = '( ' . $loc_abbr . ' )';
 		}

@@ -403,10 +403,7 @@ class Order {
 
 		foreach ( $order->get_coupons() as $order_coupon ) {
 
-			$coupon_post_obj = get_page_by_title( $order_coupon->get_code(), OBJECT, 'shop_coupon' );
-			$coupon_id       = $coupon_post_obj->ID;
-
-			$coupon = Coupon::wc_find_coupon( $coupon_id );
+			$coupon = Coupon::wc_find_coupon( $order_coupon->get_id() );
 
 			if ( 'fixed_product' === $coupon->type ) {
 
