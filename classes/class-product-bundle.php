@@ -56,7 +56,6 @@ class Product_Bundle extends Product {
 		$this->regular_price     = 0.0;
 		$this->sale_price        = 0.0;
 		$this->mv_type           = self::MV_BUNDLE_TYPE_ENUM;
-
 	}
 
 	/** Returns a Product_Bundle with the included_products property filled.
@@ -75,7 +74,6 @@ class Product_Bundle extends Product {
 		}
 
 		return $prod_bundle;
-
 	}
 
 	/**
@@ -230,7 +228,7 @@ class Product_Bundle extends Product {
 		 */
 		$variable_bundled_items = array_filter(
 			$this->wc_bundle_prod->get_bundled_items(),
-			function( $prod ) {
+			function ( $prod ) {
 
 				/** Bundle Item
 				 *
@@ -250,7 +248,7 @@ class Product_Bundle extends Product {
 		 */
 		$non_variable_bundled = array_filter(
 			$this->wc_bundle_prod->get_bundled_items(),
-			function( $prod ) {
+			function ( $prod ) {
 
 				/** Bundle Item
 				 *
@@ -276,7 +274,7 @@ class Product_Bundle extends Product {
 
 				$avail_variations = array_filter(
 					$avail_variations,
-					function( $variation ) use ( $variation_ids ) {
+					function ( $variation ) use ( $variation_ids ) {
 
 						/** Array
 						 *
@@ -337,7 +335,6 @@ class Product_Bundle extends Product {
 				$flag ? $ref_successes++ : $ref_errors++;
 			}
 		}
-
 	}
 
 	/**
@@ -498,13 +495,12 @@ class Product_Bundle extends Product {
 	public static function wc_get_all_woocommerce_bundles_count() {
 
 		$args = array(
-			'type'  => array( 'bundle' ),
-			'limit' => -1,
+			'type'   => array( 'bundle' ),
+			'return' => 'ids',
+			'limit'  => -1,
 		);
 
 		$all_wc_products = wc_get_products( $args );
-
-		$all_wc_products = self::get_woocommerce_products_with_unique_sku( $all_wc_products, 'id' );
 
 		return count( $all_wc_products );
 	}

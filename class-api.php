@@ -132,7 +132,6 @@ class API {
 		$data['json_object'] = wp_json_encode( $body_to_send );
 
 		return $data;
-
 	}
 
 	/**
@@ -185,7 +184,6 @@ class API {
 		$data['json_object'] = wp_json_encode( $body_to_send );
 
 		return $data;
-
 	}
 
 	/**
@@ -378,7 +376,6 @@ class API {
 		$is_woo_commerce_enabled_response = $data['mvAccountSettings'][0]['SettingValue'];
 
 		return $is_woo_commerce_enabled_response;
-
 	}
 
 	/**
@@ -396,20 +393,20 @@ class API {
 
 		$apikeys_table_name = $wpdb->prefix . 'megaventory_api_keys';
 
-		$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $apikeys_table_name ), ARRAY_A ); // db call ok. no-cache ok.
+		$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $apikeys_table_name ), ARRAY_A ); // phpcs:ignore
 
 		if ( count( $existing_table ) === 0 ) {
 
 			return '';
 		}
 
-		$last_valid_apikey_array = $wpdb->get_results(
+		$last_valid_apikey_array = $wpdb->get_results( // phpcs:ignore
 			"
 				SELECT api_key 
 				FROM {$wpdb->prefix}megaventory_api_keys 
 				ORDER BY id 
 				DESC LIMIT 1 "
-		); // db call ok; no-cache ok.
+		);
 
 		if ( ! empty( $last_valid_apikey_array ) ) {
 
@@ -441,13 +438,13 @@ class API {
 		$apikeys_table_name = $wpdb->prefix . 'megaventory_api_keys';
 
 		$charset_collate = $wpdb->get_charset_collate();
-		$return          = $wpdb->insert(
+		$return          = $wpdb->insert( // phpcs:ignore
 			$apikeys_table_name,
 			array(
 				'created_at' => get_date_from_gmt( gmdate( 'Y-m-d H:i:s' ), 'Y-m-d H:i:s' ),
 				'api_key'    => $api_key,
 			)
-		); // db call ok.
+		);
 
 		return $return;
 	}

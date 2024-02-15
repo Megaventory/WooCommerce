@@ -222,13 +222,13 @@ class Tax {
 
 		global $wpdb;
 
-		$results = $wpdb->get_results(
+		$results = $wpdb->get_results( // phpcs:ignore
 			"
 				SELECT * 
 				FROM {$wpdb->prefix}woocommerce_tax_rates 
 			",
 			ARRAY_A
-		); // db call ok; no-cache ok.
+		);
 
 		$taxes = array();
 
@@ -248,21 +248,9 @@ class Tax {
 	 */
 	public static function wc_find_tax( $id ) {
 
-		global $wpdb;
+		$tax = \WC_Tax::_get_tax_rate( $id );
 
-		$result = $wpdb->get_row(
-			$wpdb->prepare(
-				"
-				SELECT *
-				FROM {$wpdb->prefix}woocommerce_tax_rates
-				WHERE tax_rate_id = %d
-			",
-				$id
-			),
-			ARRAY_A
-		); // db call ok; no-cache ok.
-
-		return self::wc_convert( $result );
+		return self::wc_convert( $tax );
 	}
 
 	/**
@@ -481,7 +469,7 @@ class Tax {
 
 		global $wpdb;
 
-		$sql_results = $wpdb->query(
+		$sql_results = $wpdb->query( // phpcs:ignore
 			$wpdb->prepare(
 				"
 				UPDATE {$wpdb->prefix}woocommerce_tax_rates 
@@ -564,5 +552,4 @@ class Tax {
 		}
 		return $tax;
 	}
-
 }

@@ -41,6 +41,4 @@ class MVWC_Successes {
 	public function log_success( $args = array() ) {
 		array_push( $this->successes, new MVWC_Success( $args ) );
 	}
-
 }
-

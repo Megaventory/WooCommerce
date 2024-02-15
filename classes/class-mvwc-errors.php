@@ -41,5 +41,4 @@ class MVWC_Errors {
 	public function log_error( $args = array() ) {
 		array_push( $this->errors, new MVWC_Error( $args ) );
 	}
-
 }

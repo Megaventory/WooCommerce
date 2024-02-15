@@ -34,7 +34,6 @@ class Integration_Updates {
 		$url = \Megaventory\API::get_url_for_call( MV_Constants::INTEGRATION_UPDATE_DELETE );
 
 		\Megaventory\API::send_request_to_megaventory( $url, $data );
-
 	}
 
 	/**
@@ -56,4 +55,3 @@ class Integration_Updates {
 		return $response;
 	}
 }
-

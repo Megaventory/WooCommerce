@@ -184,7 +184,6 @@ class Order {
 
 			return;
 		}
-
 	}
 
 	/**
@@ -327,5 +326,23 @@ class Order {
 
 		}
 	}
-}
 
+	/**
+	 * Change auto assign batch numbers option
+	 */
+	public static function megaventory_update_auto_assign_batch_numbers_option() {
+
+		if ( isset( $_POST['autoAssignBatchNumbersOption'], $_POST['async-nonce'] ) &&
+			wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
+
+			$option = ( sanitize_text_field( wp_unslash( $_POST['autoAssignBatchNumbersOption'] ) ) );
+
+			update_option( \Megaventory\Models\MV_Constants::MV_AUTO_ASSIGN_BATCH_NUMBERS_OPT, $option );
+
+			wp_send_json_success( array( 'success' => true ), 200 );
+		} else {
+			wp_send_json_error( array( 'success' => false ), 200 );
+		}
+		wp_die();
+	}
+}

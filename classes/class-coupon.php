@@ -115,7 +115,6 @@ class Coupon {
 
 		$this->errors    = new MVWC_Errors();
 		$this->successes = new MVWC_Successes();
-
 	}
 
 	/**
@@ -143,7 +142,6 @@ class Coupon {
 			'type'        => $type,
 		);
 		$this->errors->log_error( $args );
-
 	}
 
 	/**
@@ -179,7 +177,7 @@ class Coupon {
 	public static function wc_all() {
 
 		global $wpdb;
-		$results = $wpdb->get_results(
+		$results = $wpdb->get_results( // phpcs:ignore
 			"
 				SELECT 
 					{$wpdb->prefix}posts.ID as id, 
@@ -198,7 +196,7 @@ class Coupon {
 					AND meta2.meta_key = 'discount_type' 
 					AND	meta2.post_id = meta1.post_id",
 			ARRAY_A
-		); // db call ok; no-cache ok.
+		);
 
 		$coupons = array();
 
@@ -246,7 +244,7 @@ class Coupon {
 	public static function wc_find_by_name( $name ) {
 
 		global $wpdb;
-		$results = $wpdb->get_results(
+		$results = $wpdb->get_results( // phpcs:ignore
 			$wpdb->prepare(
 				"
 					SELECT 
@@ -269,7 +267,7 @@ class Coupon {
 				$name
 			),
 			ARRAY_A
-		); // db call ok; no-cache ok.
+		);
 
 		if ( 0 === count( $results ) ) {
 			return null;
@@ -336,10 +334,9 @@ class Coupon {
 	/**
 	 * Returns included product categories.
 	 *
-	 * @param bool $by_ids as boolean.
 	 * @return array[]
 	 */
-	public function get_included_products_categories( $by_ids = false ) {
+	public function get_included_products_categories() {
 
 		$ids = get_post_meta( $this->wc_id, 'product_categories', true );
 
@@ -353,10 +350,9 @@ class Coupon {
 	/**
 	 * Returns excluded product categories.
 	 *
-	 * @param bool $by_ids as boolean.
 	 * @return array[]
 	 */
-	public function get_excluded_products_categories( $by_ids = false ) {
+	public function get_excluded_products_categories() {
 
 		$ids = get_post_meta( $this->wc_id, 'exclude_product_categories', true );
 
@@ -375,7 +371,6 @@ class Coupon {
 	public function applies_to_sales() {
 
 		return ! ( 'yes' === get_post_meta( $this->wc_id, 'exclude_sale_items', true ) );
-
 	}
 
 	/**
@@ -402,7 +397,7 @@ class Coupon {
 	public static function wc_all_as_name_rate() {
 
 		global $wpdb;
-		$results = $wpdb->get_results(
+		$results = $wpdb->get_results( // phpcs:ignore
 			"SELECT {$wpdb->prefix}posts.ID as id, 
 					{$wpdb->prefix}posts.post_title as name, 
 					{$wpdb->prefix}postmeta.meta_value as rate FROM 
@@ -413,7 +408,7 @@ class Coupon {
 				AND {$wpdb->prefix}postmeta.meta_key = 'coupon_amount' 
 				AND {$wpdb->prefix}postmeta.post_id = {$wpdb->prefix}posts.ID",
 			ARRAY_A
-		); // db call ok; no-cache ok.
+		);
 
 		$coupons = array();
 
@@ -470,7 +465,6 @@ class Coupon {
 		$compound_coupon->type        = 'percent';
 
 		return $compound_coupon;
-
 	}
 
 	/**
@@ -540,7 +534,6 @@ class Coupon {
 		 */
 
 		return $discount_object;
-
 	}
 
 	/**
@@ -578,7 +571,6 @@ class Coupon {
 		$data = \Megaventory\API::send_json( $url, $discount_object );
 
 		return $data;
-
 	}
 
 	/**
@@ -596,7 +588,6 @@ class Coupon {
 
 			return true;
 		}
-
 	}
 
 	/**

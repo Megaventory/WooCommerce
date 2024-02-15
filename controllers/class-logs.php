@@ -63,4 +63,3 @@ class Logs {
 		wp_die();
 	}
 }
-

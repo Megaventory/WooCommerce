@@ -23,11 +23,10 @@ class Client {
 	/**
 	 * Updates a client to Megaventory.
 	 *
-	 * @param int      $user_id as user id.
-	 * @param \WP_User $old_user_data as user data.
+	 * @param int $user_id as user id.
 	 * @return void
 	 */
-	public static function sync_on_profile_update( $user_id, $old_user_data ) {
+	public static function sync_on_profile_update( $user_id ) {
 
 		$user = \Megaventory\Models\Client::wc_find( $user_id );
 
@@ -58,11 +57,10 @@ class Client {
 	/**
 	 * Delete client event handler.
 	 *
-	 * @param int      $client_id as client id.
-	 * @param int|null $reassign ID of the user to whom posts will be automatically re-assigned (if one was selected).
+	 * @param int $client_id as client id.
 	 * @return void
 	 */
-	public static function delete_client_handler( $client_id, $reassign ) {
+	public static function delete_client_handler( $client_id ) {
 
 		$client = \Megaventory\Models\Client::wc_find( $client_id );
 
@@ -72,7 +70,5 @@ class Client {
 		}
 
 		$client->delete_client_in_megaventory();
-
 	}
 }
-

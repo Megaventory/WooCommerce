@@ -138,6 +138,4 @@ class Stock {
 		wp_send_json_success( wp_json_encode( $return_values ) );
 		wp_die();
 	}
-
 }
-

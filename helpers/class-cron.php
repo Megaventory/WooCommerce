@@ -88,4 +88,3 @@ class Cron {
 		return $schedules;
 	}
 }
-

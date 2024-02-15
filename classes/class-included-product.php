@@ -55,7 +55,6 @@ class Included_Product {
 	public function __construct( $related_prod_id = 0 ) {
 
 		$this->related_product_obj = $related_prod_id > 0 ? Product::wc_find_product( $related_prod_id ) : null;
-
 	}
 
 	/** Create an Included_Product from a WooCommerce Bundled Item.
@@ -83,5 +82,4 @@ class Included_Product {
 
 		return $incl_product;
 	}
-
 }

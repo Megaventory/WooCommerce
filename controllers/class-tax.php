@@ -23,11 +23,10 @@ class Tax {
 	/**
 	 * Define the woocommerce_tax_rate_added / woocommerce_tax_rate_updated callback.
 	 *
-	 * @param int    $tax_rate_id as tax id.
-	 * @param double $tax_rate as tax rate.
+	 * @param int $tax_rate_id as tax id.
 	 * @return void
 	 */
-	public static function on_tax_update( $tax_rate_id, $tax_rate ) {
+	public static function on_tax_update( $tax_rate_id ) {
 
 		$tax = \Megaventory\Models\Tax::wc_find_tax( $tax_rate_id );
 		if ( ! $tax ) {
@@ -50,4 +49,3 @@ class Tax {
 		}
 	}
 }
-

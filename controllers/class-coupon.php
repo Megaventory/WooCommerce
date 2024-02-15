@@ -42,4 +42,3 @@ class Coupon {
 		$coupon->mv_save();
 	}
 }
-

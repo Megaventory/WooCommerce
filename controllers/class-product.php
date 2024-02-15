@@ -58,22 +58,20 @@ class Product {
 	/**
 	 * Product create from CSV Import.
 	 *
-	 * @param int         $product_id as product id.
-	 * @param \WC_Product $product as WC_Product.
+	 * @param int $product_id as product id.
 	 * @return void
 	 */
-	public static function new_product_from_import( $product_id, $product ) {
+	public static function new_product_from_import( $product_id ) {
 		self::sync_on_product_save( $product_id );
 	}
 
 	/**
 	 * Delete product event handler.
 	 *
-	 * @param int   $product_id as product id.
-	 * @param array $wp_post as array.
+	 * @param int $product_id as product id.
 	 * @return void
 	 */
-	public static function delete_product_handler( $product_id, $wp_post ) {
+	public static function delete_product_handler( $product_id ) {
 
 		if ( 'product' !== get_post_type( $product_id ) && 'product_variation' !== get_post_type( $product_id ) ) {
 			return;
@@ -162,4 +160,3 @@ class Product {
 		}
 	}
 }
-

@@ -157,7 +157,6 @@ class Location {
 		if ( empty( $inventory_locations ) ) {
 			self::create_default_location();
 		}
-
 	}
 
 	/**
@@ -174,7 +173,6 @@ class Location {
 		$inventory_locations = $data['mvInventoryLocations'];
 
 		return $inventory_locations;
-
 	}
 
 	/**
@@ -249,7 +247,6 @@ class Location {
 		}
 
 		return $return_bool;
-
 	}
 
 	/**

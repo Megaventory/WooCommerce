@@ -103,7 +103,6 @@ class MV_Order_Item {
 		$this->related_product = empty( $product ) ? new Product() : $product;
 		$this->is_bundle       = false;
 		$this->is_bundled_item = false;
-
 	}
 
 	/**
@@ -222,7 +221,6 @@ class MV_Order_Item {
 		$mv_order_item->tax_id            = ( ! empty( $tax->mv_id ) ? $tax->mv_id : 0 );
 
 		return $mv_order_item;
-
 	}
 
 	/**
@@ -279,7 +277,6 @@ class MV_Order_Item {
 		}
 
 		return $details_per_location;
-
 	}
 
 	/**
@@ -330,7 +327,6 @@ class MV_Order_Item {
 		}
 
 		return $mv_order_item_arr;
-
 	}
 
 	/**
@@ -413,7 +409,6 @@ class MV_Order_Item {
 		$include_bundled_items = array_merge( $detail_array_to_send, $bundled_order_items ); // Merge it with included products.
 
 		self::assign_all_items_to_specific_location( $include_bundled_items, $first_location_id, $details_per_location );
-
 	}
 
 	/**
@@ -431,7 +426,6 @@ class MV_Order_Item {
 		} else {
 			$details_per_location[ $location_id ] = $mv_order_items;
 		}
-
 	}
 
 	/**
@@ -455,7 +449,6 @@ class MV_Order_Item {
 		}
 
 		return $unit_total; // This is unit price with percentage amount if applied.
-
 	}
 
 	/**
@@ -479,12 +472,11 @@ class MV_Order_Item {
 		$included       = in_array( $product->wc_id, $incl_ids, true );
 		$excluded       = in_array( $product->wc_id, $coupon->get_excluded_products( true ), true );
 
-		$incl_ids_cat       = $coupon->get_included_products_categories( true );
+		$incl_ids_cat       = $coupon->get_included_products_categories();
 		$included_empty_cat = count( $incl_ids_cat ) <= 0;
 		$included_cat       = in_array( $product->wc_id, $incl_ids_cat, true );
-		$excluded_cat       = in_array( $product->wc_id, $coupon->get_excluded_products_categories( true ), true );
+		$excluded_cat       = in_array( $product->wc_id, $coupon->get_excluded_products_categories(), true );
 
 		return ( ( $included_empty || $included ) || ( ( $included_empty_cat && $included_empty ) || $included_cat ) ) && ( ! $excluded && ! $excluded_cat );
 	}
-
 }

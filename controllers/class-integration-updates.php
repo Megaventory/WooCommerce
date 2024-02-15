@@ -213,12 +213,12 @@ class Integration_Updates {
 	private static function get_post_meta_by_key_value( $key, $value ) {
 
 		global $wpdb;
-		$meta = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . $wpdb->postmeta . ' WHERE meta_key=%s AND meta_value=%d', array( $key, $value ) ), ARRAY_A ); // db call ok. no-cache ok.
+		$meta = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . $wpdb->postmeta . ' WHERE meta_key=%s AND meta_value=%d', array( $key, $value ) ), ARRAY_A ); // phpcs:ignore
 
 		if ( is_array( $meta ) && ! empty( $meta ) && isset( $meta[0] ) ) {
 
 			$wc_product_ids = array_map(
-				function( $meta_data ) {
+				function ( $meta_data ) {
 					return (int) $meta_data['post_id'];
 				},
 				$meta
@@ -229,4 +229,3 @@ class Integration_Updates {
 		return array();
 	}
 }
-

@@ -39,7 +39,6 @@ class Shipping_Zones {
 		$package['destination']['postcode'] = $order->get_shipping_postcode();
 
 		return \WC_Shipping_Zones::get_zone_matching_package( $package );
-
 	}
 
 	/**
@@ -142,6 +141,5 @@ class Shipping_Zones {
 		}
 
 		return $zone_priorities[ $zone_id ];
-
 	}
 }

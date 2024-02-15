@@ -113,7 +113,7 @@ class MVWC_Error {
 		$error_table_name = $wpdb->prefix . 'megaventory_errors_log';
 		$charset_collate  = $wpdb->get_charset_collate();
 
-		$sql_results = $wpdb->insert(
+		$sql_results = $wpdb->insert( // phpcs:ignore
 			$error_table_name,
 			array(
 				'created_at'  => get_date_from_gmt( gmdate( 'Y-m-d H:i:s' ), 'Y-m-d H:i:s' ),
@@ -137,7 +137,7 @@ class MVWC_Error {
 				'%s',
 				'%s',
 			)
-		); // db call ok.
+		);
 
 		return true;
 	}
@@ -151,7 +151,7 @@ class MVWC_Error {
 	public static function get_messages( $count = MV_Constants::DEFAULT_ERROR_MESSAGE_COUNT_TO_DISPLAY ) {
 		global $wpdb;
 
-		$entries = $wpdb->get_results(
+		$entries = $wpdb->get_results( // phpcs:ignore
 			$wpdb->prepare(
 				"
 				SELECT * 
@@ -161,7 +161,7 @@ class MVWC_Error {
 				",
 				$count
 			)
-		); // db call ok. no-cache ok.
+		);
 
 		return $entries;
 	}
@@ -177,9 +177,8 @@ class MVWC_Error {
 
 		$ids = implode( ',', array_map( 'absint', $ids_to_delete ) );
 
-		$sql_results = $wpdb->query(
+		$sql_results = $wpdb->query( // phpcs:ignore
 			$wpdb->prepare( "DELETE FROM {$wpdb->prefix}megaventory_errors_log WHERE id IN(%1s)", array( $ids ) ) // @codingStandardsIgnoreLine.
-		); // db call ok; no-cache ok.
-
+		);
 	}
 }

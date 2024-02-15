@@ -85,4 +85,3 @@ class Shipping_Zones {
 		wp_die();
 	}
 }
-

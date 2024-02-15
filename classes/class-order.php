@@ -183,7 +183,7 @@ class Order {
 
 			$order_ids = array_merge( $order_ids, $page_ids );
 
-			$page++;
+			++$page;
 		}
 
 		foreach ( $order_ids as $order_id ) {
@@ -213,7 +213,6 @@ class Order {
 		}
 
 		update_post_meta( $order_id, MV_Constants::MV_ORDER_STATUSES_META, $status_array );
-
 	}
 
 	/**
@@ -433,7 +432,6 @@ class Order {
 		$coupons_array[ Coupon::ORDER_TAG_COUPONS_KEY ]  = $coupon_names_order_tags;
 
 		return $coupons_array;
-
 	}
 
 	/**
@@ -503,7 +501,6 @@ class Order {
 		}
 
 		return $sales_array;
-
 	}
 
 	/**
@@ -642,8 +639,14 @@ class Order {
 
 		$order_update_json['mvsalesorder'] = $order_object;
 
-		return $order_update_json;
+		$auto_assign_batch_numbers = (string) get_option( MV_Constants::MV_AUTO_ASSIGN_BATCH_NUMBERS_OPT, MV_Constants::AUTO_INSERT_BATCH_NUMBERS_TO_PRODUCT_ROWS['Undefined'] );
 
+		if ( MV_Constants::AUTO_INSERT_BATCH_NUMBERS_TO_PRODUCT_ROWS['Undefined'] !== $auto_assign_batch_numbers ) {
+
+			$order_update_json['autoinsertbatchnumberstoproductrows'] = $auto_assign_batch_numbers;
+		}
+
+		return $order_update_json;
 	}
 
 	/**
@@ -666,7 +669,6 @@ class Order {
 		);
 
 		return $filtered_orders;
-
 	}
 
 	/**
@@ -686,7 +688,6 @@ class Order {
 		}
 
 		return $related_orders_statuses;
-
 	}
 
 	/**
@@ -698,7 +699,6 @@ class Order {
 	private static function update_order_queue_option( $order_queue_arr ) {
 
 		update_option( MV_Constants::MV_ORDERS_TO_SYNC_OPT, $order_queue_arr );
-
 	}
 
 	/**
@@ -716,8 +716,5 @@ class Order {
 		}
 
 		return $mappings[ $wc_payment_method ];
-
 	}
-
 }
-

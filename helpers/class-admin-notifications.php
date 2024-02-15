@@ -267,7 +267,7 @@ class Admin_Notifications {
 
 		global $wpdb;
 
-		$notices = (array) $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}megaventory_notices_log ORDER BY id ASC LIMIT 50;" ); // db call ok. no-cache ok.
+		$notices = (array) $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}megaventory_notices_log ORDER BY id ASC LIMIT 50;" ); // phpcs:ignore
 
 		foreach ( $notices as $notice ) {
 

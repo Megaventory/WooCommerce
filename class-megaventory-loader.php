@@ -342,7 +342,6 @@ class Megaventory_Loader {
 				echo 'Megaventory order id: ' . esc_attr( $megaventory_order_id );
 			}
 		}
-
 	}
 
 	/**
@@ -368,7 +367,5 @@ class Megaventory_Loader {
 		}
 
 		return $so_type_abbr . ' ' . $so_number . ' ' . $loc_abbr;
-
 	}
-
 }

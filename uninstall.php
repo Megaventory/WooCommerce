@@ -82,13 +82,14 @@ delete_option( \Megaventory\Models\MV_Constants::MV_ORDERS_TO_SYNC_OPT );
 delete_option( \Megaventory\Models\MV_Constants::MV_ORDER_DELAY_CHOICE_OPT );
 delete_option( \Megaventory\Models\MV_Constants::MV_ORDER_DELAY_SECONDS_CHOICE_OPT );
 delete_option( \Megaventory\Models\MV_Constants::MV_EXCLUDED_LOCATION_IDS_OPT );
+delete_option( \Megaventory\Models\MV_Constants::MV_AUTO_ASSIGN_BATCH_NUMBERS_OPT );
 
 global $wpdb;
 
 $tax_rates_table     = "{$wpdb->prefix}woocommerce_tax_rates";
 $tax_rates_mv_column = 'mv_id';
 
-$existing_columns = $wpdb->get_col( 'DESC ' . $wpdb->prefix . 'woocommerce_tax_rates', 0 ); // db call ok. no-cache ok.
+$existing_columns = $wpdb->get_col( 'DESC ' . $wpdb->prefix . 'woocommerce_tax_rates', 0 ); // phpcs:ignore 
 $column_found     = false;
 
 foreach ( $existing_columns as $column_name ) {
@@ -101,7 +102,7 @@ foreach ( $existing_columns as $column_name ) {
 
 if ( $column_found ) {
 
-	$return = $wpdb->query( $wpdb->prepare( 'ALTER TABLE %1s DROP COLUMN %1s;', array( $tax_rates_table, $tax_rates_mv_column ) ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+	$return = $wpdb->query( $wpdb->prepare( 'ALTER TABLE %1s DROP COLUMN %1s;', array( $tax_rates_table, $tax_rates_mv_column ) ) ); // phpcs:ignore
 }
 
 
@@ -110,26 +111,26 @@ $success_table_name = "{$wpdb->prefix}megaventory_success_log";
 $apikeys_table_name = "{$wpdb->prefix}megaventory_api_keys";
 $notices_table_name = "{$wpdb->prefix}megaventory_notices_log";
 
-$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $error_table_name ), ARRAY_A ); // db call ok. no-cache ok.
+$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $error_table_name ), ARRAY_A ); // phpcs:ignore
 if ( 0 !== count( $existing_table ) ) {
 
-	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $error_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $error_table_name ) ); // phpcs:ignore
 }
 
-$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $success_table_name ), ARRAY_A ); // db call ok. no-cache ok.
+$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $success_table_name ), ARRAY_A ); // phpcs:ignore
 if ( 0 !== count( $existing_table ) ) {
 
-	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $success_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $success_table_name ) ); // phpcs:ignore
 }
 
-$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $apikeys_table_name ), ARRAY_A ); // db call ok. no-cache ok.
+$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $apikeys_table_name ), ARRAY_A ); // phpcs:ignore
 if ( 0 !== count( $existing_table ) ) {
 
-	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $apikeys_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $apikeys_table_name ) ); // phpcs:ignore
 }
 
-$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $notices_table_name ), ARRAY_A ); // db call ok. no-cache ok.
+$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $notices_table_name ), ARRAY_A ); // phpcs:ignore
 if ( 0 !== count( $existing_table ) ) {
 
-	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $notices_table_name ) ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
+	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $notices_table_name ) ); // phpcs:ignore
 }

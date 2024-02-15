@@ -37,7 +37,7 @@ class Order_Settings {
 			'shipping-zones'      => \Megaventory\Admin\Template_Partials\Order_Sections\Shipping_Zone_Settings::class,
 			'order-cron-settings' => \Megaventory\Admin\Template_Partials\Order_Sections\Order_Cron_Settings::class,
 			'payments'            => \Megaventory\Admin\Template_Partials\Order_Sections\Payment_Method_Mapping_Settings::class,
-			'extra-fee'           => \Megaventory\Admin\Template_Partials\Order_Sections\Extra_Fee_Sku_Settings::class,
+			'extra-settings'      => \Megaventory\Admin\Template_Partials\Order_Sections\Extra_Settings::class,
 		);
 
 		$section_labels = array(
@@ -45,7 +45,7 @@ class Order_Settings {
 			'shipping-zones'      => 'Shipping Zones',
 			'order-cron-settings' => 'Order Cron Settings',
 			'payments'            => 'Payment Method Mappings',
-			'extra-fee'           => 'Extra Fee Settings',
+			'extra-settings'      => 'Extra Settings',
 		);
 
 		// gets last key of array.

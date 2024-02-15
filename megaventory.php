@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.5.0
+ * Version: 2.6.0
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -11,10 +11,10 @@
  * @since 1.0.0
  *
  * WC requires at least: 3.0
- * WC tested up to: 7.9.0
+ * WC tested up to: 8.5.2
  * Requires at least: 4.4
- * Tested up to: 6.2.2
- * Stable tag: 2.5.0
+ * Tested up to: 6.4.3
+ * Stable tag: 2.6.0
  * Requires PHP: 7.2
  *
  * Author: Megaventory
@@ -89,7 +89,7 @@ require_once MEGAVENTORY__PLUGIN_DIR . 'admin/template_partials/class-settings.p
 require_once MEGAVENTORY__PLUGIN_DIR . 'admin/template_partials/order_sections/class-general-order-settings.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'admin/template_partials/order_sections/class-payment-method-mapping-settings.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'admin/template_partials/order_sections/class-shipping-zone-settings.php';
-require_once MEGAVENTORY__PLUGIN_DIR . 'admin/template_partials/order_sections/class-extra-fee-sku-settings.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'admin/template_partials/order_sections/class-extra-settings.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'admin/template_partials/order_sections/class-order-cron-settings.php';
 
 $megaventory = new Megaventory();

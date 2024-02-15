@@ -110,7 +110,7 @@ class MVWC_Success {
 
 		$charset_collate = $wpdb->get_charset_collate();
 
-		$sql_results = $wpdb->insert(
+		$sql_results = $wpdb->insert( // phpcs:ignore
 			$megaventory_success_table_name,
 			array(
 				'created_at'         => get_date_from_gmt( gmdate( 'Y-m-d H:i:s' ), 'Y-m-d H:i:s' ),
@@ -132,7 +132,7 @@ class MVWC_Success {
 				'%s',
 				'%s',
 			)
-		); // db call ok; no-cache ok.
+		);
 
 		return true;
 	}
@@ -146,7 +146,7 @@ class MVWC_Success {
 	public static function get_messages( $count = MV_Constants::DEFAULT_SUCCESS_MESSAGE_COUNT_TO_DISPLAY ) {
 		global $wpdb;
 
-		$entries = $wpdb->get_results(
+		$entries = $wpdb->get_results( // phpcs:ignore
 			$wpdb->prepare(
 				"
 				SELECT * 
@@ -156,7 +156,7 @@ class MVWC_Success {
 				",
 				$count
 			)
-		); // db call ok. no-cache ok.
+		);
 
 		return $entries;
 	}
@@ -172,10 +172,8 @@ class MVWC_Success {
 
 		$ids = implode( ',', array_map( 'absint', $ids_to_delete ) );
 
-		$sql_results = $wpdb->query(
-			$wpdb->prepare( "DELETE FROM {$wpdb->prefix}megaventory_success_log WHERE id IN(%1s)", array( $ids ) ) // @codingStandardsIgnoreLine.
-		); // db call ok; no-cache ok.
-
+		$sql_results = $wpdb->query( //phpcs:ignore
+			$wpdb->prepare( "DELETE FROM {$wpdb->prefix}megaventory_success_log WHERE id IN(%1s)", array( $ids ) ) // phpcs:ignore
+		);
 	}
 }
-

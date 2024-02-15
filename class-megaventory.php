@@ -280,7 +280,6 @@ class Megaventory {
 		add_action( 'admin_notices', '\Megaventory\Helpers\Admin_Notifications::sample_admin_notice_warning' );
 		add_action( 'admin_notices', '\Megaventory\Helpers\Admin_Notifications::sample_admin_notice_success' );
 		add_action( 'admin_notices', '\Megaventory\Helpers\Admin_Notifications::sample_admin_database_notices' );
-
 	}
 
 	/**
@@ -303,7 +302,6 @@ class Megaventory {
 
 		delete_option( 'mv_session_messages' );
 		delete_option( Models\MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION );
-
 	}
 
 	/**
@@ -364,6 +362,9 @@ class Megaventory {
 		add_action( 'wp_ajax_megaventory_update_payment_method_mappings', '\Megaventory\Controllers\Order::megaventory_update_payment_method_mappings' );
 		add_action( 'wp_ajax_nopriv_megaventory_update_payment_method_mappings', '\Megaventory\Controllers\Order::megaventory_update_payment_method_mappings' );
 
+		add_action( 'wp_ajax_megaventory_update_auto_assign_batch_numbers_option', '\Megaventory\Controllers\Order::megaventory_update_auto_assign_batch_numbers_option' );
+		add_action( 'wp_ajax_nopriv_megaventory_update_auto_assign_batch_numbers_option', '\Megaventory\Controllers\Order::megaventory_update_auto_assign_batch_numbers_option' );
+
 		/* Plugin Upgrade hook */
 
 		add_action( 'upgrader_process_complete', '\Megaventory\Megaventory::upgrade_plugin', 10, 2 );
@@ -378,14 +379,14 @@ class Megaventory {
 
 		wp_enqueue_script( 'jquery-ui-sortable' ); // jQuery UI Sortable. Required for shipping zone/location priority UI.
 
-		wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.5.0', true );
-		wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.5.0', true );
-		wp_enqueue_script( 'ajaxWpCronStatus', plugins_url( '/js/ajaxWpCronStatus.js', __FILE__ ), array(), '2.5.0', true );
-		wp_enqueue_script( 'ajaxShippingZones', plugins_url( '/js/ajaxShippingZones.js', __FILE__ ), array(), '2.5.0', true );
-		wp_enqueue_script( 'ajaxLocation', plugins_url( '/js/ajaxLocation.js', __FILE__ ), array(), '2.5.0', true );
-		wp_enqueue_script( 'ajaxLogs', plugins_url( '/js/ajaxLogs.js', __FILE__ ), array(), '2.5.0', true );
-		wp_enqueue_script( 'ajaxProduct', plugins_url( '/js/ajaxProduct.js', __FILE__ ), array(), '2.5.0', true );
-		wp_enqueue_script( 'ajaxPayment', plugins_url( '/js/ajaxPayment.js', __FILE__ ), array(), '2.5.0', true );
+		wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.6.0', true );
+		wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.6.0', true );
+		wp_enqueue_script( 'ajaxWpCronStatus', plugins_url( '/js/ajaxWpCronStatus.js', __FILE__ ), array(), '2.6.0', true );
+		wp_enqueue_script( 'ajaxShippingZones', plugins_url( '/js/ajaxShippingZones.js', __FILE__ ), array(), '2.6.0', true );
+		wp_enqueue_script( 'ajaxLocation', plugins_url( '/js/ajaxLocation.js', __FILE__ ), array(), '2.6.0', true );
+		wp_enqueue_script( 'ajaxLogs', plugins_url( '/js/ajaxLogs.js', __FILE__ ), array(), '2.6.0', true );
+		wp_enqueue_script( 'ajaxOrderSettings', plugins_url( '/js/ajaxOrderSettings.js', __FILE__ ), array(), '2.6.0', true );
+		wp_enqueue_script( 'ajaxPayment', plugins_url( '/js/ajaxPayment.js', __FILE__ ), array(), '2.6.0', true );
 
 		$nonce_array = array(
 			'nonce' => $nonce,
@@ -397,7 +398,7 @@ class Megaventory {
 		wp_localize_script( 'ajaxShippingZones', 'mv_ajax_object', $nonce_array );
 		wp_localize_script( 'ajaxLocation', 'mv_ajax_object', $nonce_array );
 		wp_localize_script( 'ajaxLogs', 'mv_ajax_object', $nonce_array );
-		wp_localize_script( 'ajaxProduct', 'mv_ajax_object', $nonce_array );
+		wp_localize_script( 'ajaxOrderSettings', 'mv_ajax_object', $nonce_array );
 		wp_localize_script( 'ajaxPayment', 'mv_ajax_object', $nonce_array );
 	}
 
@@ -407,7 +408,7 @@ class Megaventory {
 	 * @return void
 	 */
 	public static function register_style() {
-		wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), array(), '2.5.0', 'all' );
+		wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), array(), '2.6.0', 'all' );
 		wp_register_style( 'mv_style_fonts', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css', array(), '2.0.7', 'all' );
 	}
 
@@ -470,7 +471,7 @@ class Megaventory {
 			PRIMARY KEY  (id)
 		) $charset_collate;";
 
-		$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $error_table_name ), ARRAY_A ); // db call ok. no-cache ok.
+		$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $error_table_name ), ARRAY_A ); // phpcs:ignore
 		if ( count( $existing_table ) === 0 ) {
 
 			dbDelta( $sql_error_table );
@@ -495,7 +496,7 @@ class Megaventory {
 			PRIMARY KEY  (id)
 		) $charset_collate;";
 
-		$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $success_table_name ), ARRAY_A ); // db call ok. no-cache ok.
+		$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $success_table_name ), ARRAY_A ); // phpcs:ignore
 		if ( count( $existing_table ) === 0 ) {
 
 			dbDelta( $sql_success_table );
@@ -509,7 +510,7 @@ class Megaventory {
 			PRIMARY KEY  (id)
 		) $charset_collate;";
 
-		$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $apikeys_table_name ), ARRAY_A ); // db call ok. no-cache ok.
+		$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $apikeys_table_name ), ARRAY_A ); // phpcs:ignore
 		if ( count( $existing_table ) === 0 ) {
 
 			dbDelta( $sql_apikeys_table );
@@ -523,13 +524,13 @@ class Megaventory {
 			PRIMARY KEY  (id)
 		) $charset_collate;";
 
-		$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $notices_table_name ), ARRAY_A ); // db call ok. no-cache ok.
+		$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $notices_table_name ), ARRAY_A ); // phpcs:ignore
 		if ( count( $existing_table ) === 0 ) {
 
 			dbDelta( $sql_notices_table );
 		}
 
-		$existing_columns = $wpdb->get_col( 'DESC ' . $wpdb->prefix . 'woocommerce_tax_rates', 0 ); // db call ok. no-cache ok.
+		$existing_columns = $wpdb->get_col( 'DESC ' . $wpdb->prefix . 'woocommerce_tax_rates', 0 ); // phpcs:ignore
 		$column_found     = false;
 		foreach ( $existing_columns as $column_name ) {
 
@@ -541,7 +542,6 @@ class Megaventory {
 
 			$wpdb->query( "ALTER TABLE {$wpdb->prefix}woocommerce_tax_rates ADD mv_id INT;" ); // db call ok. no-cache ok. @codingStandardsIgnoreLine.
 		}
-
 	}
 
 	/**

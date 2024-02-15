@@ -116,7 +116,7 @@ class Shipping_Zone_Settings {
 
 															$extra_locations = array_filter(
 																$inventories,
-																function( $inventory ) use ( $zone_id, $location_array ) {
+																function ( $inventory ) use ( $zone_id, $location_array ) {
 																	return ! ( in_array( $inventory['InventoryLocationID'], $location_array, true ) || \Megaventory\Models\Location::is_location_excluded_from_zone( (int) $zone_id, (int) $inventory['InventoryLocationID'] ) );
 																}
 															);

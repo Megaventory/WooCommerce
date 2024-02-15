@@ -274,7 +274,6 @@ class Product {
 
 		$this->errors    = new MVWC_Errors();
 		$this->successes = new MVWC_Successes();
-
 	}
 
 	/**
@@ -302,7 +301,6 @@ class Product {
 			'type'        => $type,
 		);
 		$this->errors->log_error( $args );
-
 	}
 
 	/**
@@ -342,7 +340,7 @@ class Product {
 		$all_products = array();
 
 		$args        = array(
-			'type'  => array( 'simple', 'variable' ),
+			'type'  => array( 'simple', 'variation' ),
 			'limit' => $limit,
 			'page'  => $page,
 		);
@@ -352,19 +350,50 @@ class Product {
 
 			if ( 'simple' === $wc_product->get_type() ) {
 
+				/** The product type
+				 *
+				 * @var \WC_Product $wc_product as simple product
+				 */
+
 				$product = self::wc_convert( $wc_product );
+
 				array_push( $all_products, $product );
 
-			} elseif ( 'variable' === $wc_product->get_type() ) {
+			} elseif ( 'variation' === $wc_product->get_type() ) {
 
-				$products     = self::wc_get_variations( $wc_product );
-				$all_products = array_merge( $all_products, $products );
+				/** The product type
+				 *
+				 * @var \WC_Product_Variation $wc_product as variation product
+				 */
+
+				$variable_product = wc_get_product( $wc_product->get_parent_id() );
+
+				$variation = self::wc_variation_convert( $wc_product, $variable_product );
+
+				array_push( $all_products, $variation );
+
 			}
 		}
 
-		$all_products = self::get_products_with_unique_sku( $all_products );
-
 		return $all_products;
+	}
+
+	/**
+	 * Get the count of all simple and variations WooCommerce products.
+	 *
+	 * @return int
+	 */
+	public static function wc_get_all_woocommerce_products_count() {
+
+		$args = array(
+			'type'   => array( 'simple', 'variation' ),
+			'return' => 'ids',
+			'limit'  => -1,
+		);
+
+		$all_wc_products = wc_get_products( $args ); // May throw out of memory if the server has limited memory.
+
+		return count( $all_wc_products );
 	}
 
 	/**
@@ -397,95 +426,7 @@ class Product {
 			}
 		}
 
-		$all_products = self::get_products_with_unique_sku( $all_products );
-
 		return $all_products;
-	}
-
-	/**
-	 * Get all simple and variations WooCommerce products.
-	 *
-	 * @return array of WC_Product_Simple and WC_Product_Variation
-	 */
-	public static function wc_get_all_woocommerce_products() {
-
-		$args = array(
-			'type'  => array( 'simple', 'variation' ),
-			'limit' => -1,
-		);
-
-		$all_wc_products = wc_get_products( $args ); // May throw out of memory if the server has limited memory.
-
-		$all_wc_products = self::get_woocommerce_products_with_unique_sku( $all_wc_products );
-
-		return $all_wc_products;
-	}
-
-	/**
-	 * Get the count of all simple and variations WooCommerce products.
-	 *
-	 * @return int
-	 */
-	public static function wc_get_all_woocommerce_products_count() {
-
-		$args = array(
-			'type'  => array( 'simple', 'variation' ),
-			'limit' => -1,
-		);
-
-		$all_wc_products = wc_get_products( $args ); // May throw out of memory if the server has limited memory.
-
-		$all_wc_products = self::get_woocommerce_products_with_unique_sku( $all_wc_products, 'id' );
-
-		return count( $all_wc_products );
-	}
-
-	/**
-	 * Get woocommerce products with unique SKUs from the result of wc_get_products
-	 *
-	 * @param array  $wc_products as array.
-	 * @param string $all_or_id as string.
-	 *
-	 * @return array
-	 */
-	public static function get_woocommerce_products_with_unique_sku( array $wc_products, $all_or_id = 'all' ) {
-		$results = array();
-
-		foreach ( $wc_products as $wc_product ) {
-			if ( ! array_key_exists( $wc_product->get_sku(), $results ) ) {
-				if ( 'all' === $all_or_id ) {
-					$results[ $wc_product->get_sku() ] = $wc_product;
-				} else {
-					$results[ $wc_product->get_sku() ] = $wc_product->get_id();
-				}
-			}
-		}
-
-		return array_values( $results );
-	}
-
-	/**
-	 * Get products with unique SKUs from the result of wc_get_products
-	 *
-	 * @param Product[] $products as array.
-	 * @param string    $all_or_id as string.
-	 *
-	 * @return array
-	 */
-	public static function get_products_with_unique_sku( array $products, $all_or_id = 'all' ) {
-		$results = array();
-
-		foreach ( $products as $product ) {
-			if ( ! array_key_exists( $product->sku, $results ) ) {
-				if ( 'all' === $all_or_id ) {
-					$results[ $product->sku ] = $product;
-				} else {
-					$results[ $product->sku ] = $product->wc_id;
-				}
-			}
-		}
-
-		return array_values( $results );
 	}
 
 	/**
@@ -1450,7 +1391,6 @@ class Product {
 		update_post_meta( $this->wc_id, 'mv_id', 0 );
 		update_post_meta( $this->wc_id, '_mv_qty', '' );
 		update_post_meta( $this->wc_id, '_last_mv_stock_update', 0 );
-
 	}
 
 	/**
@@ -1489,7 +1429,6 @@ class Product {
 		 * }
 		 */
 		update_post_meta( $product->wc_id, '_last_mv_stock_update', $integration_update_id );
-
 	}
 
 	/**
@@ -1848,7 +1787,6 @@ class Product {
 		}
 
 		return ( (int) $physical - (int) $non_allocated - (int) $non_shipped );
-
 	}
 
 	/**
@@ -1877,7 +1815,7 @@ class Product {
 		if ( 'no' === $wc_product->get_backorders() ) {
 			$stock_status = ( $this->available_wc_stock > 0 ? 'instock' : 'outofstock' );
 		} else {
-			$stock_status = ( $this->available_wc_stock >= 0 ? 'instock' : 'onbackorder' );
+			$stock_status = ( $this->available_wc_stock > 0 ? 'instock' : 'onbackorder' );
 		}
 
 		update_post_meta( $this->wc_id, '_manage_stock', 'yes' );
@@ -1915,6 +1853,5 @@ class Product {
 
 			\WC_PB_DB_Sync::bundled_product_stock_changed( $wc_product ); // if the product is not a bundled product, it will just return.
 		}
-
 	}
 }

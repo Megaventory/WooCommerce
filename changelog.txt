@@ -1,5 +1,12 @@
 *** Megaventory Extension Template Changelog ***
 
+2024-02-15 - version 2.6.0
+* Improved synchronization process.
+* Option to automatically assign batch numbers during order synchronization. 
+* Bug fixes and performance improvements.
+* Compatible with WooCommerce 8.5.2
+* Compatible with WordPress 6.4.3
+
 2023-08-03 - version 2.5.0
 * Bug fixes and performance improvements.
 * Compatible with WooCommerce 7.9.0

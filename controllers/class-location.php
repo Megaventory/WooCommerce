@@ -83,4 +83,3 @@ class Location {
 		wp_die();
 	}
 }
-

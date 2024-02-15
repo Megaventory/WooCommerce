@@ -84,7 +84,7 @@ class Synchronization {
 				$wc_products                   = \Megaventory\Models\Product::wc_get_products_in_batches( $number_of_indexes_to_process, $page );
 				$number_of_products_to_process = count( $wc_products );
 
-				if ( 0 === $number_of_products_to_process ) {
+				if ( 0 === $number_of_products_to_process && $number_of_products <= $starting_index ) {
 
 					if ( $wc_bundles_is_active ) {
 						// when simple and variation products are done syncing, we then push Product Bundles.
@@ -152,7 +152,7 @@ class Synchronization {
 
 				$number_of_clients_to_process = count( $wc_clients );
 
-				if ( 0 === $number_of_clients_to_process ) {
+				if ( 0 === $number_of_clients_to_process && $number_of_clients <= $starting_index ) {
 
 					update_option( 'are_megaventory_clients_synchronized', 1 );
 
@@ -271,7 +271,7 @@ class Synchronization {
 					$step            = $block + 1;
 					$percent         = (int) ( ( $step / $number_of_blocks ) * 100 );
 					$success_message = 'continue';
-					$block++;
+					++$block;
 
 					$data_to_return = self::megaventory_create_json_for_initialize( $block, -1, 1, $percent, $success_message );
 
@@ -295,7 +295,7 @@ class Synchronization {
 
 					if ( 0 === $number_of_products_to_process ) {
 
-						$block++;
+						++$block;
 						$percent = ( $block / $number_of_blocks ) * 100;
 
 						$data_to_return = self::megaventory_create_json_for_initialize( $block, -1, 1, $percent, $success_message );
@@ -333,7 +333,7 @@ class Synchronization {
 					$step            = $block + 1;
 					$percent         = (int) ( ( $step / $number_of_blocks ) * 100 );
 					$success_message = 'continue';
-					$block++;
+					++$block;
 
 					$data_to_return = self::megaventory_create_json_for_initialize( $block, -1, 1, $percent, $success_message );
 					wp_send_json_success( $data_to_return );
@@ -359,7 +359,7 @@ class Synchronization {
 
 					$percent         = 100;
 					$success_message = 'FinishedSuccessfully';
-					$block++;
+					++$block;
 
 					$message1 = 'Plugin successfully initialized! Now you can import products, clients and coupons in your Megaventory account.';
 					$message2 = 'Please keep in mind that this process will take place only once. After that, synchronization will happen automatically!';
@@ -408,13 +408,13 @@ class Synchronization {
 
 		$charset_collate = $wpdb->get_charset_collate();
 
-		$query = $wpdb->insert(
+		$query = $wpdb->insert( // phpcs:ignore
 			$notices_table_name,
 			array(
 				'type'    => $type,
 				'message' => $message,
 			)
-		); // db call ok.
+		);
 
 		return $query;
 	}
@@ -430,13 +430,15 @@ class Synchronization {
 	 * @param int    $errors_count as number of errors.
 	 * @param string $success_message as message.
 	 */
-	private static function megaventory_create_json_for_imports( $starting_index,
-																$number_of_indexes_to_process,
-																$count_of_entity,
-																$page,
-																$successes_count,
-																$errors_count,
-																$success_message ) {
+	private static function megaventory_create_json_for_imports(
+		$starting_index,
+		$number_of_indexes_to_process,
+		$count_of_entity,
+		$page,
+		$successes_count,
+		$errors_count,
+		$success_message
+	) {
 
 		$json_data = new \stdClass();
 
@@ -453,7 +455,6 @@ class Synchronization {
 		$json_data->success_message            = $success_message;
 
 		return wp_json_encode( $json_data );
-
 	}
 
 	/**
@@ -465,11 +466,13 @@ class Synchronization {
 	 * @param int    $percent as number.
 	 * @param string $success_message as message.
 	 */
-	private static function megaventory_create_json_for_initialize( $block,
-																	$count_of_entity,
-																	$page,
-																	$percent,
-																	$success_message ) {
+	private static function megaventory_create_json_for_initialize(
+		$block,
+		$count_of_entity,
+		$page,
+		$percent,
+		$success_message
+	) {
 
 		$json_data = new \stdClass();
 
@@ -480,6 +483,5 @@ class Synchronization {
 		$json_data->page            = $page;
 
 		return wp_json_encode( $json_data );
-
 	}
 }

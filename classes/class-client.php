@@ -649,7 +649,6 @@ class Client {
 		$client_update['mvrecordaction']   = MV_Constants::MV_RECORD_ACTION['InsertOrUpdateNonEmptyFields'];
 
 		return $client_update;
-
 	}
 
 	/**
@@ -679,7 +678,5 @@ class Client {
 	public function wc_reset_mv_data() {
 
 		return delete_user_meta( $this->wc_id, 'mv_id' );
-
 	}
 }
-

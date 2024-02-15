@@ -146,6 +146,15 @@ class MV_Constants {
 		'Cancelled'                => 'cancelled',
 	);
 
+	const MV_AUTO_ASSIGN_BATCH_NUMBERS_OPT = 'megaventory_auto_assign_batch_numbers';
+
+	const AUTO_INSERT_BATCH_NUMBERS_TO_PRODUCT_ROWS = array(
+		'Undefined'      => 'Undefined',
+		'ByExpiryDate'   => 'ByExpiryDate',
+		'ByCreationDate' => 'ByCreationDate',
+		'ByName'         => 'ByName',
+	);
+
 	const MAX_REQUEST_ATTEMPTS = 3;
 
 	const REQUEST_TIMEOUT_LIMIT_IN_SECONDS = 20;
