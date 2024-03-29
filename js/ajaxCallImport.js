@@ -14,8 +14,16 @@
 
 /**
  * Import javascript function.
+ *
+ * @param {integer} startingIndex        as the starting index.
+ * @param {integer} numberOfIndToProcess as the number of indexes to process.
+ * @param {integer} countOfEntity        as count of entities.
+ * @param {integer} page                 as the page number.
+ * @param {integer} successes            as the success count.
+ * @param {integer} errors               as the error count.
+ * @param {string} entity                as the entity to sync.
  */
-function megaventory_import(startingIndex, numberOfIndToProcess, countOfEntity, page, successes, errors, call) {
+function megaventory_import(startingIndex, numberOfIndToProcess, countOfEntity, page, successes, errors, entity) {
 	jQuery( '#loading' ).show();
 	jQuery.ajax(
 		{
@@ -25,14 +33,15 @@ function megaventory_import(startingIndex, numberOfIndToProcess, countOfEntity, 
 				'action': 'megaventory_import',
 				'startingIndex': startingIndex,
 				'numberOfIndexesToProcess': numberOfIndToProcess,
-				'countOfEntity' : countOfEntity,
+				'countOfEntity': countOfEntity,
 				'page': page,
 				'successes': successes,
 				'errors': errors,
-				'call': call,
+				'entity': entity,
 				'async-nonce': mv_ajax_object.nonce
 			},
-			success: function (data) { // This outputs the result of the ajax request.
+			success: function (data) {
+				// This outputs the result of the ajax request.
 				var obj              = JSON.parse( data.data );
 				var startingIndex    = obj.starting_index;
 				var countOfEntity    = obj.count_of_entity;
@@ -41,27 +50,36 @@ function megaventory_import(startingIndex, numberOfIndToProcess, countOfEntity, 
 				var successes        = obj.success_count;
 				var errors           = obj.errors_count;
 				var message          = obj.success_message;
+				var entityToSync     = obj.entity;
 
 				if (message.includes( 'continue' )) {
 
 					jQuery( '#loading h1' ).html( CurrentSyncCount );
-					megaventory_import( startingIndex, numberOfIndToProcess, countOfEntity, page, successes, errors, call );// new ajax call.
+					megaventory_import( startingIndex, numberOfIndToProcess, countOfEntity, page, successes, errors, entityToSync );// new ajax call.
 
-				} else if ( message.includes( 'FinishedSuccessfully' ) ) {
+				} else if (message.includes( 'FinishedSuccessfully' )) {
 
 					jQuery( '#loading h1' ).html( "Current Sync Count: 100%" );
-					setTimeout( function () {jQuery( '#loading' ).hide();}, 2000 );
+					setTimeout(
+						function () {
+							jQuery( '#loading' ).hide(); },
+						2000
+					);
 					location.reload();
-				} else if ( message.includes( 'Error' ) ) {
+				} else if (message.includes( 'Error' )) {
 
-					alert( 'An error occured during the ' + call + ' process. Please try again. If the error persists, contact Megaventory support.' );
-					setTimeout( function () {jQuery( '#loading' ).hide();}, 2000 );
+					alert( 'An error occurred during the ' + entityToSync + ' process. Please try again. If the error persists, contact Megaventory support.' );
+					setTimeout(
+						function () {
+							jQuery( '#loading' ).hide(); },
+						2000
+					);
 					location.reload();
 				}
 			},
 
 			error: function (errorThrown) {
-				alert( 'An error occured during the import process. Please try again. If the error persists, contact Megaventory support.' );
+				alert( 'An error occurred during the import process. Please try again. If the error persists, contact Megaventory support.' );
 			}
 		}
 	);
@@ -80,7 +98,8 @@ function megaventory_pull_integration_updates() {
 				'action': 'megaventory_pull_integration_updates',
 				'async-nonce': mv_ajax_object.nonce
 			},
-			success: function (data) { // This outputs the result of the ajax request.
+			success: function (data) {
+				// This outputs the result of the ajax request.
 				jQuery( '#loading_operation' ).hide();
 			},
 
@@ -113,7 +132,8 @@ function megaventory_sync_stock_to_mv(starting_index) {
 				'preferred-location-id': preferred_location_Id,
 				'async-nonce': mv_ajax_object.nonce
 			},
-			success: function (data) { // This outputs the result of the ajax request.
+			success: function (data) {
+				// This outputs the result of the ajax request.
 				var obj = JSON.parse( data.data );
 
 				var startingIndex  = obj.starting_index;
@@ -122,7 +142,7 @@ function megaventory_sync_stock_to_mv(starting_index) {
 				var finished       = obj.finished;
 				var message        = obj.message;
 
-				if ( error_occurred ) {
+				if (error_occurred) {
 
 					alert( message );
 					jQuery( '#loading_operation' ).hide();
@@ -131,13 +151,17 @@ function megaventory_sync_stock_to_mv(starting_index) {
 
 				jQuery( '#loading_operation h1' ).html( message );
 
-				if ( ! finished ) {
+				if ( ! finished) {
 
 					megaventory_sync_stock_to_mv( next_index );// new ajax call.
 
 				} else {
 
-					setTimeout( function () {jQuery( '#loading_operation' ).hide();}, 2000 );
+					setTimeout(
+						function () {
+							jQuery( '#loading_operation' ).hide(); },
+						2000
+					);
 					location.reload();
 				}
 			},
@@ -164,7 +188,8 @@ function megaventory_sync_stock_from_mv(starting_index) {
 				'startingIndex': starting_index,
 				'async-nonce': mv_ajax_object.nonce
 			},
-			success: function (data) { // This outputs the result of the ajax request.
+			success: function (data) {
+				// This outputs the result of the ajax request.
 				var obj = JSON.parse( data.data );
 
 				var startingIndex  = obj.starting_index;
@@ -173,7 +198,7 @@ function megaventory_sync_stock_from_mv(starting_index) {
 				var finished       = obj.finished;
 				var message        = obj.message;
 
-				if ( error_occurred ) {
+				if (error_occurred) {
 
 					alert( message );
 					jQuery( '#loading_operation' ).hide();
@@ -182,13 +207,17 @@ function megaventory_sync_stock_from_mv(starting_index) {
 
 				jQuery( '#loading_operation h1' ).html( message );
 
-				if ( ! finished ) {
+				if ( ! finished) {
 
 					megaventory_sync_stock_from_mv( next_index );// new ajax call.
 
 				} else {
 
-					setTimeout( function () {jQuery( '#loading_operation' ).hide();}, 2000 );
+					setTimeout(
+						function () {
+							jQuery( '#loading_operation' ).hide(); },
+						2000
+					);
 					location.reload();
 				}
 			},
@@ -214,8 +243,13 @@ function megaventory_skip_stock_synchronization() {
 				'action': 'megaventory_skip_stock_synchronization',
 				'async-nonce': mv_ajax_object.nonce
 			},
-			success: function (data) { // This outputs the result of the ajax request.
-				setTimeout( function () {jQuery( '#loading_operation' ).hide();}, 2000 );
+			success: function (data) {
+				// This outputs the result of the ajax request.
+				setTimeout(
+					function () {
+						jQuery( '#loading_operation' ).hide(); },
+					2000
+				);
 				location.reload();
 			},
 
@@ -241,15 +275,24 @@ function synchronize_order_to_megaventory_manually(order_Id) {
 				'orderId': order_Id,
 				'async-nonce': mv_ajax_object.nonce
 			},
-			success: function (data) { // This outputs the result of the ajax request.
+			success: function (data) {
+				// This outputs the result of the ajax request.
 
-				setTimeout( function () {jQuery( '#loading_operation' ).hide();}, 2000 );
+				setTimeout(
+					function () {
+						jQuery( '#loading_operation' ).hide(); },
+					2000
+				);
 				location.reload();
 			},
 
 			error: function (errorThrown) {
 
-				setTimeout( function () {jQuery( '#loading_operation' ).hide();}, 2000 );
+				setTimeout(
+					function () {
+						jQuery( '#loading_operation' ).hide(); },
+					2000
+				);
 				location.reload();
 			}
 		}

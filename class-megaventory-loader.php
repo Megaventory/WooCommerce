@@ -250,7 +250,7 @@ class Megaventory_Loader {
 			<?php foreach ( $mv_qty as $key => $qty ) : ?>
 				<div class="d-table-row">
 				<?php
-				$mv_location_id_to_abbr = get_option( Models\MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION );
+				$mv_location_id_to_abbr = \Megaventory\Models\Location::get_location_id_to_abbreviation_dict();
 
 				if ( empty( $mv_location_id_to_abbr[ $key ] ) ) {
 					continue;

@@ -20,6 +20,7 @@ require_once MEGAVENTORY__PLUGIN_DIR . 'class-api.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/class-address.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mv-constants.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mv-order-item.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-product-composite.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-coupon.php';
 
 /**
@@ -61,7 +62,21 @@ class Order {
 			/* ACTUAL ORDER */
 			$order_payload_array = self::generate_order_json( $order, $client, $loc_id, $coupons_arrays[ Coupon::ORDER_TAG_COUPONS_KEY ], $sales_array );
 
-			$response_array[] = \Megaventory\API::send_request_to_megaventory( $url, $order_payload_array );
+			$response = \Megaventory\API::send_request_to_megaventory( $url, $order_payload_array );
+
+			if ( '0' === $response['ResponseStatus']['ErrorCode'] ) {
+
+				// at this point the order has been successfully synced to Megaventory.
+				// we should create work orders for finished good products if any.
+				// and the available stock in the sales order location is not enough.
+				Product_Composite::create_work_orders_for_finished_goods(
+					$mv_order_item_arr,
+					$order,
+					$response['mvSalesOrder']
+				);
+			}
+
+			$response_array[] = $response;
 
 		}
 
@@ -632,6 +647,7 @@ class Order {
 		$order_object['salesorderaddresses']            = $order_addresses;
 		$order_object['salesordercomments']             = $order->get_customer_note();
 		$order_object['salesordertags']                 = $order_tags;
+		$order_object['salesordercurrencycode']         = $order->get_currency();
 		$order_object['salesorderdetails']              = $sales_array;
 		$order_object['salesorderinventorylocationid']  = $location_id;
 		$order_object['salesorderpaymentmethod']        = self::get_mv_payment_method( $order->get_payment_method() );

@@ -125,7 +125,7 @@ class Shipping_Zones {
 
 		if ( ! $zone_priorities || ! array_key_exists( $zone_id, $zone_priorities ) ) {
 
-			$mv_location_id_to_abbr = get_option( MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION );
+			$mv_location_id_to_abbr = \Megaventory\Models\Location::get_location_id_to_abbreviation_dict();
 
 			$default_priority = array();
 

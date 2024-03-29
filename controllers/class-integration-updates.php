@@ -60,38 +60,42 @@ class Integration_Updates {
 
 			if ( 'product' === $change['Entity'] ) {
 
-				if ( 'update' === $change['Action'] ) {
+				if ( 'update' !== $change['Action'] ) {
 
-					$mv_product_id  = $change['EntityIDs'];
-					$wc_product_ids = self::get_post_meta_by_key_value( 'mv_id', $mv_product_id );
+					\Megaventory\Models\Integration_Updates::remove_integration_update( $change['IntegrationUpdateID'] );
 
-					if ( empty( $wc_product_ids ) ) {
+					continue;
+				}
 
-						\Megaventory\Models\Integration_Updates::remove_integration_update( $change['IntegrationUpdateID'] );
+				$mv_product_id  = $change['EntityIDs'];
+				$wc_product_ids = self::get_post_meta_by_key_value( 'mv_id', $mv_product_id );
+
+				if ( empty( $wc_product_ids ) ) {
+
+					\Megaventory\Models\Integration_Updates::remove_integration_update( $change['IntegrationUpdateID'] );
+					continue;
+				}
+
+				$mv_product = json_decode( $change['JsonData'], true );
+
+				if ( ! is_array( $mv_product ) || ! isset( $mv_product['ProductPurchasePrice'] ) ) {
+
+					\Megaventory\Models\Integration_Updates::remove_integration_update( $change['IntegrationUpdateID'] );
+					continue;
+				}
+
+				foreach ( $wc_product_ids as $wc_product_id ) {
+
+					$product = \Megaventory\Models\Product::wc_find_product( $wc_product_id );
+
+					if ( null === $product ) {
+
 						continue;
 					}
 
-					$mv_product = json_decode( $change['JsonData'], true );
+					$purchase_price = str_replace( '.', wc_get_price_decimal_separator(), (string) $mv_product['ProductPurchasePrice'] );
 
-					if ( ! is_array( $mv_product ) || ! isset( $mv_product['ProductPurchasePrice'] ) ) {
-
-						\Megaventory\Models\Integration_Updates::remove_integration_update( $change['IntegrationUpdateID'] );
-						continue;
-					}
-
-					foreach ( $wc_product_ids as $wc_product_id ) {
-
-						$product = \Megaventory\Models\Product::wc_find_product( $wc_product_id );
-
-						if ( null === $product ) {
-
-							continue;
-						}
-
-						$purchase_price = str_replace( '.', wc_get_price_decimal_separator(), (string) $mv_product['ProductPurchasePrice'] );
-
-						update_post_meta( $wc_product_id, 'purchase_price', $purchase_price );
-					}
+					update_post_meta( $wc_product_id, 'purchase_price', $purchase_price );
 				}
 
 				\Megaventory\Models\Integration_Updates::remove_integration_update( $change['IntegrationUpdateID'] );
@@ -100,7 +104,7 @@ class Integration_Updates {
 
 				$prods = json_decode( $change['JsonData'], true );
 
-				$mv_location_id_to_abbr = get_option( \Megaventory\Models\MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION );
+				$mv_location_id_to_abbr = \Megaventory\Models\Location::get_location_id_to_abbreviation_dict();
 
 				foreach ( $prods as $prod ) {
 
@@ -146,14 +150,20 @@ class Integration_Updates {
 
 				$json_data = json_decode( $change['JsonData'], true );
 
-				$order_template = \Megaventory\Models\MV_Constants::MV_DEFAULT_SALES_ORDER_TEMPLATE;
+				$order_template_id = \Megaventory\Models\MV_Constants::MV_DEFAULT_SALES_ORDER_TEMPLATE;
 
-				if ( $order_template !== $json_data['DocumentTypeId'] ) {
+				if ( $order_template_id !== $json_data['DocumentTypeId'] ) {
+
+					\Megaventory\Models\Integration_Updates::remove_integration_update( $change['IntegrationUpdateID'] );
 
 					continue; // only sales order.
 				}
 
-				if ( ! array_key_exists( (int) $json_data['DocumentStatus'], $mv_document_status_mappings ) || ! array_key_exists( $mv_document_status_mappings[ (int) $json_data['DocumentStatus'] ], $wc_order_status_mappings ) ) {
+				if ( ! array_key_exists( (int) $json_data['DocumentStatus'], $mv_document_status_mappings ) ||
+					! array_key_exists( $mv_document_status_mappings[ (int) $json_data['DocumentStatus'] ], $wc_order_status_mappings ) ) {
+
+					\Megaventory\Models\Integration_Updates::remove_integration_update( $change['IntegrationUpdateID'] );
+
 					continue; // If a mapping does not exist, order status should not be modified.
 				}
 
@@ -181,6 +191,9 @@ class Integration_Updates {
 
 				\Megaventory\Models\Integration_Updates::remove_integration_update( $change['IntegrationUpdateID'] );
 			}
+
+			// delete unhandled integration updates.
+			\Megaventory\Models\Integration_Updates::remove_integration_update( $change['IntegrationUpdateID'] );
 		}
 	}
 

@@ -43,9 +43,9 @@ class Synchronization {
 				$number_of_indexes_to_process = (int) sanitize_text_field( wp_unslash( $_POST['numberOfIndexesToProcess'] ) );
 			}
 
-			if ( isset( $_POST['call'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
+			if ( isset( $_POST['entity'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
 
-				$call = sanitize_text_field( wp_unslash( $_POST['call'] ) );
+				$entity = sanitize_text_field( wp_unslash( $_POST['entity'] ) );
 			}
 
 			if ( isset( $_POST['successes'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
@@ -66,7 +66,7 @@ class Synchronization {
 				$page = isset( $_POST['page'] ) ? (int) $_POST['page'] : null;
 			}
 
-			if ( 'products' === $call ) {
+			if ( 'products' === $entity ) {
 
 				$wc_bundles_is_active = is_plugin_active( \Megaventory\Models\MV_Constants::DEF_BUNDLES_PLUGIN_DIR );
 				$categories           = \Megaventory\Models\Product::mv_get_categories();
@@ -84,14 +84,82 @@ class Synchronization {
 				$wc_products                   = \Megaventory\Models\Product::wc_get_products_in_batches( $number_of_indexes_to_process, $page );
 				$number_of_products_to_process = count( $wc_products );
 
-				if ( 0 === $number_of_products_to_process && $number_of_products <= $starting_index ) {
+				if ( 0 === $number_of_products_to_process ) {
 
-					if ( $wc_bundles_is_active ) {
-						// when simple and variation products are done syncing, we then push Product Bundles.
-						// this makes sure that all included products are already pushed to MV.
-						\Megaventory\Models\Product_Bundle::push_product_bundles( $successes_count, $errors_count );
+					// when simple and variation products are done syncing, we then push Product Bundles.
+					// this makes sure that all included products are already pushed to MV.
+					$success_message = 'continue';
 
+					$data_to_return = self::megaventory_create_json_for_imports(
+						$starting_index,
+						$number_of_indexes_to_process,
+						$number_of_products,
+						0, // reset page count to 0. Will be incremented for the next iteration.
+						$successes_count,
+						$errors_count,
+						$success_message,
+						'product_bundles'
+					);
+
+					wp_send_json_success( $data_to_return );
+					wp_die();
+				}
+
+				foreach ( $wc_products as $wc_product ) {
+
+					$product_saved = $wc_product->mv_save( $categories );
+
+					if ( null !== $product_saved ) { // not group/variable.
+
+						is_array( $product_saved ) ? $successes++ : $errors++;
 					}
+				}
+
+				$successes_count += $successes;
+				$errors_count    += $errors;
+
+				$success_message = 'continue';
+
+				$data_to_return = self::megaventory_create_json_for_imports(
+					$starting_index,
+					$number_of_indexes_to_process,
+					$number_of_products,
+					$page,
+					$successes_count,
+					$errors_count,
+					$success_message,
+					$entity
+				);
+
+				wp_send_json_success( $data_to_return );
+				wp_die();
+			}
+
+			if ( 'product_bundles' === $entity ) {
+
+				$wc_bundles_is_active = is_plugin_active( \Megaventory\Models\MV_Constants::DEF_BUNDLES_PLUGIN_DIR );
+
+				$wc_product_bundles = array();
+
+				$number_of_products = $count_of_entity;
+
+				if ( 0 > $number_of_products && $wc_bundles_is_active ) {
+
+					$number_of_products = \Megaventory\Models\Product_Bundle::wc_get_all_woocommerce_bundles_count();
+
+				}
+
+				$number_of_product_bundles_to_process = 0;
+
+				if ( $wc_bundles_is_active ) {
+
+					$wc_product_bundles = \Megaventory\Models\Product_Bundle::wc_get_product_bundles_in_batches( $number_of_indexes_to_process, $page );
+
+					$number_of_product_bundles_to_process = count( $wc_product_bundles );
+
+				}
+
+				if ( ! $wc_bundles_is_active || 0 === $number_of_product_bundles_to_process ) {
 
 					update_option( 'are_megaventory_products_synchronized', 1 );
 
@@ -113,34 +181,41 @@ class Synchronization {
 						self::megaventory_log_notice( 'error', $message );
 					}
 
-					$data_to_return = self::megaventory_create_json_for_imports( $starting_index, $number_of_indexes_to_process, $number_of_products, $page, $successes_count, $errors_count, $success_message );
+					$data_to_return = self::megaventory_create_json_for_imports(
+						$starting_index,
+						$number_of_indexes_to_process,
+						$number_of_products,
+						$page,
+						$successes_count,
+						$errors_count,
+						$success_message,
+						$entity
+					);
 
 					wp_send_json_success( $data_to_return );
 					wp_die();
 				}
 
-				foreach ( $wc_products as $wc_product ) {
-
-					$product_saved = $wc_product->mv_save( $categories );
-
-					if ( null !== $product_saved ) { // not group/variable.
-
-						is_array( $product_saved ) ? $successes++ : $errors++;
-					}
-				}
-
-				$successes_count += $successes;
-				$errors_count    += $errors;
+				\Megaventory\Models\Product_Bundle::push_product_bundles( $wc_product_bundles, $successes_count, $errors_count );
 
 				$success_message = 'continue';
 
-				$data_to_return = self::megaventory_create_json_for_imports( $starting_index, $number_of_indexes_to_process, $number_of_products, $page, $successes_count, $errors_count, $success_message );
+				$data_to_return = self::megaventory_create_json_for_imports(
+					$starting_index,
+					$number_of_indexes_to_process,
+					$number_of_products,
+					$page,
+					$successes_count,
+					$errors_count,
+					$success_message,
+					$entity
+				);
 
 				wp_send_json_success( $data_to_return );
 				wp_die();
 			}
 
-			if ( 'clients' === $call ) {
+			if ( 'clients' === $entity ) {
 
 				$number_of_clients = $count_of_entity;
 				if ( 0 > $number_of_clients ) {
@@ -174,7 +249,16 @@ class Synchronization {
 						self::megaventory_log_notice( 'error', $message );
 					}
 
-					$data_to_return = self::megaventory_create_json_for_imports( $starting_index, $number_of_indexes_to_process, $number_of_clients, $page, $successes_count, $errors_count, $success_message );
+					$data_to_return = self::megaventory_create_json_for_imports(
+						$starting_index,
+						$number_of_indexes_to_process,
+						$number_of_clients,
+						$page,
+						$successes_count,
+						$errors_count,
+						$success_message,
+						$entity
+					);
 
 					wp_send_json_success( $data_to_return );
 					wp_die();
@@ -190,13 +274,22 @@ class Synchronization {
 
 				$success_message = 'continue';
 
-				$data_to_return = self::megaventory_create_json_for_imports( $starting_index, $number_of_indexes_to_process, $number_of_clients, $page, $successes_count, $errors_count, $success_message );
+				$data_to_return = self::megaventory_create_json_for_imports(
+					$starting_index,
+					$number_of_indexes_to_process,
+					$number_of_clients,
+					$page,
+					$successes_count,
+					$errors_count,
+					$success_message,
+					$entity
+				);
 
 				wp_send_json_success( $data_to_return );
 				wp_die();
 			}
 
-			if ( 'coupons' === $call ) {
+			if ( 'coupons' === $entity ) {
 
 				$coupons           = \Megaventory\Models\Coupon::wc_all();
 				$number_of_coupons = count( $coupons );
@@ -242,14 +335,23 @@ class Synchronization {
 					$success_message = 'continue';
 				}
 
-				$data_to_return = self::megaventory_create_json_for_imports( $starting_index, $number_of_indexes_to_process, $number_of_coupons, $page, $successes_count, $errors_count, $success_message );
+				$data_to_return = self::megaventory_create_json_for_imports(
+					$starting_index,
+					$number_of_indexes_to_process,
+					$number_of_coupons,
+					$page,
+					$successes_count,
+					$errors_count,
+					$success_message,
+					$entity
+				);
 
 				wp_send_json_success( $data_to_return );
 				wp_die();
 
 			}
 
-			if ( 'initialize' === $call ) {
+			if ( 'initialize' === $entity ) {
 
 				if ( isset( $_POST['block'], $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
 
@@ -384,10 +486,25 @@ class Synchronization {
 			error_log( "\n" . $current_date . $ex->getMessage() . ' ' . $ex->getFile() . "({$ex->getLine()})", 3, MEGAVENTORY__PLUGIN_DIR . '/mv-exceptions.log' ); // @codingStandardsIgnoreLine.
 			error_log( "\n" . $current_date . $ex->getTraceAsString(), 3, MEGAVENTORY__PLUGIN_DIR . '/mv-exceptions.log' ); // @codingStandardsIgnoreLine.
 
-			if ( 'initialize' === $call ) {
-				$data_to_return = self::megaventory_create_json_for_initialize( 0, 0, 0, 0, 'Error occurred' );
+			if ( 'initialize' === $entity ) {
+				$data_to_return = self::megaventory_create_json_for_initialize(
+					0,
+					0,
+					0,
+					0,
+					'Error occurred'
+				);
 			} else {
-				$data_to_return = self::megaventory_create_json_for_imports( 1, 1, 1, 1, 1, 1, 'Error occurred' );
+				$data_to_return = self::megaventory_create_json_for_imports(
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					'Error occurred',
+					$entity
+				);
 			}
 
 			wp_send_json_success( $data_to_return );
@@ -429,6 +546,7 @@ class Synchronization {
 	 * @param int    $successes_count as number of success.
 	 * @param int    $errors_count as number of errors.
 	 * @param string $success_message as message.
+	 * @param string $entity as the entity to be synced( products/product_bundles/clients etc.).
 	 */
 	private static function megaventory_create_json_for_imports(
 		$starting_index,
@@ -437,12 +555,13 @@ class Synchronization {
 		$page,
 		$successes_count,
 		$errors_count,
-		$success_message
+		$success_message,
+		$entity
 	) {
 
 		$json_data = new \stdClass();
 
-		$processed = $starting_index;
+		$processed = $successes_count + $errors_count;
 
 		++$page;
 
@@ -453,6 +572,7 @@ class Synchronization {
 		$json_data->success_count              = $successes_count;
 		$json_data->errors_count               = $errors_count;
 		$json_data->success_message            = $success_message;
+		$json_data->entity                     = $entity;
 
 		return wp_json_encode( $json_data );
 	}

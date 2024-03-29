@@ -504,9 +504,13 @@ class Tax {
 	 * Get Megaventory tax based on sales row.
 	 *
 	 * @param \WC_Order_Item_Product|\WC_Order_Item_Shipping|\WC_Order_item_Fee $sales_row as order item.
-	 * @return Tax
+	 * @return Tax|null
 	 */
 	public static function get_sales_row_tax( $sales_row ) {
+
+		if ( 0 === $sales_row->get_quantity() ) {
+			return null;
+		}
 
 		$taxes = self::get_all_sales_row_taxes( $sales_row );
 
@@ -523,17 +527,25 @@ class Tax {
 
 			$names = array();
 
-			$rate           = 0;
 			$count_of_taxes = count( $taxes );
 
 			for ( $i = 0; $i < $count_of_taxes; $i++ ) {
 
 				array_push( $names, $taxes[ $i ]->name );
 
-				$rate += $taxes[ $i ]->rate;
 			}
 
-			$rate = ( $sales_row->get_data()['total_tax'] / $sales_row->get_quantity() ) / ( $sales_row->get_data()['total'] / $sales_row->get_quantity() ) * 100;
+			$row_total = $sales_row->get_data()['total'];
+
+			// we cast to int to avoid floating point comparison issues, 0 === 0.0 is false.
+			if ( 0 === (int) $row_total ) {
+				return null;
+			}
+
+			$row_total_tax = $sales_row->get_data()['total_tax'];
+
+			$rate = ( $row_total_tax / $row_total ) * 100;
+
 			$rate = round( $rate, 2 );
 
 			sort( $names );

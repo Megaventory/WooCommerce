@@ -72,6 +72,18 @@ class MV_Constants {
 
 	const PRODUCT_DELETE = 'ProductDelete';
 
+	const PRODUCT_UNDELETE = 'ProductUndelete';
+
+	const PRODUCT_BOM_UPDATE = 'ProductBOMUpdate';
+
+	const PRODUCT_CATEGORY_GET = 'ProductCategoryGet';
+
+	const PRODUCT_CATEGORY_UPDATE = 'ProductCategoryUpdate';
+
+	const PRODUCT_CATEGORY_UNDELETE = 'ProductCategoryUndelete';
+
+	const PRODUCT_BOM_GET_BY_MATERIALS = 'ProductBOMGetByMaterials';
+
 	const BUNDLE_GET = 'ProductBundleGet';
 
 	const BUNDLE_UPDATE = 'ProductBundleUpdate';
@@ -87,6 +99,8 @@ class MV_Constants {
 	const SALES_ORDER_UPDATE = 'SalesOrderUpdate';
 
 	const SALES_ORDER_CANCEL = 'SalesOrderCancel';
+
+	const WORK_ORDER_UPDATE = 'WorkOrderUpdate';
 
 	const MV_RECORD_ACTION = array(
 		'Insert'                       => 'Insert',

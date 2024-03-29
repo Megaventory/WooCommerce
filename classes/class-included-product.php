@@ -70,6 +70,10 @@ class Included_Product {
 
 		$incl_product->included_qty = $wc_bundled_item->get_quantity( 'min' );
 
+		if ( 0 === $incl_product->included_qty ) {
+			$incl_product->included_qty = 1;
+		}
+
 		if ( $incl_product->is_priced_individually ) {
 
 			$incl_product->included_unit_price = $wc_bundled_item->get_price( 'min', false, 1 );

@@ -289,7 +289,7 @@ class API {
 
 		$megaventory_currency = $response['mvCurrencies'][0]['CurrencyCode'];
 
-		update_option( 'primary_megaventory_currecy', $megaventory_currency );
+		update_option( 'primary_megaventory_currency', $megaventory_currency );
 
 		return $megaventory_currency;
 	}

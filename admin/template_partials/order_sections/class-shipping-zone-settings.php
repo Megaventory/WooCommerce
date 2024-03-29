@@ -40,7 +40,7 @@ class Shipping_Zone_Settings {
 
 		$inventories = \Megaventory\Models\Location::get_megaventory_locations();
 
-		$mv_location_id_to_abbr = get_option( \Megaventory\Models\MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION );
+		$mv_location_id_to_abbr = \Megaventory\Models\Location::get_location_id_to_abbreviation_dict();
 
 		if ( ! isset( $mv_location_id_to_abbr ) ) {
 			$mv_location_id_to_abbr = array();

@@ -88,8 +88,14 @@ class Product_Bundle extends Product {
 			$this->log_error( 'Product Bundle not saved to Megaventory', 'Short description cannot be empty', -1, 'error', '' );
 			return false;
 		}
+
 		if ( ! $this->sku ) {
 			$this->log_error( 'Product Bundle not saved to Megaventory', 'SKU cannot be empty', -1, 'error', '' );
+			return false;
+		}
+
+		if ( empty( $this->included_products ) ) {
+			$this->log_error( 'Product Bundle not saved to Megaventory', 'No included products', -1, 'error', '' );
 			return false;
 		}
 
@@ -293,6 +299,10 @@ class Product_Bundle extends Product {
 
 				$incl_product->included_qty = $variable_bundled->get_quantity( 'min' );
 
+				if ( 0 === $incl_product->included_qty ) {
+					$incl_product->included_qty = 1;
+				}
+
 				if ( $incl_product->is_priced_individually ) {
 
 					$incl_product->included_unit_price = $variable_bundled->get_price( 'min', false, 1 );
@@ -315,14 +325,13 @@ class Product_Bundle extends Product {
 		}
 	}
 
-	/** Get all product Bundles and push them to Megaventory
+	/** Push product Bundles to Megaventory
 	 *
-	 * @param int $ref_successes success count by reference.
-	 * @param int $ref_errors errors count by reference.
+	 * @param Product_Bundle[] $wc_product_bundles array of product bundles.
+	 * @param int              $ref_successes success count by reference.
+	 * @param int              $ref_errors errors count by reference.
 	 */
-	public static function push_product_bundles( &$ref_successes, &$ref_errors ) {
-
-		$wc_product_bundles = self::wc_get_all_product_bundles();
+	public static function push_product_bundles( $wc_product_bundles, &$ref_successes, &$ref_errors ) {
 
 		foreach ( $wc_product_bundles as $bundle ) {
 
@@ -338,34 +347,37 @@ class Product_Bundle extends Product {
 	}
 
 	/**
-	 * Gets all WC bundle Products converted to Product_Bundle class.
+	 * Get WC bundle Products converted to Product_Bundle class in batches.
 	 *
+	 * @param int $limit limit of products to get.
+	 * @param int $page page number.
 	 * @return Product_Bundle[]
 	 */
-	public static function wc_get_all_product_bundles() {
+	public static function wc_get_product_bundles_in_batches( $limit, $page ) {
 
-		$all_product_bundles = array();
+		$mv_product_bundles = array();
 
 		$args = array(
 			'type'  => array( 'bundle' ),
-			'limit' => -1,
+			'limit' => $limit,
+			'page'  => $page,
 		);
 
-		$all_w_c_product_bundles = wc_get_products( $args );
+		$wc_product_bundles = wc_get_products( $args );
 
 		/** Define iteration variable type
 		 *
 		 * @var \WC_Product_Bundle $wc_product_bundle
 		 */
-		foreach ( $all_w_c_product_bundles as $wc_product_bundle ) {
+		foreach ( $wc_product_bundles as $wc_product_bundle ) {
 
 			$product = self::wc_convert( $wc_product_bundle );
 
-			array_push( $all_product_bundles, $product );
+			array_push( $mv_product_bundles, $product );
 
 		}
 
-		return $all_product_bundles;
+		return $mv_product_bundles;
 	}
 
 	/**

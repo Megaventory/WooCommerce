@@ -68,7 +68,7 @@ class Order {
 				'entity_name' => 'order by: ' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
 				'entity_id'   => array( 'wc' => $order->get_id() ),
 				'problem'     => 'Order not placed in Megaventory.',
-				'full_msg'    => $ex->getMessage(),
+				'full_msg'    => $ex->getMessage() . $ex->getFile() . "({$ex->getLine()})",
 				'error_code'  => 500,
 				'json_object' => '',
 			);

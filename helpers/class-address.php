@@ -30,6 +30,8 @@ class Address {
 	public static function format_multifield_address( $ar, $address_type ) {
 
 		$name         = wp_strip_all_tags( empty( $ar['name'] ) ? '' : $ar['name'] );
+		$email        = wp_strip_all_tags( empty( $ar['email'] ) ? '' : $ar['email'] );
+		$phone        = wp_strip_all_tags( empty( $ar['phone'] ) ? '' : $ar['phone'] );
 		$organization = wp_strip_all_tags( empty( $ar['company'] ) ? '' : $ar['company'] );
 		$line_1       = wp_strip_all_tags( empty( $ar['line_1'] ) ? '' : $ar['line_1'] );
 		$line_2       = wp_strip_all_tags( empty( $ar['line_2'] ) ? '' : $ar['line_2'] );
@@ -46,38 +48,22 @@ class Address {
 			$state = $country_states[ $state ];
 		}
 
-		/** $countryNames = WC()->countries->countries; */
-
 		$address = array();
 
 		$address['AddressType']  = $address_type;
 		$address['Organization'] = $organization;
-
-		if ( null !== $name && ! ctype_space( $name ) ) {
-			$address['AddressLine1'] = $name . ', ' . $line_1;
-		} else {
-			$address['AddressLine1'] = $line_1;
-		}
-
+		$address['AddressLine1'] = $line_1;
 		$address['AddressLine2'] = $line_2;
 		$address['AddressLine3'] = $line_3;
+		$address['Name']         = $name;
+		$address['Email']        = $email;
+		$address['Phone']        = $phone;
 		$address['TaxIdNumber']  = $tax_id;
 		$address['City']         = $city;
 		$address['State']        = $state;
 		$address['Country']      = $country;
 		$address['CountryName']  = '';
 		$address['ZipCode']      = $postcode;
-
-		// Add customer phone and email to address line if it exists.
-		$address_line_to_append = '' === $address['AddressLine2'] ? 'AddressLine2' : 'AddressLine3';
-
-		if ( array_key_exists( 'phone', $ar ) ) {
-			$address[ $address_line_to_append ] .= ' Phone: ' . $ar['phone'];
-		}
-
-		if ( array_key_exists( 'email', $ar ) ) {
-			$address[ $address_line_to_append ] .= ' Email: ' . $ar['email'];
-		}
 
 		return $address;
 	}
@@ -99,6 +85,9 @@ class Address {
 		$shipping_address['postcode'] = $order->get_shipping_postcode();
 		$shipping_address['country']  = $order->get_shipping_country();
 
+		$shipping_address['email'] = $order->get_billing_email(); // there is no shipping email in WC at the moment.
+		$shipping_address['phone'] = $order->get_shipping_phone();
+
 		$billing_address['name']     = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
 		$billing_address['company']  = $order->get_billing_company();
 		$billing_address['line_1']   = $order->get_billing_address_1();
@@ -108,10 +97,8 @@ class Address {
 		$billing_address['postcode'] = $order->get_billing_postcode();
 		$billing_address['country']  = $order->get_billing_country();
 
-		if ( ! $order->get_user() ) { // get_user returns false if order customer was guest.
-			$billing_address['phone'] = $order->get_billing_phone();
-			$billing_address['email'] = $order->get_billing_email();
-		}
+		$billing_address['email'] = $order->get_billing_email();
+		$billing_address['phone'] = $order->get_billing_phone();
 
 		$addresses = array();
 

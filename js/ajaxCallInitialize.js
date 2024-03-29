@@ -18,9 +18,9 @@
  * @param {string} block                 as the type that will initialized.
  * @param {integer} countOfEntity        as count of entities.
  * @param {integer} numberOfIndToProcess as the end point.
- * @param {string} call                  as the entity code block.
+ * @param {string} entity                as the entity code block.
  */
-function megaventory_initialize(block, countOfEntity, page, numberOfIndToProcess, call) {
+function megaventory_initialize(block, countOfEntity, page, numberOfIndToProcess, entity) {
 	jQuery( '#loading' ).show();
 	jQuery.ajax(
 		{
@@ -32,10 +32,11 @@ function megaventory_initialize(block, countOfEntity, page, numberOfIndToProcess
 				'countOfEntity': countOfEntity,
 				'page': page,
 				'numberOfIndexesToProcess': numberOfIndToProcess,
-				'call': call,
+				'entity': entity,
 				'async-nonce': mv_ajax_object.nonce
 			},
-			success: function (data) { // This outputs the result of the ajax request.
+			success: function (data) {
+				// This outputs the result of the ajax request.
 				var obj            = JSON.parse( data.data );
 				var block          = obj.block;
 				var message        = obj.success_message;
@@ -46,24 +47,26 @@ function megaventory_initialize(block, countOfEntity, page, numberOfIndToProcess
 				if (message.includes( 'continue' )) {
 
 					jQuery( '#loading h1' ).html( percentMessage );
-					megaventory_initialize( block, countOfEntity, page, numberOfIndToProcess, call );// new ajax call.
+					megaventory_initialize( block, countOfEntity, page, numberOfIndToProcess, entity );// new ajax call.
 
-				} else if ( message.includes( 'FinishedSuccessfully' ) ) {
+				} else if (message.includes( 'FinishedSuccessfully' )) {
 
 					jQuery( '#loading h1' ).html( "Current Sync Count: 100%" );
-					setTimeout( function () {jQuery( '#loading' ).hide(); jQuery( 'body>*' ).css( "filter", "none" );}, 2000 );
+					setTimeout(
+						function () {
+							jQuery( '#loading' ).hide(); },
+						2000
+					);
 					location.reload();
 
-				} else if ( message.includes( 'Error' ) ) {
+				} else if (message.includes( 'Error' )) {
 
-					alert( 'An error occured during the ' + call + ' process. Please try again. If the error persists, contact Megaventory support.' );
-					setTimeout( function () {jQuery( '#loading' ).hide();}, 2000 );
-					location.reload();
+					alert( 'An error occurred during the ' + entity + ' process. Please try again. If the error persists, contact Megaventory support.' );
 				}
 			},
 
 			error: function (errorThrown) {
-				alert( 'An error occured during the initialization process. Please try again. If the error persists, contact Megaventory support.' );
+				alert( 'An error occurred during the initialization process. Please try again. If the error persists, contact Megaventory support.' );
 			}
 		}
 	);
@@ -75,15 +78,15 @@ function megaventory_initialize(block, countOfEntity, page, numberOfIndToProcess
  * @param {string} block                 as the type that will initialized.
  * @param {integer} countOfEntity        as count of entities.
  * @param {integer} numberOfIndToProcess as the end point.
- * @param {string} call                  as the entity code block.
+ * @param {string} entity                  as the entity code block.
  */
-function megaventory_reinitialize(block, countOfEntity, page, numberOfIndToProcess, call) {
+function megaventory_reinitialize(block, countOfEntity, page, numberOfIndToProcess, entity) {
 
-	if ( ! confirm( "Are you sure you want to re-initialize the Megaventory plugin? After that you need to synchronize products, clients, coupons and product stock again." ) ) {
+	if ( ! confirm( "Are you sure you want to re-initialize the Megaventory plugin? After that you need to synchronize products, clients, coupons and product stock again." )) {
 		return;
 	}
 
-	megaventory_initialize( block, countOfEntity, page, numberOfIndToProcess, call )
+	megaventory_initialize( block, countOfEntity, page, numberOfIndToProcess, entity )
 
 }
 
@@ -100,13 +103,18 @@ function megaventory_toggle_order_delay() {
 			data: {
 				'action': 'megaventory_toggle_order_delay',
 				'newStatus': checbox_value,
-				'secondsToWait' : secondsToWait,
+				'secondsToWait': secondsToWait,
 				'async-nonce': mv_ajax_object.nonce
 			},
-			success: function (data) { // This outputs the result of the ajax request.
+			success: function (data) {
+				// This outputs the result of the ajax request.
 				jQuery( '#enable_mv_order_sync_delay' ).prop( 'checked', checbox_value );
 				jQuery( '#loading h1' ).html( "Progress: 100%" );
-				setTimeout( function () {jQuery( '#loading' ).hide();}, 2000 );
+				setTimeout(
+					function () {
+						jQuery( '#loading' ).hide(); },
+					2000
+				);
 			},
 
 			error: function (errorThrown) {

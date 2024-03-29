@@ -21,6 +21,7 @@ namespace Megaventory\Models;
 require_once MEGAVENTORY__PLUGIN_DIR . 'class-api.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'helpers/class-address.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-product.php';
+require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-product-composite.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-coupon.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-tax.php';
 
@@ -94,6 +95,13 @@ class MV_Order_Item {
 	public $parent_row_id;
 
 	/**
+	 * Order Item is a finished good.
+	 *
+	 * @var bool
+	 */
+	public $is_finished_good;
+
+	/**
 	 * MV_Order_Item constructor
 	 *
 	 * @param Product $product The related product.
@@ -110,22 +118,72 @@ class MV_Order_Item {
 	 *
 	 * @param \WC_Order_Item|array $wc_order_item The WooCommerce order item to map.
 	 * @param array                $coupons_array Array of coupon arrays.
-	 * @return MV_Order_Item
+	 * @return MV_Order_Item|null
 	 */
 	public static function from_wc_order_item( $wc_order_item, &$coupons_array ) {
 
 		$use_discount_sequentially = ( 'yes' === get_option( 'woocommerce_calc_discounts_sequentially', 'no' ) ) ? true : false;
 
-		$product = new Product();
-		if ( 0 === $wc_order_item->get_data()['variation_id'] ) {
+		// if the order item is part of a composite product(child/material), we skip it.
+		// we will handle the composite product by the parent(container) order item.
+		if ( function_exists( 'wc_cp_is_composited_order_item' ) &&
+			wc_cp_is_composited_order_item( $wc_order_item ) ) {
 
-			$product = Product::wc_find_product( $wc_order_item->get_data()['product_id'] );
+			return null;
+		}
+
+		// if the order item is part of a bundle product, and the bundle product
+		// is part of a composite product, we skip it.
+		if ( function_exists( 'wc_pb_get_bundled_order_item_container' ) &&
+			function_exists( 'wc_cp_is_composited_order_item' ) ) {
+
+			/** The parent Bundle of the order item.
+			 *
+			 * @var \WC_Order_Item_Product|array $parent_bundle_item
+			 */
+			$parent_bundle_item = wc_pb_get_bundled_order_item_container( $wc_order_item );
+
+			if ( wc_cp_is_composited_order_item( $parent_bundle_item ) ) {
+				return null;
+			}
+		}
+
+		$product = new Product();
+		if ( 0 === $wc_order_item->get_variation_id() ) {
+
+			$product = Product::wc_find_product( $wc_order_item->get_product_id() );
 		} else {
 
-			$product = Product::wc_find_product( $wc_order_item->get_data()['variation_id'] );
+			$product = Product::wc_find_product( $wc_order_item->get_variation_id() );
 		}
 
 		$mv_order_item = new MV_Order_Item( $product );
+
+		if ( function_exists( 'wc_cp_is_composite_container_order_item' ) &&
+			wc_cp_is_composite_container_order_item( $wc_order_item ) ) {
+
+			// get composite product and its materials.
+			$composite_product = Product_Composite::get_composite_product( $wc_order_item );
+
+			if ( null === $composite_product ) {
+				return null;
+			}
+
+			if ( empty( $composite_product->materials ) ) {
+				return null;
+			}
+
+			// get finished good or create new.
+			$finished_good = $composite_product->get_finished_good_product();
+
+			if ( null === $finished_good ) {
+				return null;
+			}
+
+			$mv_order_item = new MV_Order_Item( $finished_good );
+
+			$mv_order_item->is_finished_good = true;
+		}
 
 		/** Discount
 		 *
@@ -180,6 +238,33 @@ class MV_Order_Item {
 
 		// Price.
 		$unit_price = self::get_unit_price_prediscounted( $wc_order_item, $discount );
+
+		if ( $mv_order_item->is_finished_good &&
+			function_exists( 'wc_cp_get_composited_order_items' ) ) {
+
+			/** The materials of the composite product.
+			 *
+			 * @var \WC_Order_Item_Product[] $comp_order_items The materials of the composite product.
+			 */
+			$comp_order_items = wc_cp_get_composited_order_items( $wc_order_item );
+
+			$all_comp_order_items = $comp_order_items;
+
+			$bundled_material_order_items = Product_Composite::get_bundled_material_order_items( $comp_order_items );
+
+			if ( ! empty( $bundled_material_order_items ) ) {
+
+				$all_comp_order_items = array_merge( $comp_order_items, $bundled_material_order_items );
+			}
+
+			foreach ( $all_comp_order_items as $comp_order_item ) {
+
+				// include individual material total price after discount and without tax.
+				// the tax will be calculated in the finished good row.
+				$unit_price += $comp_order_item->get_total();
+
+			}
+		}
 
 		// Tax.
 
@@ -273,7 +358,6 @@ class MV_Order_Item {
 			}
 
 			self::assign_order_item_to_location( $loc_priorities, $mv_item, $details_per_location );
-
 		}
 
 		return $details_per_location;
@@ -322,6 +406,10 @@ class MV_Order_Item {
 		foreach ( $wc_items as $item ) {
 
 			$mv_order_item = self::from_wc_order_item( $item, $coupons_arrays );
+
+			if ( null === $mv_order_item ) {
+				continue;
+			}
 
 			$mv_order_item_arr[] = $mv_order_item;
 		}
@@ -432,7 +520,7 @@ class MV_Order_Item {
 	 * Get price with percentage amount if applied.
 	 *
 	 * @param \WC_Order_Item_Product $item_data as order item.
-	 * @param Coupon                 $discount as Megaventory discount.
+	 * @param Coupon | null          $discount as Megaventory discount.
 	 * @return float
 	 */
 	private static function get_unit_price_prediscounted( $item_data, $discount ) {

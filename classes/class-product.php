@@ -215,43 +215,6 @@ class Product {
 	 */
 	public $successes;
 
-	/*API Calls*/
-
-	/**
-	 * Undelete Product API call.
-	 *
-	 * @var string
-	 */
-	private static $product_undelete_call = 'ProductUndelete';
-
-	/**
-	 * Get Inventory Location API call.
-	 *
-	 * @var string
-	 */
-	private static $inventory_get_call = 'InventoryLocationGet';
-
-	/**
-	 * Get Category API call.
-	 *
-	 * @var string
-	 */
-	private static $category_get_call = 'ProductCategoryGet';
-
-	/**
-	 * Update Category API call.
-	 *
-	 * @var string
-	 */
-	private static $category_update_call = 'ProductCategoryUpdate';
-
-	/**
-	 * Undelete Category API call.
-	 *
-	 * @var string
-	 */
-	private static $category_undelete_call = 'ProductCategoryUndelete';
-
 	/**
 	 * MV Physical Stock QTY array key
 	 */
@@ -721,7 +684,7 @@ class Product {
 
 			foreach ( $mv_product_stock_list['mvStock'] as $inventory ) {
 
-				$mv_location_id_to_abbr = get_option( MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION );
+				$mv_location_id_to_abbr = \Megaventory\Models\Location::get_location_id_to_abbreviation_dict();
 
 				if ( ! array_key_exists( $inventory['InventoryLocationID'], $mv_location_id_to_abbr ) ) {
 					continue;
@@ -800,7 +763,7 @@ class Product {
 		$non_received_po = $stocknonreceivedqty;
 		$non_received_wo = $stocknonreceivedwoqty;
 
-		$mv_location_id_to_abbr = get_option( MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION );
+		$mv_location_id_to_abbr = \Megaventory\Models\Location::get_location_id_to_abbreviation_dict();
 
 		$inventory_name = $mv_location_id_to_abbr[ $mv_stock_details['inventory_id'] ];
 
@@ -871,7 +834,7 @@ class Product {
 	 * @param null|array $categories search with categories.
 	 * @return Product
 	 */
-	private static function mv_convert( $mv_prod, $categories = null ) {
+	public static function mv_convert( $mv_prod, $categories = null ) {
 		/*
 			Passing categories makes things faster and requires less API calls.
 			always use $categories when using this function in a loop with many users
@@ -1166,6 +1129,11 @@ class Product {
 
 			return null;
 		}
+		if ( 'composite' === $this->type ) {
+
+			return null;
+		}
+
 		if ( ! wp_strip_all_tags( $this->description ) ) {
 
 			$this->log_error( 'Product not saved to Megaventory', 'Short description cannot be empty', -1, 'error', '' );
@@ -1215,7 +1183,7 @@ class Product {
 			}
 
 			$this->mv_id = $data['entityID'];
-			$url         = \Megaventory\API::get_url_for_call( self::$product_undelete_call );
+			$url         = \Megaventory\API::get_url_for_call( MV_Constants::PRODUCT_UNDELETE );
 
 			$params = array(
 				'ProductIdToUndelete' => $this->mv_id,
@@ -1252,9 +1220,9 @@ class Product {
 	 * @param null|bool $category_id filter with categories.
 	 * @param bool      $force_update_sku force SKU update in Megaventory.
 	 *
-	 * @return array
+	 * @return array The ProductUpdate json.
 	 */
-	private function generate_update_json( $category_id = null, $force_update_sku = false ) {
+	public function generate_update_json( $category_id = null, $force_update_sku = false ) {
 
 		$special_characters = array( '?', '$', '@', '!', '*', '#' );// Special characters that need to be removed in order to be accepted by Megaventory.
 
@@ -1335,7 +1303,7 @@ class Product {
 	 * @return array
 	 */
 	public static function mv_get_categories() {
-		$url     = \Megaventory\API::get_url_for_call( self::$category_get_call );
+		$url     = \Megaventory\API::get_url_for_call( MV_Constants::PRODUCT_CATEGORY_GET );
 		$jsoncat = \Megaventory\API::perform_call_to_megaventory( $url );
 
 		$categories = array();
@@ -1354,7 +1322,7 @@ class Product {
 	 */
 	public static function mv_create_category( $name ) {
 
-		$url      = \Megaventory\API::get_url_for_call( self::$category_update_call );
+		$url      = \Megaventory\API::get_url_for_call( MV_Constants::PRODUCT_CATEGORY_UPDATE );
 		$data     = array(
 			'mvProductCategory' => array(
 				'ProductCategoryName' => $name,
@@ -1365,7 +1333,7 @@ class Product {
 		if ( isset( $response['InternalErrorCode'] ) && 'CategoryWasDeleted' === $response['InternalErrorCode'] ) { // needs to be undeleted.
 
 			$id           = $response['entityID'];
-			$undelete_url = \Megaventory\API::get_url_for_call( self::$category_undelete_call );
+			$undelete_url = \Megaventory\API::get_url_for_call( MV_Constants::PRODUCT_CATEGORY_UNDELETE );
 			$params       = array(
 				'ProductCategoryIDToUndelete' => $id,
 			);
@@ -1853,5 +1821,46 @@ class Product {
 
 			\WC_PB_DB_Sync::bundled_product_stock_changed( $wc_product ); // if the product is not a bundled product, it will just return.
 		}
+	}
+
+	/**
+	 * Get physical stock for a product in a location.
+	 *
+	 * @param array $mv_product_ids as product ids.
+	 * @param int   $mv_location_id as location id.
+	 *
+	 * @return array The stock information for the products in the location. If there is no stock information for a product, it returns empty array.
+	 */
+	public static function mv_get_stock_for_location( $mv_product_ids, $mv_location_id ) {
+
+		$stock_get_body = array(
+			'ProductID'           => $mv_product_ids,
+			'InventoryLocationID' => $mv_location_id,
+		);
+
+		$url      = \Megaventory\API::get_url_for_call( MV_Constants::INVENTORY_LOCATION_STOCK_GET );
+		$response = \Megaventory\API::send_request_to_megaventory( $url, $stock_get_body );
+
+		if ( '0' !== ( $response['ResponseStatus']['ErrorCode'] ) ) {
+
+			// log error.
+			$args = array(
+				'type'        => 'error',
+				'entity_name' => 'Stock Get failed.',
+				'entity_id'   => 0,
+				'problem'     => 'Error on Stock Get during pushing stock to Megaventory',
+				'full_msg'    => $response['ResponseStatus']['Message'],
+				'error_code'  => $response['ResponseStatus']['ErrorCode'],
+				'json_object' => '',
+			);
+
+			new MVWC_Error( $args );
+
+			return array();
+		}
+
+		$mv_product_stock_list = $response['mvProductStockList'];
+
+		return $mv_product_stock_list;
 	}
 }
