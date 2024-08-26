@@ -43,11 +43,12 @@ class Integration_Updates {
 
 		$url  = \Megaventory\API::get_url_for_call( MV_Constants::INTEGRATION_UPDATE_GET );
 		$data = array(
-			'Filters' => array(
+			'Filters'           => array(
 				'FieldName'      => 'Application',
 				'SearchOperator' => 'Equals',
 				'SearchValue'    => 'Woocommerce',
 			),
+			'ReturnTopNRecords' => 20,
 		);
 
 		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );

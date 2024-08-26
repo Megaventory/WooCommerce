@@ -324,10 +324,18 @@ class Settings {
 											<span class="mv-action" title="Synchronize clients from your WooCommerce to your Megaventory account">Push Clients from WooCommerce to Megaventory</span>
 										</div>
 
+										<div id="skip-clients" class="pushAction MarTop10" onclick="megaventory_skip_clients_synchronization()" >
+												<span class="mv-action" title="Synchronize clients later"><a href="#">Synchronize Clients later</a></span>
+										</div>
+
 									<?php elseif ( false === $are_megaventory_coupons_synchronized ) : ?>
 
 										<div id="sync-coupons" class="updateButton CurPointer pushAction" onclick="megaventory_import(0,3,-1,1,0,0,'coupons')" >
 											<span class="mv-action" title="Synchronize coupons from your WooCommerce to your Megaventory account">Push Coupons from WooCommerce to Megaventory</span>
+										</div>
+
+										<div id="skip-coupons" class="pushAction MarTop10" onclick="megaventory_skip_coupons_synchronization()" >
+												<span class="mv-action" title="Synchronize Coupons later"><a href="#">Synchronize Coupons later</a></span>
 										</div>
 
 									<?php endif; ?>

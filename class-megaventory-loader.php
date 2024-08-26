@@ -60,6 +60,7 @@ class Megaventory_Loader {
 	public static function show_purchase_price_value_in_column( $column, $prod_id ) {
 
 		if ( 'purchase_price' === $column ) {
+
 			$purchase_price = get_post_meta( $prod_id, 'purchase_price', true );
 
 			if ( empty( $purchase_price ) ) {
@@ -94,6 +95,7 @@ class Megaventory_Loader {
 			$options['custom_attributes'] = array( 'readonly' => 'readonly' ); // Enabling read only.
 			$options['description']       = 'The value cannot change, since the product has been synchronized to Megaventory. You can change the purchase price on your Megaventory account.';
 		}
+
 		echo wp_kses(
 			woocommerce_wp_text_input(
 				$options
@@ -287,25 +289,43 @@ class Megaventory_Loader {
 	/**
 	 * Display Megaventory sales order id, or button to synchronize manually the order.
 	 *
-	 * @param array $column   as column in order grid.
-	 * @param int   $order_id as product id.
+	 * @param string $column   as column in order grid.
+	 * @param int    $order_id as order id.
 	 * @return void
 	 */
-	public static function show_megaventory_order_info_in_column( $column, $order_id ) {
+	public static function show_megaventory_order_info_in_column_legacy( $column, $order_id ) {
 
 		if ( 'megaventory_order_column' !== $column ) {
 			return;
 		}
 
-		$megaventory_order_id   = get_post_meta( $order_id, Models\MV_Constants::MV_RELATED_ORDER_ID_META, true );
-		$megaventory_order_name = get_post_meta( $order_id, Models\MV_Constants::MV_RELATED_ORDER_NAMES_META, true );
+		$wc_order = wc_get_order( $order_id );
+
+		self::show_megaventory_order_info_in_column( $column, $wc_order );
+	}
+
+	/**
+	 * Display Megaventory sales order id, or button to synchronize manually the order.
+	 *
+	 * @param string    $column   as column in order grid.
+	 * @param \WC_Order $wc_order as woo order.
+	 * @return void
+	 */
+	public static function show_megaventory_order_info_in_column( $column, $wc_order ) {
+
+		if ( 'megaventory_order_column' !== $column ) {
+			return;
+		}
+
+		$megaventory_order_id   = $wc_order->get_meta( Models\MV_Constants::MV_RELATED_ORDER_ID_META, true );
+		$megaventory_order_name = $wc_order->get_meta( Models\MV_Constants::MV_RELATED_ORDER_NAMES_META, true );
 
 		if ( empty( $megaventory_order_id ) ) {
 
 			if ( get_option( 'correct_megaventory_apikey' ) && get_option( 'is_megaventory_initialized' ) ) {
 				?>
 
-					<span id ='orderToSync_<?php echo esc_attr( $order_id ); ?>' class='Padd10' onclick='synchronize_order_to_megaventory_manually(<?php echo esc_attr( $order_id ); ?>)'><a href="#">Synchronize</a></span>
+					<span id ='orderToSync_<?php echo esc_attr( $wc_order->get_id() ); ?>' class='Padd10' onclick='synchronize_order_to_megaventory_manually(<?php echo esc_attr( $wc_order->get_id() ); ?>)'><a href="#">Synchronize</a></span>
 
 				<?php
 			}

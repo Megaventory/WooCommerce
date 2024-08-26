@@ -24,23 +24,11 @@ require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-client.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-mv-constants.php';
 require_once MEGAVENTORY__PLUGIN_DIR . 'classes/class-order.php';
 
-$products = \Megaventory\Models\Product::wc_get_all_products();
+\Megaventory\Models\Product::wc_delete_mv_data();
 
 \Megaventory\Models\Client::delete_default_client();
-$clients = \Megaventory\Models\Client::wc_get_all_clients();
 
-foreach ( $products as $product ) {
-
-	$product->wc_delete_mv_data();
-}
-
-foreach ( $clients as $client ) {
-
-	if ( null !== $client ) {
-
-		$client->wc_reset_mv_data();
-	}
-}
+\Megaventory\Models\Client::wc_reset_mv_data();
 
 \Megaventory\Models\Order::delete_mv_data_from_orders();
 

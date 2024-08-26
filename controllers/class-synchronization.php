@@ -383,50 +383,18 @@ class Synchronization {
 
 				if ( 1 === $block ) {
 
-					$number_of_products = $count_of_entity;
-					if ( 0 > $number_of_products ) {
-
-						$number_of_products = \Megaventory\Models\Product::wc_get_all_woocommerce_products_count();
-					}
-
-					$products = \Megaventory\Models\Product::wc_get_products_in_batches( $number_of_indexes_to_process, $page );
-
-					$number_of_products_to_process = count( $products );
+					\Megaventory\Models\Product::wc_delete_mv_data();
 
 					$success_message = 'continue';
 
-					if ( 0 === $number_of_products_to_process ) {
+					++$block;
+					$percent = ( $block / $number_of_blocks ) * 100;
 
-						++$block;
-						$percent = ( $block / $number_of_blocks ) * 100;
-
-						$data_to_return = self::megaventory_create_json_for_initialize( $block, -1, 1, $percent, $success_message );
-
-						wp_send_json_success( $data_to_return );
-						wp_die();
-					}
-
-					foreach ( $products as $product ) {
-
-						$product->reset_megaventory_post_meta();
-					}
-
-					$percent = ( $block / $number_of_blocks ) * 100; // 25.
-
-					$processed_products_percent = ( $number_of_products_to_process + ( ( $page - 1 ) * $number_of_indexes_to_process ) ) / $number_of_products;
-
-					$percentage_of_products = $processed_products_percent * ( 1 / $number_of_blocks ) * 100;
-
-					$percent += $percentage_of_products;
-
-					$percent = round( $percent );
-
-					++$page;
-
-					$data_to_return = self::megaventory_create_json_for_initialize( $block, $number_of_products, $page, $percent, $success_message );
+					$data_to_return = self::megaventory_create_json_for_initialize( $block, -1, 1, $percent, $success_message );
 
 					wp_send_json_success( $data_to_return );
 					wp_die();
+
 				}
 
 				if ( 2 === $block ) {
@@ -477,7 +445,7 @@ class Synchronization {
 
 				}
 			}
-		} catch ( \Error $ex ) {
+		} catch ( \Throwable $ex ) {
 
 			$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
 
@@ -492,7 +460,7 @@ class Synchronization {
 					0,
 					0,
 					0,
-					'Error occurred'
+					'Error occurred ' . $ex->getMessage()
 				);
 			} else {
 				$data_to_return = self::megaventory_create_json_for_imports(
@@ -502,7 +470,7 @@ class Synchronization {
 					1,
 					1,
 					1,
-					'Error occurred',
+					'Error occurred ' . $ex->getMessage(),
 					$entity
 				);
 			}

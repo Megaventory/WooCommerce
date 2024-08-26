@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.7.0
+ * Version: 2.8.0
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Woo: 5262358:dc7211c200c570406fc919a8b34465f9
@@ -11,10 +11,10 @@
  * @since 1.0.0
  *
  * WC requires at least: 3.0
- * WC tested up to: 8.7.0
+ * WC tested up to: 9.2.2
  * Requires at least: 4.4
- * Tested up to: 6.4.3
- * Stable tag: 2.7.0
+ * Tested up to: 6.6.1
+ * Stable tag: 2.8.0
  * Requires PHP: 7.2
  *
  * Author: Megaventory
@@ -124,6 +124,18 @@ if ( get_option( 'megaventory_alternate_wp_cron', false ) &&
 }
 
 $megaventory->is_woocommerce_plugin_enabled();
+
+// Compatibility with WooCommerce HPOS(High-performance order storage).
+add_action(
+	'before_woocommerce_init',
+	function () {
+
+		if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
+			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+
+		}
+	}
+);
 
 add_action( 'admin_notices', '\Megaventory\Helpers\Admin_Notifications::sample_admin_notice_error' );
 

@@ -1,5 +1,12 @@
 *** Megaventory Extension Template Changelog ***
 
+2024-08-26 - version 2.8.0
+* Compatible with HPOS feature.
+* Option to skip client/coupon synchronization during initial synchronization.
+* Sync up to 20 integration updates per cron run.
+* Compatible with WooCommerce 9.2.2
+* Compatible with WordPress 6.6.1
+
 2024-03-29 - version 2.7.0
 * Support for composite products (specific extension required - WooCommerce Composite Products), this applies to the synchronization of order lines that have a composite product. 
 * Synchronization of the currency of the order.

@@ -30,7 +30,9 @@ class Order {
 
 		$order = wc_get_order( $order_id );
 
-		if ( ! empty( get_post_meta( $order->get_id(), \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_ID_META, true ) ) ) {
+		$related_mv_order_id = $order->get_meta( \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_ID_META, true );
+
+		if ( ! empty( $related_mv_order_id ) ) {
 
 			return;
 		}
@@ -50,18 +52,21 @@ class Order {
 		$returned = array();
 		try {
 
-			if ( get_post_meta( $order->get_id(), 'megaventory_order_processing', true ) ) {
+			$order_is_processing = $order->get_meta( 'megaventory_order_processing', true );
+			if ( $order_is_processing ) {
 
 				return; // Exit if already processed.
 			}
-			update_post_meta( $order->get_id(), 'megaventory_order_processing', 1 );
+			$order->update_meta_data( 'megaventory_order_processing', 1 );
+			$order->save_meta_data();
 
 			/* place order through Megaventory API */
 			$returned = \Megaventory\Models\Order::megaventory_place_sales_order_to_mv( $order, $client );
 
-		} catch ( \Error $ex ) {
+		} catch ( \Throwable $ex ) {
 
-			delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
+			$order->delete_meta_data( 'megaventory_order_processing' );
+			$order->save_meta_data();
 
 			$args = array(
 				'type'        => 'error',
@@ -86,7 +91,8 @@ class Order {
 			if ( '0' !== $order_response['ResponseStatus']['ErrorCode'] || ! array_key_exists( 'mvSalesOrder', $order_response ) ) {
 				// Error happened. It needs to be reported.
 
-				delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
+				$order->delete_meta_data( 'megaventory_order_processing' );
+				$order->save_meta_data();
 
 				$args = array(
 					'type'        => 'error',
@@ -137,14 +143,15 @@ class Order {
 			woocommerce_new_order hook, comes with no items. Because items are not saved in DB yet..
 			woocommerce_thankyou hook, can be ignored if checkout from paypal.
 		*/
-		update_post_meta( $order->get_id(), \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_ID_META, array_keys( $success_array ) );
-		update_post_meta( $order->get_id(), \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_NAMES_META, $success_array );
+		$order->update_meta_data( \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_ID_META, array_keys( $success_array ) );
+		$order->update_meta_data( \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_NAMES_META, $success_array );
 
-		\Megaventory\Models\Order::update_mv_related_order_status_list( $order->get_id(), $statuses_array );
+		\Megaventory\Models\Order::update_mv_related_order_status_list( $order, $statuses_array );
 
 		\Megaventory\Models\Order::remove_order_from_sync_queue( $order->get_id() );
 
-		delete_post_meta( $order->get_id(), 'megaventory_order_processing' );
+		$order->delete_meta_data( 'megaventory_order_processing' );
+		$order->save_meta_data();
 	}
 
 	/**
@@ -157,8 +164,10 @@ class Order {
 
 		$order = wc_get_order( $order_id );
 
+		$related_mv_order_id = $order->get_meta( \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_ID_META, true );
+
 		// Checking if has been synchronized.
-		if ( empty( get_post_meta( $order->get_id(), \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_ID_META, true ) ) ) {
+		if ( empty( $related_mv_order_id ) ) {
 
 			\Megaventory\Models\Order::remove_order_from_sync_queue( $order_id );
 
@@ -168,7 +177,7 @@ class Order {
 
 			\Megaventory\Models\Order::cancel_sales_orders( $order );
 
-		} catch ( \Error $ex ) {
+		} catch ( \Throwable $ex ) {
 
 			$args = array(
 				'type'        => 'error',
@@ -199,7 +208,7 @@ class Order {
 
 				self::order_placed( $order_id );
 			}
-		} catch ( \Error $ex ) {
+		} catch ( \Throwable $ex ) {
 
 			$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
 

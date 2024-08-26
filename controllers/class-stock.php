@@ -39,7 +39,7 @@ class Stock {
 
 				update_option( 'megaventory_stock_synchronized_time', $synchronized_message );
 			}
-		} catch ( \Error $ex ) {
+		} catch ( \Throwable $ex ) {
 
 			$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
 
@@ -80,7 +80,7 @@ class Stock {
 
 				$return_values = \Megaventory\Models\Product::push_stock( $starting_index, $adjustment_status, $adjustment_location_id );
 			}
-		} catch ( \Error $ex ) {
+		} catch ( \Throwable $ex ) {
 
 			$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
 
@@ -117,7 +117,7 @@ class Stock {
 
 				$return_values = \Megaventory\Models\Product::pull_stock( $starting_index );
 			}
-		} catch ( \Error $ex ) {
+		} catch ( \Throwable $ex ) {
 
 			$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
 

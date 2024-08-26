@@ -262,6 +262,68 @@ function megaventory_skip_stock_synchronization() {
 }
 
 /**
+ * Skip stock synchronization.
+ */
+function megaventory_skip_clients_synchronization() {
+	jQuery( '#loading_operation' ).show();
+	jQuery.ajax(
+		{
+			url: "admin-ajax.php",
+			type: "POST",
+			data: {
+				'action': 'megaventory_skip_clients_synchronization',
+				'async-nonce': mv_ajax_object.nonce
+			},
+			success: function (data) {
+				// This outputs the result of the ajax request.
+				setTimeout(
+					function () {
+						jQuery( '#loading_operation' ).hide(); },
+					2000
+				);
+				location.reload();
+			},
+
+			error: function (errorThrown) {
+				alert( 'Error occurred, try again! If the error persist contact to Megaventory!' );
+				jQuery( '#loading_operation' ).hide();
+			}
+		}
+	);
+}
+
+/**
+ * Skip stock synchronization.
+ */
+function megaventory_skip_coupons_synchronization() {
+	jQuery( '#loading_operation' ).show();
+	jQuery.ajax(
+		{
+			url: "admin-ajax.php",
+			type: "POST",
+			data: {
+				'action': 'megaventory_skip_coupons_synchronization',
+				'async-nonce': mv_ajax_object.nonce
+			},
+			success: function (data) {
+				// This outputs the result of the ajax request.
+				setTimeout(
+					function () {
+						jQuery( '#loading_operation' ).hide(); },
+					2000
+				);
+				location.reload();
+			},
+
+			error: function (errorThrown) {
+				alert( 'Error occurred, try again! If the error persist contact to Megaventory!' );
+				jQuery( '#loading_operation' ).hide();
+			}
+		}
+	);
+}
+
+/**
  * Synchronize Order manually.
  */
 function synchronize_order_to_megaventory_manually(order_Id) {

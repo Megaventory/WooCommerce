@@ -896,7 +896,7 @@ class Product {
 
 		$purchase_price = get_post_meta( $id, 'purchase_price', true );
 
-		if ( ! isset( $purchase_price ) ) {
+		if ( empty( $purchase_price ) ) {
 			$purchase_price = 0;
 		} else {
 			$purchase_price = (float) str_replace( ',', '.', $purchase_price );
@@ -935,7 +935,8 @@ class Product {
 		$prod->height  = $wc_prod->get_height();
 
 		$prod->available_wc_stock = $wc_prod->get_stock_quantity();
-		$prod->mv_qty             = get_post_meta( $wc_prod->get_id(), '_mv_qty', true );
+
+		$prod->mv_qty = get_post_meta( $wc_prod->get_id(), '_mv_qty', true );
 
 		$cs = wp_get_object_terms( $id, 'product_cat' );
 		if ( count( $cs ) > 0 ) {
@@ -988,10 +989,21 @@ class Product {
 		$prod->available_wc_stock = $wc_variation->get_stock_quantity();
 		$prod->mv_qty             = get_post_meta( $wc_variation->get_id(), '_mv_qty', true );
 
-		$prod->weight  = empty( $wc_variation->get_weight() ) ? $wc_variable->get_weight() : $wc_variation->get_weight();
-		$prod->height  = empty( $wc_variation->get_height() ) ? $wc_variable->get_height() : $wc_variation->get_height();
-		$prod->length  = empty( $wc_variation->get_length() ) ? $wc_variable->get_length() : $wc_variation->get_length();
-		$prod->breadth = empty( $wc_variation->get_width() ) ? $wc_variable->get_width() : $wc_variation->get_width();
+		// for some reason in some cases the variable product does not exist.
+		if ( empty( $wc_variable ) ) {
+
+			$prod->weight  = empty( $wc_variation->get_weight() ) ? 0 : $wc_variation->get_weight();
+			$prod->height  = empty( $wc_variation->get_height() ) ? 0 : $wc_variation->get_height();
+			$prod->length  = empty( $wc_variation->get_length() ) ? 0 : $wc_variation->get_length();
+			$prod->breadth = empty( $wc_variation->get_width() ) ? 0 : $wc_variation->get_width();
+
+		} else {
+
+			$prod->weight  = empty( $wc_variation->get_weight() ) ? $wc_variable->get_weight() : $wc_variation->get_weight();
+			$prod->height  = empty( $wc_variation->get_height() ) ? $wc_variable->get_height() : $wc_variation->get_height();
+			$prod->length  = empty( $wc_variation->get_length() ) ? $wc_variable->get_length() : $wc_variation->get_length();
+			$prod->breadth = empty( $wc_variation->get_width() ) ? $wc_variable->get_width() : $wc_variation->get_width();
+		}
 
 		$image_array = wp_get_attachment_image_src( get_post_thumbnail_id( $prod->wc_id ) );
 		if ( $image_array ) {
@@ -1000,14 +1012,14 @@ class Product {
 		} else {
 
 			// variable image.
-			$image_array = wp_get_attachment_image_src( get_post_thumbnail_id( $wc_variable->get_id() ) );
+			$image_array = wp_get_attachment_image_src( get_post_thumbnail_id( $wc_variation->get_parent_id() ) );
 			if ( $image_array ) {
 
 				$prod->image_url = $image_array[0];
 			}
 		}
 
-		$cs = wp_get_object_terms( $wc_variable->get_id(), 'product_cat' );
+		$cs = wp_get_object_terms( $wc_variation->get_parent_id(), 'product_cat' );
 		if ( count( $cs ) > 0 ) {
 
 			$prod->category = self::get_full_category_name( $cs[0] ); // Primary category.
@@ -1347,18 +1359,6 @@ class Product {
 		}
 
 		return ( array_key_exists( 'mvProductCategory', $response ) ) ? $response['mvProductCategory']['ProductCategoryID'] : null;
-	}
-
-	/**
-	 * Resets product meta data on initial sync operation only.
-	 *
-	 * @return void
-	 */
-	public function reset_megaventory_post_meta() {
-
-		update_post_meta( $this->wc_id, 'mv_id', 0 );
-		update_post_meta( $this->wc_id, '_mv_qty', '' );
-		update_post_meta( $this->wc_id, '_last_mv_stock_update', 0 );
 	}
 
 	/**
@@ -1762,19 +1762,17 @@ class Product {
 	 *
 	 * @return void
 	 */
-	public function wc_delete_mv_data() {
+	public static function wc_delete_mv_data() {
 
-		delete_post_meta( $this->wc_id, 'mv_id' );
-		delete_post_meta( $this->wc_id, '_mv_qty' );
-		delete_post_meta( $this->wc_id, '_last_mv_stock_update' );
+		delete_post_meta_by_key( 'mv_id' );
+		delete_post_meta_by_key( '_mv_qty' );
+		delete_post_meta_by_key( '_last_mv_stock_update' );
 	}
 
 	/**
 	 * Update stock data.
 	 */
 	private function update_stock() {
-
-		update_post_meta( $this->wc_id, '_mv_qty', $this->mv_qty );
 
 		$wc_product = wc_get_product( $this->wc_id );
 
@@ -1789,6 +1787,8 @@ class Product {
 		update_post_meta( $this->wc_id, '_manage_stock', 'yes' );
 		update_post_meta( $this->wc_id, '_stock', (string) $this->available_wc_stock );
 		update_post_meta( $this->wc_id, '_stock_status', $stock_status );
+
+		update_post_meta( $this->wc_id, '_mv_qty', $this->mv_qty );
 
 		if ( $wc_product->is_type( 'variation' ) ) {
 

@@ -71,7 +71,7 @@ class Order_Settings {
 			try {
 				$section_generator = $section_generators[ $section ];
 				call_user_func( array( $section_generator, 'generate_page' ) ); // call dynamically the section generator class.
-			} catch ( \Error $e ) {
+			} catch ( \Throwable $e ) {
 				wp_safe_redirect( '?page=megaventory-plugin&tab=orders' );
 			}
 		endif;

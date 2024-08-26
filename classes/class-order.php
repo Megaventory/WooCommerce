@@ -91,7 +91,7 @@ class Order {
 	 */
 	public static function cancel_sales_orders( $order ) {
 
-		$megaventory_sales_order_id = get_post_meta( $order->get_id(), MV_Constants::MV_RELATED_ORDER_ID_META, true );
+		$megaventory_sales_order_id = $order->get_meta( MV_Constants::MV_RELATED_ORDER_ID_META, true );
 
 		if ( empty( $megaventory_sales_order_id ) ) {
 
@@ -182,44 +182,45 @@ class Order {
 	 */
 	public static function delete_mv_data_from_orders() {
 
-		$page      = 1;
-		$order_ids = array();
+		$page = 1;
 
-		$page_ids = array();
+		$page_orders = array();
 
-		while ( 1 === $page || ! empty( $page_ids ) ) {
+		while ( 1 === $page || ! empty( $page_orders ) ) {
 
-			$page_ids = wc_get_orders(
+			$page_orders = wc_get_orders(
 				array(
-					'return' => 'ids',
-					'page'   => $page,
+					'page'         => $page,
+					'meta_key'     => MV_Constants::MV_RELATED_ORDER_ID_META, // phpcs:ignore
+					'meta_compare' => '>',
+					'meta_value'   => 0, // phpcs:ignore
+					'limit'        => 50,
 				)
 			);
 
-			$order_ids = array_merge( $order_ids, $page_ids );
+			foreach ( $page_orders as $order ) {
+
+				$order->delete_meta_data( MV_Constants::MV_RELATED_ORDER_ID_META );
+				$order->delete_meta_data( MV_Constants::MV_RELATED_ORDER_NAMES_META );
+				$order->delete_meta_data( MV_Constants::MV_ORDER_STATUSES_META );
+
+				$order->save_meta_data();
+			}
 
 			++$page;
-		}
-
-		foreach ( $order_ids as $order_id ) {
-
-			delete_post_meta( $order_id, MV_Constants::MV_RELATED_ORDER_ID_META );
-			delete_post_meta( $order_id, MV_Constants::MV_RELATED_ORDER_NAMES_META );
-			delete_post_meta( $order_id, MV_Constants::MV_ORDER_STATUSES_META );
-
 		}
 	}
 
 	/**
 	 * Updates a wc_orders post meta value for related mv orders statuses.
 	 *
-	 * @param int   $order_id     The id of the WC Order.
-	 * @param array $status_array Array with related order_id => status.
+	 * @param \WC_Order $wc_order     The id of the WC Order.
+	 * @param array     $status_array Array with related order_id => status.
 	 * @return void
 	 */
-	public static function update_mv_related_order_status_list( $order_id, $status_array ) {
+	public static function update_mv_related_order_status_list( $wc_order, $status_array ) {
 
-		if ( empty( $order_id ) || $order_id <= 0 ) {
+		if ( empty( $wc_order ) ) {
 			return;
 		}
 
@@ -227,7 +228,9 @@ class Order {
 			$status_array = array();
 		}
 
-		update_post_meta( $order_id, MV_Constants::MV_ORDER_STATUSES_META, $status_array );
+		$wc_order->update_meta_data( MV_Constants::MV_ORDER_STATUSES_META, $status_array );
+
+		$wc_order->save_meta_data();
 	}
 
 	/**
@@ -250,11 +253,11 @@ class Order {
 		}
 
 		$mv_order_id  = (int) $related_mv_orders_arr[ $updated_order_index ];
-		$status_array = self::get_mv_related_orders_status_list( $wc_order->get_id() );
+		$status_array = self::get_mv_related_orders_status_list( $wc_order );
 
 		$status_array[ $mv_order_id ] = $int_update_order_status;
 
-		self::update_mv_related_order_status_list( $wc_order->get_id(), $status_array );
+		self::update_mv_related_order_status_list( $wc_order, $status_array );
 
 		$processing_orders = self::filter_related_orders_by_status( 'processing', $status_array );
 
@@ -353,7 +356,7 @@ class Order {
 	 */
 	private static function megaventory_get_related_mv_sales_orders( $order ) {
 
-		$megaventory_sales_order_id = get_post_meta( $order->get_id(), MV_Constants::MV_RELATED_ORDER_ID_META, true );
+		$megaventory_sales_order_id = $order->get_meta( MV_Constants::MV_RELATED_ORDER_ID_META, true );
 
 		if ( empty( $megaventory_sales_order_id ) ) {
 
@@ -690,12 +693,12 @@ class Order {
 	/**
 	 * Get an array of related orders last pulled statuses from mv for a wc order.
 	 *
-	 * @param int $order_id The id of the WC Order.
+	 * @param \WC_Order $wc_order The woo order object.
 	 * @return array
 	 */
-	private static function get_mv_related_orders_status_list( $order_id ) {
+	private static function get_mv_related_orders_status_list( $wc_order ) {
 
-		$related_orders_statuses = get_post_meta( $order_id, MV_Constants::MV_ORDER_STATUSES_META, true );
+		$related_orders_statuses = $wc_order->get_meta( MV_Constants::MV_ORDER_STATUSES_META, true );
 
 		if ( empty( $related_orders_statuses ) || ! is_array( $related_orders_statuses ) ) {
 

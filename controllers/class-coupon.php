@@ -41,4 +41,37 @@ class Coupon {
 		$coupon->description = 'Woocommerce ' . $coupon->type . ' coupon';
 		$coupon->mv_save();
 	}
+
+	/**
+	 * Skip coupons synchronization.
+	 */
+	public static function megaventory_skip_coupons_synchronization() {
+
+		try {
+
+			if ( isset( $_POST['async-nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['async-nonce'] ), 'async-nonce' ) ) {
+
+				update_option( 'are_megaventory_coupons_synchronized', 1 );
+
+				$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+
+				$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+
+				$synchronized_message = 'Coupon synchronization was skipped on ' . $current_date;
+
+				update_option( 'megaventory_coupons_synchronized_time', $synchronized_message );
+			}
+		} catch ( \Throwable $ex ) {
+
+			$current_time_without_utc = gmdate( 'Y-m-d H:i:s' );
+
+			$current_date = get_date_from_gmt( $current_time_without_utc, 'Y-m-d H:i:s' );
+
+			error_log( "\n" . $current_date . $ex->getMessage() . ' ' . $ex->getFile() . "({$ex->getLine()})", 3, MEGAVENTORY__PLUGIN_DIR . '/mv-exceptions.log' ); // @codingStandardsIgnoreLine.
+			error_log( "\n" . $current_date . $ex->getTraceAsString(), 3, MEGAVENTORY__PLUGIN_DIR . '/mv-exceptions.log' ); // @codingStandardsIgnoreLine.
+		}
+
+		wp_send_json_success( true );
+		wp_die();
+	}
 }

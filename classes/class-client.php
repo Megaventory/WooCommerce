@@ -673,10 +673,10 @@ class Client {
 	/**
 	 * Clear Megaventory data.
 	 *
-	 * @return bool
+	 * @return void
 	 */
-	public function wc_reset_mv_data() {
+	public static function wc_reset_mv_data() {
 
-		return delete_user_meta( $this->wc_id, 'mv_id' );
+		delete_post_meta_by_key( 'mv_id' );
 	}
 }

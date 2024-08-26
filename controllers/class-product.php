@@ -133,6 +133,7 @@ class Product {
 	 */
 	public static function save_purchase_price( $post_id ) {
 		if ( isset( $_POST['woocommerce_meta_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' ) && ! empty( $_POST['purchase_price'] ) ) {
+
 			update_post_meta( $post_id, 'purchase_price', sanitize_text_field( wp_unslash( $_POST['purchase_price'] ) ) );
 		}
 	}
@@ -156,7 +157,9 @@ class Product {
 		}
 
 		if ( ! empty( $_POST['purchase_price'] ) && ! empty( $_POST['purchase_price'][ $i ] ) ) {
+
 			update_post_meta( $variation_id, 'purchase_price', sanitize_text_field( wp_unslash( $_POST['purchase_price'][ $i ] ) ) );
+
 		}
 	}
 }
