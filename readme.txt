@@ -20,7 +20,7 @@ Support e-mail: support@megaventory.com
 
 If your business relies on the WooCommerce platform, integrating it with Megaventory will bring you superior inventory and order management while keeping your products and clients synced across WooCommerce and Megaventory over multiple physical inventory locations in real-time. The Megaventory Inventory Management extension by Megaventory, Inc. upgrades your WooCommerce eshop so that you are able to fulfil your WooCommerce orders efficiently through the Megaventory ERP platform. Megaventory tracks inventory levels over multiple physical inventory locations and pushes that information selectively back to WooCommerce. Purchase Orders / Purchase Bills / Production (Bill Of Materials) Orders and Bundles-Kit management is also fully supported.
 
-[youtube https://www.youtube.com/watch?v=_x4e-bRSyr4]
+[youtube https://www.youtube.com/watch?v=rQWmwWMB37Q]
 
 = With Megaventory, your WooCommerce site can be upgraded in the following ways: =
 
