@@ -398,7 +398,7 @@ class Order {
 		$url      = \Megaventory\API::get_url_for_call( MV_Constants::SALES_ORDER_GET );
 		$response = \Megaventory\API::send_request_to_megaventory( $url, $get_body );
 
-		if ( 0 === count( $response['mvSalesOrders'] ) ) {
+		if ( empty( $response['mvSalesOrders'] ) ) {
 			return null;
 		}
 

@@ -395,7 +395,7 @@ class API {
 
 		$existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $apikeys_table_name ), ARRAY_A ); // phpcs:ignore
 
-		if ( count( $existing_table ) === 0 ) {
+		if ( empty( $existing_table ) ) {
 
 			return '';
 		}

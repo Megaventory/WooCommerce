@@ -100,25 +100,25 @@ $apikeys_table_name = "{$wpdb->prefix}megaventory_api_keys";
 $notices_table_name = "{$wpdb->prefix}megaventory_notices_log";
 
 $existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $error_table_name ), ARRAY_A ); // phpcs:ignore
-if ( 0 !== count( $existing_table ) ) {
+if ( ! empty( $existing_table ) ) {
 
 	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $error_table_name ) ); // phpcs:ignore
 }
 
 $existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $success_table_name ), ARRAY_A ); // phpcs:ignore
-if ( 0 !== count( $existing_table ) ) {
+if ( ! empty( $existing_table ) ) {
 
 	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $success_table_name ) ); // phpcs:ignore
 }
 
 $existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $apikeys_table_name ), ARRAY_A ); // phpcs:ignore
-if ( 0 !== count( $existing_table ) ) {
+if ( ! empty( $existing_table ) ) {
 
 	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $apikeys_table_name ) ); // phpcs:ignore
 }
 
 $existing_table = $wpdb->get_results( $wpdb->prepare( 'show tables like %s', $notices_table_name ), ARRAY_A ); // phpcs:ignore
-if ( 0 !== count( $existing_table ) ) {
+if ( ! empty( $existing_table ) ) {
 
 	$wpdb->query( $wpdb->prepare( 'DROP TABLE %1s', $notices_table_name ) ); // phpcs:ignore
 }

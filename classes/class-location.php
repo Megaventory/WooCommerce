@@ -155,7 +155,19 @@ class Location {
 		$inventory_locations = self::get_megaventory_locations();
 
 		if ( empty( $inventory_locations ) ) {
+
 			self::create_default_location();
+
+			return;
+		}
+
+		$default_location_id = get_option( 'default-megaventory-inventory-location' );
+
+		if ( empty( $default_location_id ) ) {
+
+			$default_location_id = $inventory_locations[0]['InventoryLocationID'];
+
+			update_option( 'default-megaventory-inventory-location', $default_location_id );
 		}
 	}
 
@@ -259,7 +271,7 @@ class Location {
 
 		$mv_location_id_to_abbr = get_option( MV_Constants::MV_LOCATION_ID_TO_ABBREVIATION );
 
-		if ( ! isset( $mv_location_id_to_abbr ) ) {
+		if ( empty( $mv_location_id_to_abbr ) ) {
 
 			$mv_location_id_to_abbr = array();
 

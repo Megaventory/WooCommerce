@@ -556,12 +556,12 @@ class MV_Order_Item {
 		}
 
 		$incl_ids       = $coupon->get_included_products( true );
-		$included_empty = count( $incl_ids ) <= 0;
+		$included_empty = empty( $incl_ids );
 		$included       = in_array( $product->wc_id, $incl_ids, true );
 		$excluded       = in_array( $product->wc_id, $coupon->get_excluded_products( true ), true );
 
 		$incl_ids_cat       = $coupon->get_included_products_categories();
-		$included_empty_cat = count( $incl_ids_cat ) <= 0;
+		$included_empty_cat = empty( $incl_ids_cat );
 		$included_cat       = in_array( $product->wc_id, $incl_ids_cat, true );
 		$excluded_cat       = in_array( $product->wc_id, $coupon->get_excluded_products_categories(), true );
 

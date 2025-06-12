@@ -269,7 +269,7 @@ class Coupon {
 			ARRAY_A
 		);
 
-		if ( 0 === count( $results ) ) {
+		if ( empty( $results ) ) {
 			return null;
 		}
 		$buffer = $results[0];

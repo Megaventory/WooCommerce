@@ -53,7 +53,7 @@ class Integration_Updates {
 
 			$changes = \Megaventory\Models\Integration_Updates::get_integration_updates();
 
-			if ( count( $changes['mvIntegrationUpdates'] ) === 0 ) { // No need to do anything if there are no changes.
+			if ( empty( $changes['mvIntegrationUpdates'] ) ) { // No need to do anything if there are no changes.
 
 				return;
 			}

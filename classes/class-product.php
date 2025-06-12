@@ -440,7 +440,7 @@ class Product {
 		$url      = \Megaventory\API::get_url_for_call( MV_Constants::PRODUCT_GET );
 		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
-		if ( count( $response['mvProducts'] ) <= 0 ) {
+		if ( empty( $response['mvProducts'] ) ) {
 			return null; // No such ID.
 		}
 
@@ -821,7 +821,7 @@ class Product {
 		$url  = \Megaventory\API::get_url_for_call( MV_Constants::PRODUCT_GET );
 		$data = \Megaventory\API::send_request_to_megaventory( $url, $product_get_body );
 
-		if ( count( $data['mvProducts'] ) <= 0 ) {
+		if ( empty( $data['mvProducts'] ) ) {
 			return null; // No such sku.
 		}
 		return self::mv_convert( $data['mvProducts'][0] );
@@ -939,7 +939,7 @@ class Product {
 		$prod->mv_qty = get_post_meta( $wc_prod->get_id(), '_mv_qty', true );
 
 		$cs = wp_get_object_terms( $id, 'product_cat' );
-		if ( count( $cs ) > 0 ) {
+		if ( ! empty( $cs ) ) {
 
 			$prod->category = self::get_full_category_name( $cs[0] ); // Primary category.
 		}
@@ -1020,7 +1020,7 @@ class Product {
 		}
 
 		$cs = wp_get_object_terms( $wc_variation->get_parent_id(), 'product_cat' );
-		if ( count( $cs ) > 0 ) {
+		if ( ! empty( $cs ) ) {
 
 			$prod->category = self::get_full_category_name( $cs[0] ); // Primary category.
 		}

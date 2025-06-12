@@ -356,7 +356,7 @@ class Client {
 		$url      = \Megaventory\API::get_url_for_call( self::$supplierclient_get_call );
 		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
-		if ( count( $response['mvSupplierClients'] ) <= 0 ) {
+		if ( empty( $response['mvSupplierClients'] ) ) {
 			return null;
 		}
 		return self::mv_convert( $response['mvSupplierClients'][0] );

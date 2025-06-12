@@ -140,7 +140,7 @@ class Admin_Notifications {
 
 			$errs = ( isset( $session_messages['errors'] ) ? $session_messages['errors'] : array() );
 
-			if ( null !== $errs && count( $errs ) > 0 ) {
+			if ( ! empty( $errs ) ) {
 
 				foreach ( $errs as $err ) {
 
@@ -179,7 +179,7 @@ class Admin_Notifications {
 
 			$warns = ( isset( $session_messages['warnings'] ) ? $session_messages['warnings'] : array() );
 
-			if ( null !== $warns && count( $warns ) > 0 ) {
+			if ( ! empty( $warns ) ) {
 
 				foreach ( $warns as $warn ) {
 					printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), esc_html( $warn ) );
@@ -212,7 +212,7 @@ class Admin_Notifications {
 
 			$succs = ( isset( $session_messages['successes'] ) ? $session_messages['successes'] : array() );
 
-			if ( null !== $succs && count( $succs ) > 0 ) {
+			if ( ! empty( $succs ) ) {
 
 				foreach ( $succs as $succ ) {
 

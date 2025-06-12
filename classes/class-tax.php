@@ -320,7 +320,7 @@ class Tax {
 		$url      = \Megaventory\API::get_url_for_call( self::$tax_get_call );
 		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
-		if ( count( $response['mvTaxes'] ) <= 0 ) {
+		if ( empty( $response['mvTaxes'] ) ) {
 
 			return null;
 		}
@@ -347,7 +347,7 @@ class Tax {
 		$url      = \Megaventory\API::get_url_for_call( self::$tax_get_call );
 		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
-		if ( count( $response['mvTaxes'] ) <= 0 ) {
+		if ( empty( $response['mvTaxes'] ) ) {
 
 			return null;
 		}
@@ -383,7 +383,7 @@ class Tax {
 		$url      = \Megaventory\API::get_url_for_call( self::$tax_get_call );
 		$response = \Megaventory\API::send_request_to_megaventory( $url, $data );
 
-		if ( count( $response['mvTaxes'] ) <= 0 ) {
+		if ( empty( $response['mvTaxes'] ) ) {
 
 			return null;
 		}
@@ -432,7 +432,7 @@ class Tax {
 		$tax_obj = \Megaventory\API::wrap_json( $tax_obj );
 		$data    = \Megaventory\API::send_json( $url, $tax_obj );
 
-		if ( count( $data['mvTax'] ) <= 0 ) {
+		if ( empty( $data['mvTax'] ) ) {
 
 			// log err.
 			$this->log_error( 'Tax not saved to Megaventory', $data['ResponseStatus']['Message'], $data['ResponseStatus']['ErrorCode'], 'error', $data['json_object'] );

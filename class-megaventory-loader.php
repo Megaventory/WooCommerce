@@ -198,7 +198,7 @@ class Megaventory_Loader {
 
 					$product = Models\Product::wc_variation_convert( $wc_variation_product, $wc_product );
 
-					if ( ! is_array( $product->mv_qty ) || 0 === count( $product->mv_qty ) ) {
+					if ( ! is_array( $product->mv_qty ) || empty( $product->mv_qty ) ) {
 
 						continue;
 					}
@@ -240,7 +240,7 @@ class Megaventory_Loader {
 			}
 
 			/* no stock */
-			if ( ! is_array( $mv_qty ) || 0 === count( $mv_qty ) ) {
+			if ( ! is_array( $mv_qty ) || empty( $mv_qty ) ) {
 
 				echo 'No stock';
 
