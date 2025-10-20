@@ -209,6 +209,7 @@ class Product_Bundle extends Product {
 		$bundle_object['bundleproductid']          = empty( $this->mv_id ) ? '' : $this->mv_id;
 		$bundle_object['bundleproductsku']         = $this->sku;
 		$bundle_object['bundleproductdescription'] = mb_substr( wp_strip_all_tags( str_replace( $special_characters, ' ', $this->description ) ), 0, 400 );
+		$bundle_object['bundleproductimageurl']    = $this->image_url;
 		$bundle_object['includedproducts']         = $bundle_included_products;
 
 		if ( ! empty( $this->ean ) ) {

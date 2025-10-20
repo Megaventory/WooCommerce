@@ -114,10 +114,10 @@ class MV_Order_Item {
 	}
 
 	/**
-	 * Get MV_Order_Item from WC_Order_Item
+	 * Get MV_Order_Item from WC_Order_Item_Product
 	 *
-	 * @param \WC_Order_Item|array $wc_order_item The WooCommerce order item to map.
-	 * @param array                $coupons_array Array of coupon arrays.
+	 * @param \WC_Order_Item_Product|array $wc_order_item The WooCommerce order item to map.
+	 * @param array                        $coupons_array Array of coupon arrays.
 	 * @return MV_Order_Item|null
 	 */
 	public static function from_wc_order_item( $wc_order_item, &$coupons_array ) {
@@ -395,8 +395,8 @@ class MV_Order_Item {
 	/**
 	 * Get array of mv_order_items from array of wc order items.
 	 *
-	 * @param \WC_Order_Item[] $wc_items       Array of WC Order Items.
-	 * @param array            $coupons_arrays Array of coupon arrays for order.
+	 * @param \WC_Order_Item_Product[] $wc_items       Array of WC Order Items.
+	 * @param array                    $coupons_arrays Array of coupon arrays for order.
 	 * @return MV_Order_Item[]
 	 */
 	public static function get_mv_items_from_wc_items( $wc_items, $coupons_arrays ) {

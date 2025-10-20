@@ -1032,9 +1032,6 @@ class Product {
 
 			$variation_attrs = $wc_variation->get_variation_attributes( false );
 
-		} else {
-
-			$variation_attrs = $wc_variation->get_variation_attributes();
 		}
 
 		$version = '';

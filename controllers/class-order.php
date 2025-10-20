@@ -30,9 +30,18 @@ class Order {
 
 		$order = wc_get_order( $order_id );
 
+		if ( false === $order ) {
+
+			\Megaventory\Models\Order::remove_order_from_sync_queue( $order_id );
+
+			return;
+		}
+
 		$related_mv_order_id = $order->get_meta( \Megaventory\Models\MV_Constants::MV_RELATED_ORDER_ID_META, true );
 
 		if ( ! empty( $related_mv_order_id ) ) {
+
+			\Megaventory\Models\Order::remove_order_from_sync_queue( $order_id );
 
 			return;
 		}

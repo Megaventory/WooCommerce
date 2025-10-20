@@ -41,6 +41,8 @@ class Integration_Updates {
 	 */
 	public static function pull_integration_updates_from_megaventory() {
 
+		$integration_update_id = 0;
+
 		try {
 
 			if ( ! ( get_option( 'is_megaventory_initialized' ) &&
@@ -59,6 +61,12 @@ class Integration_Updates {
 			}
 
 			foreach ( $changes['mvIntegrationUpdates'] as $change ) {
+
+				$integration_update_id = $change['IntegrationUpdateID'];
+
+				// we remove the integration update in the end of each if block, so that if something fails we can try again next time.
+				// for example, if there are 20 stock updates and the 10th fails, we want to be able to try again next time for the 10th, 11th, etc.
+				// if we removed them all at the start, we would never be able to try again for the 10th.
 
 				if ( 'product' === $change['Entity'] ) {
 
@@ -192,6 +200,30 @@ class Integration_Updates {
 					}
 
 					\Megaventory\Models\Integration_Updates::remove_integration_update( $change['IntegrationUpdateID'] );
+
+				} elseif ( 'sales_order' === $change['Entity'] ) { // sales_order changed.
+
+					if ( 'track' === $change['Action'] ) {
+
+						// Handle tracking logic here.
+						$order_id = (int) $change['EntityIDs'];
+
+						$order = wc_get_order( $order_id );
+
+						if ( false === $order ) {
+
+							\Megaventory\Models\Integration_Updates::remove_integration_update( $change['IntegrationUpdateID'] );
+
+							continue;
+						}
+
+						$tracking_data = json_decode( $change['JsonData'], true );
+
+						\Megaventory\Models\Order::add_tracking_info_to_order( $order, $tracking_data );
+					}
+
+					// remove the integration update.
+					\Megaventory\Models\Integration_Updates::remove_integration_update( $change['IntegrationUpdateID'] );
 				}
 
 				// delete unhandled integration updates.
@@ -206,6 +238,7 @@ class Integration_Updates {
 			error_log( "\n" . $current_date . $ex->getMessage() . ' ' . $ex->getFile() . "({$ex->getLine()})", 3, MEGAVENTORY__PLUGIN_DIR . '/mv-exceptions.log' ); // @codingStandardsIgnoreLine.
 			error_log( "\n" . $current_date . $ex->getTraceAsString(), 3, MEGAVENTORY__PLUGIN_DIR . '/mv-exceptions.log' ); // @codingStandardsIgnoreLine.
 
+			\Megaventory\Models\Integration_Updates::remove_integration_update( $integration_update_id );
 		}
 	}
 

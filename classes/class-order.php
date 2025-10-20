@@ -736,4 +736,70 @@ class Order {
 
 		return $mappings[ $wc_payment_method ];
 	}
+
+	/**
+	 * Add tracking info to order.
+	 *
+	 * @param \WC_Order $order The wc order object.
+	 * @param array     $tracking_data The tracking data array.
+	 * @return void
+	 */
+	public static function add_tracking_info_to_order( $order, $tracking_data ) {
+
+		if ( ! is_array( $tracking_data ) || empty( $tracking_data ) ) {
+			return;
+		}
+
+		if ( false === $order || ! is_object( $order ) ) {
+			return;
+		}
+
+		$tracking_number = ( array_key_exists( 'TrackNumber', $tracking_data ) && ! empty( $tracking_data['TrackNumber'] ) )
+			? $tracking_data['TrackNumber']
+			: '';
+
+		if ( empty( $tracking_number ) ) {
+			return;
+		}
+
+		$carrier = ( array_key_exists( 'ShippingProviderName', $tracking_data ) && ! empty( $tracking_data['ShippingProviderName'] ) )
+			? $tracking_data['ShippingProviderName']
+			: '';
+
+		$notify_customer = ( array_key_exists( 'Notify', $tracking_data ) && ! empty( $tracking_data['Notify'] ) && 1 === (int) $tracking_data['Notify'] )
+			? true
+			: false;
+
+		$is_customer_note = 1; // Default to customer note.
+
+		$order_id = $order->get_id();
+
+		// Tracking information - WC Shipment Tracking extension.
+		if ( class_exists( 'WC_Shipment_Tracking' ) ) {
+
+			if ( function_exists( 'wc_st_add_tracking_number' ) ) {
+
+				wc_st_add_tracking_number( $order_id, $tracking_number, strtolower( $carrier ) );
+
+			} else {
+
+				// You're using Shipment Tracking < 1.4.0. Please update!
+				$order->update_meta_data( '_tracking_provider', strtolower( $carrier ) );
+				$order->update_meta_data( '_tracking_number', $tracking_number );
+				$order->update_meta_data( '_date_shipped', time() );
+
+				$order->save_meta_data();
+			}
+
+			$is_customer_note = 0;
+		}
+
+		$order_note = sprintf( /* translators: 1: carrier, 2: tracking number */
+			'Shipment tracking information added. Carrier: %1$s, Tracking Number: %2$s',
+			$carrier,
+			$tracking_number
+		);
+
+		$order->add_order_note( $order_note, $is_customer_note );
+	}
 }

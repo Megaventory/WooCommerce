@@ -145,6 +145,9 @@ class Megaventory_Loader {
 				'textarea' => array(),
 			)
 		);
+
+		// Output a unique nonce for this variation.
+		wp_nonce_field( 'megaventory_save_purchase_price_variation', "megaventory_purchase_price_variation_nonce_{$loop}" );
 	}
 
 	/**

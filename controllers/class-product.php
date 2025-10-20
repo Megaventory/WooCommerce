@@ -148,18 +148,25 @@ class Product {
 	 */
 	public static function save_variation_purchase_price( $variation_id, $i ) {
 
-		// PHPCS needs nonce verification to get data from $_POST.
-		// The nonce field is missing.
-		// So the below code is added to bypass this.
-		if ( isset( $_POST['woocommerce_meta_nonce'] ) ) {
+		$nonce_key = "megaventory_purchase_price_variation_nonce_{$i}";
 
-			wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' );
+		// Verify our custom nonce.
+		if ( empty( $_POST[ $nonce_key ] ) ||
+		! wp_verify_nonce(
+			sanitize_text_field( wp_unslash( $_POST[ $nonce_key ] ) ),
+			'megaventory_save_purchase_price_variation'
+		)
+		) {
+			return; // Abort if nonce invalid.
 		}
 
-		if ( ! empty( $_POST['purchase_price'] ) && ! empty( $_POST['purchase_price'][ $i ] ) ) {
-
-			update_post_meta( $variation_id, 'purchase_price', sanitize_text_field( wp_unslash( $_POST['purchase_price'][ $i ] ) ) );
-
+		// Save the field only if it's set.
+		if ( isset( $_POST['purchase_price'][ $i ] ) ) {
+			update_post_meta(
+				$variation_id,
+				'purchase_price',
+				sanitize_text_field( wp_unslash( $_POST['purchase_price'][ $i ] ) )
+			);
 		}
 	}
 }

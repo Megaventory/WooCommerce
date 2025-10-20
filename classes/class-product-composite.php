@@ -53,7 +53,7 @@ class Product_Composite {
 	/**
 	 * Get the Megaventory finished good product.
 	 *
-	 * @param \WC_Order_Item $order_item The order item object.
+	 * @param \WC_Order_Item_Product $order_item The order item object.
 	 * @return Product_Composite|null The Megaventory finished good product.
 	 */
 	public static function get_composite_product( $order_item ) {
