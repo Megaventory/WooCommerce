@@ -1,5 +1,11 @@
 *** Megaventory Extension Template Changelog ***
 
+2026-02-18 - version 2.8.3
+* Bug fix with order coupon synchronization.
+* Performance improvements.
+* Compatible with WooCommerce 10.5.2
+* Compatible with WordPress 6.9.1
+
 2025-10-20 - version 2.8.2
 * New feature: Synchronize tracking information from Megaventory to WooCommerce orders.
 * Synchronize product bundle image.

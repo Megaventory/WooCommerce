@@ -420,7 +420,35 @@ class Order {
 
 		foreach ( $order->get_coupons() as $order_coupon ) {
 
-			$coupon = Coupon::wc_find_coupon( $order_coupon->get_id() );
+			$coupon_code = $order_coupon->get_code();
+
+			$coupon_id = wc_get_coupon_id_by_code( $coupon_code );
+
+			$coupon = Coupon::wc_find_coupon( $coupon_id );
+
+			// in case the coupon is deleted at the time the order is being synced.
+			if ( 0 === $coupon->wc_id ) {
+
+				$coupon_info_serialized = $order_coupon->get_meta( 'coupon_info' );
+
+				if ( empty( $coupon_info_serialized ) ) {
+					continue; // if it is empty, we skip this coupon.
+				}
+
+				$coupon_info = json_decode( $coupon_info_serialized, true );
+
+				// "[140,"coupon25","percent",25]" is the format of the serialized coupon info, which is an array containing: [coupon_id, coupon_code, coupon_type, coupon_amount].
+				if ( \is_array( $coupon_info ) && \count( $coupon_info ) === 4 ) {
+
+					$coupon->wc_id = $coupon_info[0];
+					$coupon->name  = $coupon_info[1];
+					$coupon->type  = $coupon_info[2];
+					$coupon->rate  = $coupon_info[3];
+
+				} else {
+					continue; // if we can't find the coupon type, we skip it.
+				}
+			}
 
 			if ( 'fixed_product' === $coupon->type ) {
 

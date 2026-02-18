@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.8.2
+ * Version: 2.8.3
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Description: Integration between WooCommerce and Megaventory.
@@ -10,10 +10,10 @@
  * @since 1.0.0
  *
  * WC requires at least: 3.0
- * WC tested up to: 10.2.2
+ * WC tested up to: 10.5.2
  * Requires at least: 4.4
- * Tested up to: 6.8.3
- * Stable tag: 2.8.2
+ * Tested up to: 6.9.1
+ * Stable tag: 2.8.3
  * Requires PHP: 7.2
  *
  * Author: Megaventory
@@ -21,7 +21,7 @@
  * Developer: Megaventory
  * Developer URI: https://github.com/Megaventory/WooCommerce
  * Developer e-mail: support@megaventory.com
- * Copyright: © 2009-2020 WooCommerce.
+ * Copyright: © 2009-2026 WooCommerce.
  * License: GNU General Public License v3.0
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  */
@@ -101,19 +101,6 @@ update_option( 'last_valid_api_key', \Megaventory\API::get_last_valid_api_key() 
 
 $home_url   = get_home_url();
 $plugin_url = $home_url . '/wp-admin/admin.php?page=megaventory-plugin';
-
-/**
- * Starts the session.
- *
- * @return void
- */
-function sess_start() {
-	if ( ! headers_sent() && '' === session_id() ) {
-		session_start();
-	}
-}
-
-add_action( 'init', '\Megaventory\sess_start', 1 );
 
 if ( get_option( 'megaventory_alternate_wp_cron', false ) &&
 	get_option( 'correct_megaventory_apikey', false ) &&
