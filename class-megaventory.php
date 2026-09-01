@@ -188,37 +188,38 @@ class Megaventory {
 		}
 
 		/* configure admin panel */
-		add_action( 'admin_menu', '\Megaventory\Megaventory::plugin_setup_menu' );
+		add_action( 'admin_menu', array( self::class, 'plugin_setup_menu' ) );
 
 		/* custom product columns (display stock in product table) */
-		add_filter( 'manage_edit-product_columns', '\Megaventory\Megaventory_Loader::add_quantity_column_to_product_table', 15 );
-		add_action( 'manage_product_posts_custom_column', '\Megaventory\Megaventory_Loader::show_quantity_value_in_column', 10, 2 );
+		add_filter( 'manage_edit-product_columns', array( \Megaventory\Megaventory_Loader::class, 'add_quantity_column_to_product_table' ), 15 );
+		add_action( 'manage_product_posts_custom_column', array( \Megaventory\Megaventory_Loader::class, 'show_quantity_value_in_column' ), 10, 2 );
 
 		/* purchase price product column */
-		add_filter( 'manage_edit-product_columns', '\Megaventory\Megaventory_Loader::add_purchase_price_column_to_product_table', 15 );
-		add_action( 'manage_product_posts_custom_column', '\Megaventory\Megaventory_Loader::show_purchase_price_value_in_column', 10, 2 );
+		add_filter( 'manage_edit-product_columns', array( \Megaventory\Megaventory_Loader::class, 'add_purchase_price_column_to_product_table' ), 15 );
+		add_action( 'manage_product_posts_custom_column', array( \Megaventory\Megaventory_Loader::class, 'show_purchase_price_value_in_column' ), 10, 2 );
 
 		// custom_orders_table_usage_is_enabled() throws exception.
 		// PHP Fatal error:  Uncaught Error: Call to undefined function Automattic\WooCommerce\Utilities\wc_get_container() in woocommerce\wp-content\plugins\woocommerce\src\Utilities\OrderUtil.php:36
 		// Add the column to the orders list, when HPOS is enabled.
-		add_filter( 'woocommerce_shop_order_list_table_columns', '\Megaventory\Megaventory_Loader::add_megaventory_column_in_orders_list', 20 );
-		add_action( 'woocommerce_shop_order_list_table_custom_column', '\Megaventory\Megaventory_Loader::show_megaventory_order_info_in_column', 10, 2 );
+		add_filter( 'woocommerce_shop_order_list_table_columns', array( \Megaventory\Megaventory_Loader::class, 'add_megaventory_column_in_orders_list' ), 20 );
+		add_action( 'woocommerce_shop_order_list_table_custom_column', array( \Megaventory\Megaventory_Loader::class, 'show_megaventory_order_info_in_column' ), 10, 2 );
 
 		// Add the column to the orders list, when HPOS is disabled.
-		add_filter( 'manage_edit-shop_order_columns', '\Megaventory\Megaventory_Loader::add_megaventory_column_in_orders_list', 20 );
-		add_action( 'manage_shop_order_posts_custom_column', '\Megaventory\Megaventory_Loader::show_megaventory_order_info_in_column_legacy', 10, 2 );
+		add_filter( 'manage_edit-shop_order_columns', array( \Megaventory\Megaventory_Loader::class, 'add_megaventory_column_in_orders_list' ), 20 );
+		add_action( 'manage_shop_order_posts_custom_column', array( \Megaventory\Megaventory_Loader::class, 'show_megaventory_order_info_in_column_legacy' ), 10, 2 );
 
 		/* Product purchase price field */
-		add_action( 'woocommerce_product_options_pricing', '\Megaventory\Megaventory_Loader::add_purchase_price_for_simple_product' );
-		add_action( 'woocommerce_process_product_meta', '\Megaventory\Controllers\Product::save_purchase_price' );
-		add_action( 'woocommerce_variation_options_pricing', '\Megaventory\Megaventory_Loader::add_purchase_price_for_variation_product', 10, 3 );
-		add_action( 'woocommerce_save_product_variation', '\Megaventory\Controllers\Product::save_variation_purchase_price', 10, 2 );
+		add_action( 'woocommerce_product_options_pricing', array( \Megaventory\Megaventory_Loader::class, 'add_purchase_price_for_simple_product' ) );
+		add_action( 'woocommerce_process_product_meta', array( \Megaventory\Controllers\Product::class, 'save_purchase_price' ) );
+		add_action( 'woocommerce_variation_options_pricing', array( \Megaventory\Megaventory_Loader::class, 'add_purchase_price_for_variation_product' ), 10, 3 );
+		add_action( 'woocommerce_save_product_variation', array( \Megaventory\Controllers\Product::class, 'save_variation_purchase_price' ), 10, 2 );
 
 		/* styles */
-		add_action( 'init', '\Megaventory\Megaventory::register_style' );
-		add_action( 'admin_enqueue_scripts', '\Megaventory\Megaventory::enqueue_style' ); // Needed only in admin so far.
+		add_action( 'init', array( self::class, 'register_style' ) );
+		add_action( 'admin_enqueue_scripts', array( self::class, 'enqueue_style' ) ); // Needed only in admin so far.
 
-		if ( Models\MV_Constants::CHECK_STATUS_VALUE === random_int( Models\MV_Constants::RANDOM_NUMBER_MIN, Models\MV_Constants::RANDOM_NUMBER_MAX ) &&
+		if ( is_admin() &&
+			Models\MV_Constants::CHECK_STATUS_VALUE === random_int( Models\MV_Constants::RANDOM_NUMBER_MIN, Models\MV_Constants::RANDOM_NUMBER_MAX ) &&
 			get_option( 'do_megaventory_requests', true ) ) {
 			// Might check multiple times according to the logic and the resources needed from the API.
 			self::check_status();
@@ -243,42 +244,42 @@ class Megaventory {
 										$is_megaventory_stock_adjusted;
 
 			if ( $is_megaventory_setup_complete ) {
-				add_action( 'woocommerce_order_status_processing', '\Megaventory\Controllers\Order::handle_order_placement', 10, 1 );
-				add_action( 'woocommerce_order_status_on-hold', '\Megaventory\Controllers\Order::handle_order_placement', 10, 1 );
-				add_action( 'woocommerce_order_status_cancelled', '\Megaventory\Controllers\Order::order_cancelled_handler', 10, 1 );
+				add_action( 'woocommerce_order_status_processing', array( \Megaventory\Controllers\Order::class, 'handle_order_placement' ), 10, 1 );
+				add_action( 'woocommerce_order_status_on-hold', array( \Megaventory\Controllers\Order::class, 'handle_order_placement' ), 10, 1 );
+				add_action( 'woocommerce_order_status_cancelled', array( \Megaventory\Controllers\Order::class, 'order_cancelled_handler' ), 10, 1 );
 			}
 
 			if ( $are_megaventory_products_synchronized ) {
 				/* Product add/edit, delete */
-				add_action( 'woocommerce_update_product', '\Megaventory\Controllers\Product::sync_on_product_save', 99, 1 );
-				add_action( 'before_delete_post', '\Megaventory\Controllers\Product::delete_product_handler', 10, 2 );
-				add_action( 'woocommerce_new_product', '\Megaventory\Controllers\Product::new_product_from_import', 10, 2 );
+				add_action( 'woocommerce_update_product', array( \Megaventory\Controllers\Product::class, 'sync_on_product_save' ), 99, 1 );
+				add_action( 'before_delete_post', array( \Megaventory\Controllers\Product::class, 'delete_product_handler' ), 10, 2 );
+				add_action( 'woocommerce_new_product', array( \Megaventory\Controllers\Product::class, 'new_product_from_import' ), 10, 2 );
 			}
 
 			if ( $are_megaventory_clients_synchronized ) {
 				/* Customer add, edit, delete */
-				add_action( 'user_register', '\Megaventory\Controllers\Client::sync_on_profile_create', 10, 1 );
-				add_action( 'profile_update', '\Megaventory\Controllers\Client::sync_on_profile_update', 10, 2 );
-				add_action( 'delete_user', '\Megaventory\Controllers\Client::delete_client_handler', 10, 2 );
+				add_action( 'user_register', array( \Megaventory\Controllers\Client::class, 'sync_on_profile_create' ), 10, 1 );
+				add_action( 'profile_update', array( \Megaventory\Controllers\Client::class, 'sync_on_profile_update' ), 10, 2 );
+				add_action( 'delete_user', array( \Megaventory\Controllers\Client::class, 'delete_client_handler' ), 10, 2 );
 			}
 
 			if ( $are_megaventory_coupons_synchronized ) {
 				/* coupon add/edit  */
-				add_action( 'woocommerce_new_coupon', '\Megaventory\Controllers\Coupon::on_coupon_update', 10, 2 );
-				add_action( 'woocommerce_update_coupon', '\Megaventory\Controllers\Coupon::on_coupon_update', 10, 2 );
+				add_action( 'woocommerce_new_coupon', array( \Megaventory\Controllers\Coupon::class, 'on_coupon_update' ), 10, 2 );
+				add_action( 'woocommerce_update_coupon', array( \Megaventory\Controllers\Coupon::class, 'on_coupon_update' ), 10, 2 );
 			}
 
 			/* tax add/edit  */
-			add_action( 'woocommerce_tax_rate_added', '\Megaventory\Controllers\Tax::on_tax_update', 10, 2 );
-			add_action( 'woocommerce_tax_rate_updated', '\Megaventory\Controllers\Tax::on_tax_update', 10, 2 );
+			add_action( 'woocommerce_tax_rate_added', array( \Megaventory\Controllers\Tax::class, 'on_tax_update' ), 10, 2 );
+			add_action( 'woocommerce_tax_rate_updated', array( \Megaventory\Controllers\Tax::class, 'on_tax_update' ), 10, 2 );
 
 		}
 
 		/* warning about error,warning,success */
-		add_action( 'admin_notices', '\Megaventory\Helpers\Admin_Notifications::sample_admin_notice_error' );
-		add_action( 'admin_notices', '\Megaventory\Helpers\Admin_Notifications::sample_admin_notice_warning' );
-		add_action( 'admin_notices', '\Megaventory\Helpers\Admin_Notifications::sample_admin_notice_success' );
-		add_action( 'admin_notices', '\Megaventory\Helpers\Admin_Notifications::sample_admin_database_notices' );
+		add_action( 'admin_notices', array( \Megaventory\Helpers\Admin_Notifications::class, 'sample_admin_notice_error' ) );
+		add_action( 'admin_notices', array( \Megaventory\Helpers\Admin_Notifications::class, 'sample_admin_notice_warning' ) );
+		add_action( 'admin_notices', array( \Megaventory\Helpers\Admin_Notifications::class, 'sample_admin_notice_success' ) );
+		add_action( 'admin_notices', array( \Megaventory\Helpers\Admin_Notifications::class, 'sample_admin_database_notices' ) );
 	}
 
 	/**
@@ -308,71 +309,71 @@ class Megaventory {
 	 */
 	public function define_javascript_hooks() {
 
-		add_action( 'admin_enqueue_scripts', '\Megaventory\Megaventory::enqueue_javascript_files' );
+		add_action( 'admin_enqueue_scripts', array( self::class, 'enqueue_javascript_files' ) );
 
-		add_action( 'wp_ajax_megaventory_import', '\Megaventory\Controllers\Synchronization::megaventory_import' );
-		add_action( 'wp_ajax_nopriv_megaventory_import', '\Megaventory\Controllers\Synchronization::megaventory_import' );
+		add_action( 'wp_ajax_megaventory_import', array( \Megaventory\Controllers\Synchronization::class, 'megaventory_import' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_import', array( \Megaventory\Controllers\Synchronization::class, 'megaventory_import' ) );
 
-		add_action( 'wp_ajax_megaventory_change_alternate_cron_status', '\Megaventory\Controllers\Integration_Updates::megaventory_change_alternate_cron_status' );
-		add_action( 'wp_ajax_nopriv_megaventory_change_alternate_cron_status', '\Megaventory\Controllers\Integration_Updates::megaventory_change_alternate_cron_status' );
+		add_action( 'wp_ajax_megaventory_change_alternate_cron_status', array( \Megaventory\Controllers\Integration_Updates::class, 'megaventory_change_alternate_cron_status' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_change_alternate_cron_status', array( \Megaventory\Controllers\Integration_Updates::class, 'megaventory_change_alternate_cron_status' ) );
 
-		add_action( 'wp_ajax_megaventory_toggle_order_delay', '\Megaventory\Controllers\Order::megaventory_toggle_order_delay' );
-		add_action( 'wp_ajax_nopriv_megaventory_toggle_order_delay', '\Megaventory\Controllers\Order::megaventory_toggle_order_delay' );
+		add_action( 'wp_ajax_megaventory_toggle_order_delay', array( \Megaventory\Controllers\Order::class, 'megaventory_toggle_order_delay' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_toggle_order_delay', array( \Megaventory\Controllers\Order::class, 'megaventory_toggle_order_delay' ) );
 
-		add_action( 'wp_ajax_megaventory_change_default_location', '\Megaventory\Controllers\Location::megaventory_change_default_location' );
-		add_action( 'wp_ajax_nopriv_megaventory_change_default_location', '\Megaventory\Controllers\Location::megaventory_change_default_location' );
+		add_action( 'wp_ajax_megaventory_change_default_location', array( \Megaventory\Controllers\Location::class, 'megaventory_change_default_location' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_change_default_location', array( \Megaventory\Controllers\Location::class, 'megaventory_change_default_location' ) );
 
-		add_action( 'wp_ajax_megaventory_include_location', '\Megaventory\Controllers\Location::megaventory_include_location' );
-		add_action( 'wp_ajax_nopriv_megaventory_include_location', '\Megaventory\Controllers\Location::megaventory_include_location' );
+		add_action( 'wp_ajax_megaventory_include_location', array( \Megaventory\Controllers\Location::class, 'megaventory_include_location' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_include_location', array( \Megaventory\Controllers\Location::class, 'megaventory_include_location' ) );
 
-		add_action( 'wp_ajax_megaventory_exclude_location', '\Megaventory\Controllers\Location::megaventory_exclude_location' );
-		add_action( 'wp_ajax_nopriv_megaventory_exclude_location', '\Megaventory\Controllers\Location::megaventory_exclude_location' );
+		add_action( 'wp_ajax_megaventory_exclude_location', array( \Megaventory\Controllers\Location::class, 'megaventory_exclude_location' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_exclude_location', array( \Megaventory\Controllers\Location::class, 'megaventory_exclude_location' ) );
 
-		add_action( 'wp_ajax_megaventory_pull_integration_updates', '\Megaventory\Controllers\Integration_Updates::megaventory_pull_integration_updates' );
-		add_action( 'wp_ajax_nopriv_megaventory_pull_integration_updates', '\Megaventory\Controllers\Integration_Updates::megaventory_pull_integration_updates' );
+		add_action( 'wp_ajax_megaventory_pull_integration_updates', array( \Megaventory\Controllers\Integration_Updates::class, 'megaventory_pull_integration_updates' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_pull_integration_updates', array( \Megaventory\Controllers\Integration_Updates::class, 'megaventory_pull_integration_updates' ) );
 
-		add_action( 'wp_ajax_megaventory_sync_stock_to_mv', '\Megaventory\Controllers\Stock::megaventory_sync_stock_to_mv' );
-		add_action( 'wp_ajax_nopriv_megaventory_sync_stock_to_mv', '\Megaventory\Controllers\Stock::megaventory_sync_stock_to_mv' );
+		add_action( 'wp_ajax_megaventory_sync_stock_to_mv', array( \Megaventory\Controllers\Stock::class, 'megaventory_sync_stock_to_mv' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_sync_stock_to_mv', array( \Megaventory\Controllers\Stock::class, 'megaventory_sync_stock_to_mv' ) );
 
-		add_action( 'wp_ajax_megaventory_sync_stock_from_mv', '\Megaventory\Controllers\Stock::megaventory_sync_stock_from_mv' );
-		add_action( 'wp_ajax_nopriv_megaventory_sync_stock_from_mv', '\Megaventory\Controllers\Stock::megaventory_sync_stock_from_mv' );
+		add_action( 'wp_ajax_megaventory_sync_stock_from_mv', array( \Megaventory\Controllers\Stock::class, 'megaventory_sync_stock_from_mv' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_sync_stock_from_mv', array( \Megaventory\Controllers\Stock::class, 'megaventory_sync_stock_from_mv' ) );
 
-		add_action( 'wp_ajax_megaventory_skip_stock_synchronization', '\Megaventory\Controllers\Stock::megaventory_skip_stock_synchronization' );
-		add_action( 'wp_ajax_nopriv_megaventory_skip_stock_synchronization', '\Megaventory\Controllers\Stock::megaventory_skip_stock_synchronization' );
+		add_action( 'wp_ajax_megaventory_skip_stock_synchronization', array( \Megaventory\Controllers\Stock::class, 'megaventory_skip_stock_synchronization' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_skip_stock_synchronization', array( \Megaventory\Controllers\Stock::class, 'megaventory_skip_stock_synchronization' ) );
 
-		add_action( 'wp_ajax_megaventory_skip_clients_synchronization', '\Megaventory\Controllers\Client::megaventory_skip_clients_synchronization' );
-		add_action( 'wp_ajax_nopriv_megaventory_skip_clients_synchronization', '\Megaventory\Controllers\Client::megaventory_skip_clients_synchronization' );
+		add_action( 'wp_ajax_megaventory_skip_clients_synchronization', array( \Megaventory\Controllers\Client::class, 'megaventory_skip_clients_synchronization' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_skip_clients_synchronization', array( \Megaventory\Controllers\Client::class, 'megaventory_skip_clients_synchronization' ) );
 
-		add_action( 'wp_ajax_megaventory_skip_coupons_synchronization', '\Megaventory\Controllers\Coupon::megaventory_skip_coupons_synchronization' );
-		add_action( 'wp_ajax_nopriv_megaventory_skip_coupons_synchronization', '\Megaventory\Controllers\Coupon::megaventory_skip_coupons_synchronization' );
+		add_action( 'wp_ajax_megaventory_skip_coupons_synchronization', array( \Megaventory\Controllers\Coupon::class, 'megaventory_skip_coupons_synchronization' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_skip_coupons_synchronization', array( \Megaventory\Controllers\Coupon::class, 'megaventory_skip_coupons_synchronization' ) );
 
-		add_action( 'wp_ajax_synchronize_order_to_megaventory_manually', '\Megaventory\Controllers\Order::synchronize_order_to_megaventory_manually' );
-		add_action( 'wp_ajax_nopriv_synchronize_order_to_megaventory_manually', '\Megaventory\Controllers\Order::synchronize_order_to_megaventory_manually' );
+		add_action( 'wp_ajax_synchronize_order_to_megaventory_manually', array( \Megaventory\Controllers\Order::class, 'synchronize_order_to_megaventory_manually' ) );
+		add_action( 'wp_ajax_nopriv_synchronize_order_to_megaventory_manually', array( \Megaventory\Controllers\Order::class, 'synchronize_order_to_megaventory_manually' ) );
 
-		add_action( 'wp_ajax_megaventory_change_shipping_zones_option', '\Megaventory\Controllers\Shipping_Zones::megaventory_change_shipping_zones_option' );
-		add_action( 'wp_ajax_nopriv_megaventory_change_shipping_zones_option', '\Megaventory\Controllers\Shipping_Zones::megaventory_change_shipping_zones_option' );
+		add_action( 'wp_ajax_megaventory_change_shipping_zones_option', array( \Megaventory\Controllers\Shipping_Zones::class, 'megaventory_change_shipping_zones_option' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_change_shipping_zones_option', array( \Megaventory\Controllers\Shipping_Zones::class, 'megaventory_change_shipping_zones_option' ) );
 
-		add_action( 'wp_ajax_megaventory_save_shipping_zones_priority_order', '\Megaventory\Controllers\Shipping_Zones::megaventory_save_shipping_zones_priority_order' );
-		add_action( 'wp_ajax_nopriv_megaventory_save_shipping_zones_priority_order', '\Megaventory\Controllers\Shipping_Zones::megaventory_save_shipping_zones_priority_order' );
+		add_action( 'wp_ajax_megaventory_save_shipping_zones_priority_order', array( \Megaventory\Controllers\Shipping_Zones::class, 'megaventory_save_shipping_zones_priority_order' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_save_shipping_zones_priority_order', array( \Megaventory\Controllers\Shipping_Zones::class, 'megaventory_save_shipping_zones_priority_order' ) );
 
-		add_action( 'wp_ajax_megaventory_delete_success_logs', '\Megaventory\Controllers\Logs::megaventory_delete_success_logs' );
-		add_action( 'wp_ajax_nopriv_megaventory_delete_success_logs', '\Megaventory\Controllers\Logs::megaventory_delete_success_logs' );
+		add_action( 'wp_ajax_megaventory_delete_success_logs', array( \Megaventory\Controllers\Logs::class, 'megaventory_delete_success_logs' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_delete_success_logs', array( \Megaventory\Controllers\Logs::class, 'megaventory_delete_success_logs' ) );
 
-		add_action( 'wp_ajax_megaventory_delete_error_logs', '\Megaventory\Controllers\Logs::megaventory_delete_error_logs' );
-		add_action( 'wp_ajax_nopriv_megaventory_delete_error_logs', '\Megaventory\Controllers\Logs::megaventory_delete_error_logs' );
+		add_action( 'wp_ajax_megaventory_delete_error_logs', array( \Megaventory\Controllers\Logs::class, 'megaventory_delete_error_logs' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_delete_error_logs', array( \Megaventory\Controllers\Logs::class, 'megaventory_delete_error_logs' ) );
 
-		add_action( 'wp_ajax_megaventory_update_extra_fee_sku', '\Megaventory\Controllers\Product::megaventory_update_extra_fee_sku' );
-		add_action( 'wp_ajax_nopriv_megaventory_update_extra_fee_sku', '\Megaventory\Controllers\Product::megaventory_update_extra_fee_sku' );
+		add_action( 'wp_ajax_megaventory_update_extra_fee_sku', array( \Megaventory\Controllers\Product::class, 'megaventory_update_extra_fee_sku' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_update_extra_fee_sku', array( \Megaventory\Controllers\Product::class, 'megaventory_update_extra_fee_sku' ) );
 
-		add_action( 'wp_ajax_megaventory_update_payment_method_mappings', '\Megaventory\Controllers\Order::megaventory_update_payment_method_mappings' );
-		add_action( 'wp_ajax_nopriv_megaventory_update_payment_method_mappings', '\Megaventory\Controllers\Order::megaventory_update_payment_method_mappings' );
+		add_action( 'wp_ajax_megaventory_update_payment_method_mappings', array( \Megaventory\Controllers\Order::class, 'megaventory_update_payment_method_mappings' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_update_payment_method_mappings', array( \Megaventory\Controllers\Order::class, 'megaventory_update_payment_method_mappings' ) );
 
-		add_action( 'wp_ajax_megaventory_update_auto_assign_batch_numbers_option', '\Megaventory\Controllers\Order::megaventory_update_auto_assign_batch_numbers_option' );
-		add_action( 'wp_ajax_nopriv_megaventory_update_auto_assign_batch_numbers_option', '\Megaventory\Controllers\Order::megaventory_update_auto_assign_batch_numbers_option' );
+		add_action( 'wp_ajax_megaventory_update_auto_assign_batch_numbers_option', array( \Megaventory\Controllers\Order::class, 'megaventory_update_auto_assign_batch_numbers_option' ) );
+		add_action( 'wp_ajax_nopriv_megaventory_update_auto_assign_batch_numbers_option', array( \Megaventory\Controllers\Order::class, 'megaventory_update_auto_assign_batch_numbers_option' ) );
 
 		/* Plugin Upgrade hook */
 
-		add_action( 'upgrader_process_complete', '\Megaventory\Megaventory::upgrade_plugin', 10, 2 );
+		add_action( 'upgrader_process_complete', array( self::class, 'upgrade_plugin' ), 10, 2 );
 	}
 
 	/**
@@ -384,14 +385,14 @@ class Megaventory {
 
 		wp_enqueue_script( 'jquery-ui-sortable' ); // jQuery UI Sortable. Required for shipping zone/location priority UI.
 
-		wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.8.3', true );
-		wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.8.3', true );
-		wp_enqueue_script( 'ajaxWpCronStatus', plugins_url( '/js/ajaxWpCronStatus.js', __FILE__ ), array(), '2.8.3', true );
-		wp_enqueue_script( 'ajaxShippingZones', plugins_url( '/js/ajaxShippingZones.js', __FILE__ ), array(), '2.8.3', true );
-		wp_enqueue_script( 'ajaxLocation', plugins_url( '/js/ajaxLocation.js', __FILE__ ), array(), '2.8.3', true );
-		wp_enqueue_script( 'ajaxLogs', plugins_url( '/js/ajaxLogs.js', __FILE__ ), array(), '2.8.3', true );
-		wp_enqueue_script( 'ajaxOrderSettings', plugins_url( '/js/ajaxOrderSettings.js', __FILE__ ), array(), '2.8.3', true );
-		wp_enqueue_script( 'ajaxPayment', plugins_url( '/js/ajaxPayment.js', __FILE__ ), array(), '2.8.3', true );
+		wp_enqueue_script( 'ajaxCallImport', plugins_url( '/js/ajaxCallImport.js', __FILE__ ), array(), '2.8.4', true );
+		wp_enqueue_script( 'ajaxCallInitialize', plugins_url( '/js/ajaxCallInitialize.js', __FILE__ ), array(), '2.8.4', true );
+		wp_enqueue_script( 'ajaxWpCronStatus', plugins_url( '/js/ajaxWpCronStatus.js', __FILE__ ), array(), '2.8.4', true );
+		wp_enqueue_script( 'ajaxShippingZones', plugins_url( '/js/ajaxShippingZones.js', __FILE__ ), array(), '2.8.4', true );
+		wp_enqueue_script( 'ajaxLocation', plugins_url( '/js/ajaxLocation.js', __FILE__ ), array(), '2.8.4', true );
+		wp_enqueue_script( 'ajaxLogs', plugins_url( '/js/ajaxLogs.js', __FILE__ ), array(), '2.8.4', true );
+		wp_enqueue_script( 'ajaxOrderSettings', plugins_url( '/js/ajaxOrderSettings.js', __FILE__ ), array(), '2.8.4', true );
+		wp_enqueue_script( 'ajaxPayment', plugins_url( '/js/ajaxPayment.js', __FILE__ ), array(), '2.8.4', true );
 
 		$nonce_array = array(
 			'nonce' => $nonce,
@@ -413,7 +414,7 @@ class Megaventory {
 	 * @return void
 	 */
 	public static function register_style() {
-		wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), array(), '2.8.3', 'all' );
+		wp_register_style( 'mv_style', plugins_url( '/assets/css/style.css', __FILE__ ), array(), '2.8.4', 'all' );
 		wp_register_style( 'mv_style_fonts', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css', array(), '2.0.7', 'all' );
 	}
 
@@ -436,7 +437,7 @@ class Megaventory {
 
 		$mv_admin_slug = 'megaventory-plugin';
 
-		add_menu_page( 'Megaventory', 'Megaventory', 'manage_options', $mv_admin_slug, '\Megaventory\Admin\Dashboard::generate_megaventory_admin_dashboard', plugin_dir_url( __FILE__ ) . 'assets/images/mv.png', 30 );
+		add_menu_page( 'Megaventory', 'Megaventory', 'manage_options', $mv_admin_slug, array( \Megaventory\Admin\Dashboard::class, 'generate_megaventory_admin_dashboard' ), plugin_dir_url( __FILE__ ) . 'assets/images/mv.png', 30 );
 	}
 
 	/**

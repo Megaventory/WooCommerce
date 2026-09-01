@@ -45,6 +45,13 @@ class Integration_Updates {
 
 		try {
 
+			if ( \Megaventory\Helpers\Tools::is_checkout_phase_request() ) {
+
+				// If the request is in the checkout phase, we don't want to pull integration updates from Megaventory.
+				// This is because we don't want to slow down the checkout process by pulling and processing integration updates from Megaventory, which can take a long time.
+				return;
+			}
+
 			if ( ! ( get_option( 'is_megaventory_initialized' ) &&
 				get_option( 'correct_currency' ) &&
 				get_option( 'correct_connection' ) &&
@@ -188,7 +195,9 @@ class Integration_Updates {
 						// so we need to check both for array types and older values and handle them accordingly.
 						if ( ! empty( $related_mv_orders ) && is_array( $related_mv_orders ) ) {
 
-							\Megaventory\Models\Order::handle_wc_order_status_update_for_multiple_orders( $order, $json_data['DocumentId'], $status, $related_mv_orders );
+							\Megaventory\Models\Order::update_megaventory_order_status( $order, $json_data['DocumentId'], $status, $related_mv_orders );
+
+							\Megaventory\Models\Order::handle_wc_order_status_update_for_multiple_orders( $order, $related_mv_orders );
 
 						} else {
 

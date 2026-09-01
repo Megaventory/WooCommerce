@@ -28,6 +28,10 @@ class Client {
 	 */
 	public static function sync_on_profile_update( $user_id ) {
 
+		if ( \Megaventory\Helpers\Tools::is_checkout_phase_request() ) {
+			return;
+		}
+
 		$user = \Megaventory\Models\Client::wc_find( $user_id );
 
 		if ( isset( $user ) ) {

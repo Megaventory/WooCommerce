@@ -364,6 +364,37 @@ class Coupon {
 	}
 
 	/**
+	 * Returns included brands.
+	 *
+	 * @return array[]
+	 */
+	public function get_included_brands() {
+		$ids = get_post_meta( $this->wc_id, 'product_brands', true );
+
+		if ( ! $ids ) {
+			return array();
+		}
+
+		return $ids;
+	}
+
+	/**
+	 * Returns excluded brands.
+	 *
+	 * @return array[]
+	 */
+	public function get_excluded_brands() {
+
+		$ids = get_post_meta( $this->wc_id, 'exclude_product_brands', true );
+
+		if ( ! $ids ) {
+			return array();
+		}
+
+		return $ids;
+	}
+
+	/**
 	 * Check if a coupon applies to whole sales order.
 	 *
 	 * @return bool

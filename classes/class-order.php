@@ -234,7 +234,7 @@ class Order {
 	}
 
 	/**
-	 * Handles WC Order Status updates for one-to-many WC-MV order relation depending on the statuses of related mv orders.
+	 * Updates the status of the related MV orders for a given WC Order depending on the received Integration Update status.
 	 *
 	 * @param \WC_Order $wc_order                The WC Order object.
 	 * @param int       $int_update_order_id     Integration Update Order ID.
@@ -242,7 +242,7 @@ class Order {
 	 * @param array     $related_mv_orders_arr   WC Order's related MV Orders array.
 	 * @return void
 	 */
-	public static function handle_wc_order_status_update_for_multiple_orders( $wc_order, $int_update_order_id, $int_update_order_status, $related_mv_orders_arr ) {
+	public static function update_megaventory_order_status( $wc_order, $int_update_order_id, $int_update_order_status, $related_mv_orders_arr ) {
 
 		$updated_order_index = array_search( (int) $int_update_order_id, $related_mv_orders_arr, true );
 
@@ -258,6 +258,18 @@ class Order {
 		$status_array[ $mv_order_id ] = $int_update_order_status;
 
 		self::update_mv_related_order_status_list( $wc_order, $status_array );
+	}
+
+	/**
+	 * Handles WC Order Status updates for one-to-many WC-MV order relation depending on the statuses of related mv orders.
+	 *
+	 * @param \WC_Order $wc_order                The WC Order object.
+	 * @param array     $related_mv_orders_arr   WC Order's related MV Orders array.
+	 * @return void
+	 */
+	public static function handle_wc_order_status_update_for_multiple_orders( $wc_order, $related_mv_orders_arr ) {
+
+		$status_array = self::get_mv_related_orders_status_list( $wc_order );
 
 		$processing_orders = self::filter_related_orders_by_status( 'processing', $status_array );
 
@@ -770,16 +782,16 @@ class Order {
 	 *
 	 * @param \WC_Order $order The wc order object.
 	 * @param array     $tracking_data The tracking data array.
-	 * @return void
+	 * @return bool
 	 */
 	public static function add_tracking_info_to_order( $order, $tracking_data ) {
 
 		if ( ! is_array( $tracking_data ) || empty( $tracking_data ) ) {
-			return;
+			return false;
 		}
 
 		if ( false === $order || ! is_object( $order ) ) {
-			return;
+			return false;
 		}
 
 		$tracking_number = ( array_key_exists( 'TrackNumber', $tracking_data ) && ! empty( $tracking_data['TrackNumber'] ) )
@@ -787,7 +799,7 @@ class Order {
 			: '';
 
 		if ( empty( $tracking_number ) ) {
-			return;
+			return false;
 		}
 
 		$carrier = ( array_key_exists( 'ShippingProviderName', $tracking_data ) && ! empty( $tracking_data['ShippingProviderName'] ) )
@@ -829,5 +841,7 @@ class Order {
 		);
 
 		$order->add_order_note( $order_note, $is_customer_note );
+
+		return true;
 	}
 }

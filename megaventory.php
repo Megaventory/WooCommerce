@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Megaventory
- * Version: 2.8.3
+ * Version: 2.8.4
  * Text Domain: megaventory
  * Plugin URI: https://woocommerce.com/products/megaventory-inventory-management/
  * Description: Integration between WooCommerce and Megaventory.
@@ -10,10 +10,10 @@
  * @since 1.0.0
  *
  * WC requires at least: 3.0
- * WC tested up to: 10.5.2
+ * WC tested up to: 11.0.1
  * Requires at least: 4.4
- * Tested up to: 6.9.1
- * Stable tag: 2.8.3
+ * Tested up to: 7.1.0
+ * Stable tag: 2.8.4
  * Requires PHP: 7.2
  *
  * Author: Megaventory
@@ -97,7 +97,9 @@ $megaventory->define_javascript_hooks();
 
 $mv_admin_slug = 'megaventory-plugin';
 
-update_option( 'last_valid_api_key', \Megaventory\API::get_last_valid_api_key() );
+if ( is_admin() ) {
+	update_option( 'last_valid_api_key', \Megaventory\API::get_last_valid_api_key() );
+}
 
 $home_url   = get_home_url();
 $plugin_url = $home_url . '/wp-admin/admin.php?page=megaventory-plugin';
@@ -123,26 +125,26 @@ add_action(
 	}
 );
 
-add_action( 'admin_notices', '\Megaventory\Helpers\Admin_Notifications::sample_admin_notice_error' );
+add_action( 'admin_notices', array( \Megaventory\Helpers\Admin_Notifications::class, 'sample_admin_notice_error' ) );
 
-add_action( 'admin_post_megaventory', '\Megaventory\Megaventory::update_apikey_and_host' );
+add_action( 'admin_post_megaventory', array( \Megaventory\Megaventory::class, 'update_apikey_and_host' ) );
 
 // PLUGIN ACTIVATION TRIGGERS.
 
-register_activation_hook( __FILE__, '\Megaventory\Megaventory::create_plugin_database_table' );
+register_activation_hook( __FILE__, array( \Megaventory\Megaventory::class, 'create_plugin_database_table' ) );
 
-register_activation_hook( __FILE__, '\Megaventory\Megaventory::plugin_activated_reset_basic_options' );
+register_activation_hook( __FILE__, array( \Megaventory\Megaventory::class, 'plugin_activated_reset_basic_options' ) );
 
-add_action( 'admin_notices', '\Megaventory\Helpers\Admin_Notifications::plugin_activation_admin_notification' );
+add_action( 'admin_notices', array( \Megaventory\Helpers\Admin_Notifications::class, 'plugin_activation_admin_notification' ) );
 
-register_activation_hook( __FILE__, '\Megaventory\Helpers\Cron::cron_activation' );
+register_activation_hook( __FILE__, array( \Megaventory\Helpers\Cron::class, 'cron_activation' ) );
 
-register_deactivation_hook( __FILE__, '\Megaventory\Helpers\Cron::cron_deactivation' );
+register_deactivation_hook( __FILE__, array( \Megaventory\Helpers\Cron::class, 'cron_deactivation' ) );
 
-add_filter( 'cron_schedules', '\Megaventory\Helpers\Cron::add_cron_schedules' ); // @codingStandardsIgnoreLine. It is critical to maintain updated inventory/stock levels in WooCommerce
+add_filter( 'cron_schedules', array( \Megaventory\Helpers\Cron::class, 'add_cron_schedules' ) ); // @codingStandardsIgnoreLine. It is critical to maintain updated inventory/stock levels in WooCommerce
 
 /* on event, run pull_changes function */
-add_action( 'pull_integration_updates_from_megaventory_event', '\Megaventory\Controllers\Integration_Updates::pull_integration_updates_from_megaventory' );
+add_action( 'pull_integration_updates_from_megaventory_event', array( \Megaventory\Controllers\Integration_Updates::class, 'pull_integration_updates_from_megaventory' ) );
 
 /* on event, run function to Sync orders to mv */
-add_action( Models\MV_Constants::MV_ORDER_SYNC_EVENT, '\Megaventory\Controllers\Order::sync_queued_orders_to_mv' );
+add_action( Models\MV_Constants::MV_ORDER_SYNC_EVENT, array( \Megaventory\Controllers\Order::class, 'sync_queued_orders_to_mv' ) );

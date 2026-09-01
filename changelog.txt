@@ -1,5 +1,16 @@
 *** Megaventory Extension Template Changelog ***
 
+2026-09-01 - version 2.8.4
+* Improved checkout processing to prevent unwanted client/customer synchronization while an order is being placed.
+* Added safeguards to prevent integration updates from being triggered during checkout.
+* Prevented unnecessary frontend product synchronization during checkout.
+* Refactored order status update methods for improved clarity, consistency, and functionality.
+* Improved handling of order status changes across the integration workflow.
+* Added inclusion/exclusion checks when applying coupons to order items, ensuring coupons are only applied to eligible products.
+* Bug fixes and performance improvements.
+* Compatible with WooCommerce 11.0.1
+* Compatible with WordPress 7.1.0
+
 2026-02-18 - version 2.8.3
 * Bug fix with order coupon synchronization.
 * Performance improvements.

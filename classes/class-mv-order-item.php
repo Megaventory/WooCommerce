@@ -193,7 +193,7 @@ class MV_Order_Item {
 
 		foreach ( $coupons_array[ Coupon::PERCENTAGE_COUPONS_KEY ] as $coupon ) {
 
-			if ( self::apply_coupon( $product, $coupon ) ) {
+			if ( self::coupon_applied_in_order_item( $wc_order_item ) && self::apply_coupon( $product, $coupon ) ) {
 
 				array_push( $percentage_product_coupons, $coupon );
 			}
@@ -555,16 +555,65 @@ class MV_Order_Item {
 			return false;
 		}
 
-		$incl_ids       = $coupon->get_included_products( true );
-		$included_empty = empty( $incl_ids );
-		$included       = in_array( $product->wc_id, $incl_ids, true );
-		$excluded       = in_array( $product->wc_id, $coupon->get_excluded_products( true ), true );
+		$excluded_product_ids = $coupon->get_excluded_products( true );
 
-		$incl_ids_cat       = $coupon->get_included_products_categories();
-		$included_empty_cat = empty( $incl_ids_cat );
-		$included_cat       = in_array( $product->wc_id, $incl_ids_cat, true );
-		$excluded_cat       = in_array( $product->wc_id, $coupon->get_excluded_products_categories(), true );
+		$is_product_excluded = in_array( $product->wc_id, $excluded_product_ids, true );
 
-		return ( ( $included_empty || $included ) || ( ( $included_empty_cat && $included_empty ) || $included_cat ) ) && ( ! $excluded && ! $excluded_cat );
+		if ( $is_product_excluded ) {
+			return false;
+		}
+
+		$excluded_category_ids = $coupon->get_excluded_products_categories();
+
+		$product_category_ids = wp_get_post_terms( $product->wc_id, 'product_cat', array( 'fields' => 'ids' ) );
+
+		$is_product_category_excluded = \count( array_intersect( $excluded_category_ids, $product_category_ids ) ) > 0;
+
+		if ( $is_product_category_excluded ) {
+			return false;
+		}
+
+		$excluded_brand_ids = $coupon->get_excluded_brands();
+
+		$product_brand_ids = wp_get_post_terms( $product->wc_id, 'product_brand', array( 'fields' => 'ids' ) );
+
+		$is_product_brand_excluded = \count( array_intersect( $excluded_brand_ids, $product_brand_ids ) ) > 0;
+
+		if ( $is_product_brand_excluded ) {
+			return false;
+		}
+
+		$incl_product_ids = $coupon->get_included_products( true );
+
+		// if the product is included. Also if there are no included products, all products are assumed to be included.
+		$is_product_included = in_array( $product->wc_id, $incl_product_ids, true ) || empty( $incl_product_ids );
+
+		$included_product_category_ids = $coupon->get_included_products_categories();
+
+		// if the product category is included. Also if there are no included categories, all categories are assumed to be included.
+		$is_product_category_included = \count( array_intersect( $included_product_category_ids, $product_category_ids ) ) > 0 || empty( $included_product_category_ids );
+
+		$included_brand_ids = $coupon->get_included_brands();
+
+		// if the product brand is included. Also if there are no included brands, all brands are assumed to be included.
+		$is_product_brand_included = \count( array_intersect( $included_brand_ids, $product_brand_ids ) ) > 0 || empty( $included_brand_ids );
+
+		// we need to make sure that all of the conditions are met for the coupon to be applied.
+		if ( $is_product_included && $is_product_category_included && $is_product_brand_included ) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if a coupon is applied to an order item.
+	 *
+	 * @param \WC_Order_Item_Product $order_item as order item.
+	 */
+	private static function coupon_applied_in_order_item( $order_item ) {
+
+		// if the subtotal is bigger than total, then there is a discount applied to the order item.
+		return ( $order_item->get_subtotal() - $order_item->get_total() ) > 0;
 	}
 }

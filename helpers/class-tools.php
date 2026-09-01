@@ -22,6 +22,39 @@ namespace Megaventory\Helpers;
 class Tools {
 
 	/**
+	 * Check if current request is in checkout/order-received flow.
+	 *
+	 * @return bool
+	 */
+	public static function is_checkout_phase_request() {
+
+		$request_uri = filter_input( INPUT_SERVER, 'REQUEST_URI', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
+
+		if ( ! is_string( $request_uri ) || '' === $request_uri ) {
+			return false;
+		}
+
+		$query_string = wp_parse_url( $request_uri, PHP_URL_QUERY );
+
+		if ( is_string( $query_string ) && '' !== $query_string ) {
+
+			parse_str( $query_string, $query_params );
+
+			if ( isset( $query_params['wc-ajax'] ) && 'checkout' === sanitize_text_field( (string) $query_params['wc-ajax'] ) ) {
+
+				return true;
+			}
+		}
+
+		if ( false !== strpos( $request_uri, 'order-received' ) ) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Remove special characters from string.
 	 *
 	 * @param string $subject as string.

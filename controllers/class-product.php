@@ -28,6 +28,12 @@ class Product {
 	 */
 	public static function sync_on_product_save( $prod_id ) {
 
+		if ( ! is_admin() ) {
+
+			// checkout process will trigger this hook, but we don't want to sync products during checkout.
+			return;
+		}
+
 		if ( 'product' !== get_post_type( $prod_id ) ) {
 			return;
 		}
